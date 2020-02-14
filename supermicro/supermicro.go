@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	hal "github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
+	"github.com/metal-stack/go-hal/internal/kernel"
 )
 
 type (
@@ -70,7 +71,16 @@ func (s *inBand) BootFrom(hal.BootTarget) error {
 	return ErrorNotImplemented
 }
 func (s *inBand) Firmware() (hal.FirmwareMode, error) {
-	return hal.FirmwareModeUnknown, ErrorNotImplemented
+	var firmware hal.FirmwareMode
+	switch kernel.Firmware() {
+	case "bios":
+		firmware = hal.FirmwareModeLegacy
+	case "efi":
+		firmware = hal.FirmwareModeUEFI
+	default:
+		firmware = hal.FirmwareModeUnknown
+	}
+	return firmware, nil
 }
 func (s *inBand) SetFirmware(hal.FirmwareMode) error {
 	return ErrorNotImplemented
