@@ -1,4 +1,4 @@
-name: Docker Image from master
+name: Build and Test
 
 on:
   push:
@@ -12,7 +12,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Lint
+      uses: actions-contrib/golangci-lint@master
+      with:
+        args: run
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1.1.2
+      with:
+        go-version: '1.13.x'
     - name: Test
       run: |
         make
