@@ -1,31 +1,27 @@
-package hal
+package supermicro
 
 import (
-	"reflect"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
-func Test_inBand_UUID(t *testing.T) {
+func Test_inBand_PowerOff(t *testing.T) {
+	type fields struct {
+		sum *sum
+	}
 	tests := []struct {
 		name    string
-		s       *inBand
-		want    uuid.UUID
+		fields  fields
 		wantErr bool
 	}{
-		{name: "not implemented", s: &inBand{}, want: uuid.UUID{}, wantErr: true},
+		{name: "not implemented", fields: fields{sum: &sum{sum: "/bin/true"}}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &inBand{}
-			got, err := s.UUID()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("inBand.UUID() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			s := &inBand{
+				sum: tt.fields.sum,
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("inBand.UUID() = %v, want %v", got, tt.want)
+			if err := s.PowerOff(); (err != nil) != tt.wantErr {
+				t.Errorf("inBand.PowerOff() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

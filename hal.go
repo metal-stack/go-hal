@@ -17,7 +17,7 @@ type (
 
 const (
 	// PowerOnState the server is powered on
-	PowerOnState PowerState = 1 + iota
+	PowerOnState PowerState = iota
 	// PowerOffState the server is powered off
 	PowerOffState
 	// PowerUnknownState the server power state is not known
@@ -25,7 +25,7 @@ const (
 )
 const (
 	// BootTargetPXE the server boots via PXE
-	BootTargetPXE BootTarget = 1 + iota
+	BootTargetPXE BootTarget = iota
 	// BootTargetDisk the server boots from disk
 	BootTargetDisk
 	// BootTargetBios the server boots into Bios
@@ -33,7 +33,7 @@ const (
 )
 const (
 	// IdentifyLEDStateOn the LED is on
-	IdentifyLEDStateOn IdentifyLEDState = 1 + iota
+	IdentifyLEDStateOn IdentifyLEDState = iota
 	// IdentifyLEDStateOff the LED is off
 	IdentifyLEDStateOff
 	// IdentifyLEDStateUnknown the LED is unknown
@@ -41,7 +41,7 @@ const (
 )
 const (
 	// FirmwareModeLegacy or BIOS
-	FirmwareModeLegacy FirmwareMode = 1 + iota
+	FirmwareModeLegacy FirmwareMode = iota
 	// FirmwareModeUEFI the server boots in uefi mode
 	FirmwareModeUEFI
 	// FirmwareModeUnknown server is in unknown firmware state
@@ -55,16 +55,16 @@ var (
 	firmwareModes = [...]string{"LEGACY", "UEFI", "UNKNOWN"}
 )
 
-func (p PowerState) String() string       { return powerStates[p-1] }
-func (b BootTarget) String() string       { return bootTargets[b-1] }
-func (i IdentifyLEDState) String() string { return ledStates[i-1] }
-func (f FirmwareMode) String() string     { return firmwareModes[f-1] }
+func (p PowerState) String() string       { return powerStates[p] }
+func (b BootTarget) String() string       { return bootTargets[b] }
+func (i IdentifyLEDState) String() string { return ledStates[i] }
+func (f FirmwareMode) String() string     { return firmwareModes[f] }
 
 // InBand get and set settings from the server via the inband interface.
 type InBand interface {
 	// UUID get the machine UUID
 	// current usage in metal-hammer
-	UUID() (uuid.UUID, error)
+	UUID() (*uuid.UUID, error)
 
 	// PowerOff set power state of the server to off
 	PowerOff() error
@@ -88,7 +88,7 @@ type InBand interface {
 type OutBand interface {
 	// UUID get the machine uuid
 	// current usage in ipmi-catcher
-	UUID() (uuid.UUID, error)
+	UUID() (*uuid.UUID, error)
 
 	// PowerState returns the power state of the server
 	PowerState() (PowerState, error)
@@ -110,4 +110,6 @@ type OutBand interface {
 
 	// BootFrom set the boot order of the server to the specified target
 	BootFrom(BootTarget) error
+
+	// TODO implement console access from bmc-proxy
 }

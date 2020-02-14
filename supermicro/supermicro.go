@@ -1,16 +1,19 @@
-package hal
+package supermicro
 
 import (
 	"fmt"
 
 	"github.com/google/uuid"
 	hal "github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/dmi"
 )
 
 type (
 	inBand struct {
+		sum *sum
 	}
 	outBand struct {
+		sum *sum
 	}
 )
 
@@ -20,19 +23,39 @@ var (
 )
 
 // InBand create a inband connection to a supermicro server.
-func InBand() (hal.InBand, error) {
-	return &inBand{}, nil
+func InBand(sumBin string) (hal.InBand, error) {
+	s, err := newSum(sumBin, false, nil, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &inBand{
+		sum: s,
+	}, nil
 }
 
 // OutBand create a outband connection to a supermicro server.
-func OutBand() (hal.OutBand, error) {
-	return &outBand{}, nil
+func OutBand(sumBin string, remote bool, ip, user, password *string) (hal.OutBand, error) {
+	s, err := newSum(sumBin, remote, ip, user, password)
+	if err != nil {
+		return nil, err
+	}
+	return &outBand{
+		sum: s,
+	}, nil
 }
 
 // InBand
 
-func (s *inBand) UUID() (uuid.UUID, error) {
-	return uuid.UUID{}, ErrorNotImplemented
+func (s *inBand) UUID() (*uuid.UUID, error) {
+	u, err := dmi.MachineUUID()
+	if err != nil {
+		return nil, err
+	}
+	us, err := uuid.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+	return &us, nil
 }
 func (s *inBand) PowerOff() error {
 	return ErrorNotImplemented
@@ -55,8 +78,16 @@ func (s *inBand) SetFirmware(hal.FirmwareMode) error {
 
 // OutBand
 
-func (s *outBand) UUID() (uuid.UUID, error) {
-	return uuid.UUID{}, ErrorNotImplemented
+func (s *outBand) UUID() (*uuid.UUID, error) {
+	u, err := s.sum.uuidRemote()
+	if err != nil {
+		return nil, err
+	}
+	us, err := uuid.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+	return &us, ErrorNotImplemented
 }
 func (s *outBand) PowerState() (hal.PowerState, error) {
 	return hal.PowerUnknownState, ErrorNotImplemented
