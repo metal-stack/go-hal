@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/metal-stack/go-hal/internal/api"
 )
 
 const (
@@ -12,14 +14,8 @@ const (
 	boardName   = "/sys/class/dmi/id/board_name"
 )
 
-// Board raw dmi board information
-type Board struct {
-	Vendor string
-	Name   string
-}
-
 // BoardInfo return raw dmi data of the board
-func BoardInfo() (*Board, error) {
+func BoardInfo() (*api.Board, error) {
 	vendor, err := dmi(boardVendor)
 	if err != nil {
 		return nil, err
@@ -28,7 +24,7 @@ func BoardInfo() (*Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Board{Vendor: vendor, Name: name}, nil
+	return &api.Board{Vendor: vendor, Name: name}, nil
 }
 
 func dmi(path string) (string, error) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
+	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
 )
@@ -78,12 +79,33 @@ func ConnectInBand() (hal.InBand, error) {
 
 // OutBand will try to detect the the board vendor
 func OutBand(ip, user, password string) (*Board, error) {
-	return nil, errorNotImplemented
+	r, err := redfish.New("https://"+ip, user, password, true)
+	if err != nil {
+		return nil, err
+	}
+	b, err := r.BoardInfo()
+	if err != nil {
+		return nil, err
+	}
+	return &Board{Vendor: guess(b.Vendor), Name: b.Name}, nil
 }
 
 // ConnectOutBand will detect the board and choose the correct inband hal implementation
 func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
-	return nil, errorNotImplemented
+	b, err := OutBand(ip, user, password)
+	if err != nil {
+		return nil, err
+	}
+	switch b.Vendor {
+	case VendorLenovo:
+		return lenovo.OutBand(&ip, &user, &password)
+	case VendorSupermicro:
+		return supermicro.OutBand("sum", true, &ip, &user, &password)
+	case VendorUnknown:
+		return nil, errorUnknownVendor
+	default:
+		return nil, errorUnknownVendor
+	}
 }
 
 func guess(vendor string) Vendor {

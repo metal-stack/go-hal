@@ -48,9 +48,19 @@ func inband() {
 }
 
 func outband() {
-	// board, err := hal.DetectOutBand()
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Printf("Board:%v", board)
+	board, err := detect.OutBand("10.5.2.93", "ADMIN", "ADMIN")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Board\nVendor:%s\nName:%s\n", board.Vendor, board.Name)
+	outband, err := detect.ConnectOutBand("10.5.2.93", "ADMIN", "ADMIN")
+	if err != nil {
+		panic(err)
+	}
+	uuid, err := outband.UUID()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("UUID:%s\n", uuid)
+
 }

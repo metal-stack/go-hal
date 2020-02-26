@@ -7,6 +7,7 @@ import (
 	hal "github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/internal/redfish"
 )
 
 type (
@@ -14,7 +15,8 @@ type (
 		sum *sum
 	}
 	outBand struct {
-		sum *sum
+		sum     *sum
+		redfish *redfish.APIClient
 	}
 )
 
@@ -40,8 +42,10 @@ func OutBand(sumBin string, remote bool, ip, user, password *string) (hal.OutBan
 	if err != nil {
 		return nil, err
 	}
+	r, err := redfish.New("https://"+*ip, *user, *password, true)
 	return &outBand{
-		sum: s,
+		sum:     s,
+		redfish: r,
 	}, nil
 }
 
@@ -89,15 +93,18 @@ func (s *inBand) SetFirmware(hal.FirmwareMode) error {
 // OutBand
 
 func (s *outBand) UUID() (*uuid.UUID, error) {
-	u, err := s.sum.uuidRemote()
+	u, err := s.redfish.MachineUUID()
 	if err != nil {
-		return nil, err
+		u, err = s.sum.uuidRemote()
+		if err != nil {
+			return nil, err
+		}
 	}
 	us, err := uuid.Parse(u)
 	if err != nil {
 		return nil, err
 	}
-	return &us, errorNotImplemented
+	return &us, nil
 }
 func (s *outBand) PowerState() (hal.PowerState, error) {
 	return hal.PowerUnknownState, errorNotImplemented
