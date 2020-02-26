@@ -24,23 +24,21 @@ func machineUUID(readFileFunc func(filename string) ([]byte, error)) (string, er
 		productUUID, err := readFileFunc(dmiUUID)
 		if err != nil {
 			return "", fmt.Errorf("error getting product_uuid: %w", err)
-		} else {
-			return strings.TrimSpace(string(productUUID)), nil
 		}
+		return strings.TrimSpace(string(productUUID)), nil
 	}
 
 	if _, err := os.Stat(dmiSerial); !os.IsNotExist(err) {
 		productSerial, err := readFileFunc(dmiSerial)
 		if err != nil {
 			return "", fmt.Errorf("error getting product_serial: %w", err)
-		} else {
-			productSerialBytes, err := guuid.FromBytes([]byte(fmt.Sprintf("%16s", string(productSerial))))
-			if err != nil {
-				return "", fmt.Errorf("error converting product_serial to uuid:%w", err)
-			} else {
-				return strings.TrimSpace(productSerialBytes.String()), nil
-			}
 		}
+		productSerialBytes, err := guuid.Parse(string(productSerial))
+		if err != nil {
+			return "", fmt.Errorf("error converting product_serial to uuid:%w", err)
+		}
+		return strings.TrimSpace(productSerialBytes.String()), nil
+
 	}
 	return "00000000-0000-0000-0000-000000000000", fmt.Errorf("no valid UUID found")
 }

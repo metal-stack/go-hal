@@ -19,8 +19,8 @@ type (
 )
 
 var (
-	// ErrorNotImplemented for all funcs which are not implemented yet
-	ErrorNotImplemented = fmt.Errorf("not implemented yet")
+	// errorNotImplemented for all funcs which are not implemented yet
+	errorNotImplemented = fmt.Errorf("not implemented yet")
 )
 
 // InBand create a inband connection to a supermicro server.
@@ -59,16 +59,16 @@ func (s *inBand) UUID() (*uuid.UUID, error) {
 	return &us, nil
 }
 func (s *inBand) PowerOff() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 func (s *inBand) PowerReset() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 func (s *inBand) PowerCycle() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 func (s *inBand) BootFrom(hal.BootTarget) error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 func (s *inBand) Firmware() (hal.FirmwareMode, error) {
 	var firmware hal.FirmwareMode
@@ -83,7 +83,7 @@ func (s *inBand) Firmware() (hal.FirmwareMode, error) {
 	return firmware, nil
 }
 func (s *inBand) SetFirmware(hal.FirmwareMode) error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 // OutBand
@@ -97,38 +97,38 @@ func (s *outBand) UUID() (*uuid.UUID, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &us, ErrorNotImplemented
+	return &us, errorNotImplemented
 }
 func (s *outBand) PowerState() (hal.PowerState, error) {
-	return hal.PowerUnknownState, ErrorNotImplemented
+	return hal.PowerUnknownState, errorNotImplemented
 }
 func (s *outBand) PowerOn() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 func (s *outBand) PowerOff() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) PowerReset() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) PowerCycle() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) IdentifyLEDState(hal.IdentifyLEDState) error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) IdentifyLEDOn() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) IdentifyLEDOff() error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
 
 func (s *outBand) BootFrom(hal.BootTarget) error {
-	return ErrorNotImplemented
+	return errorNotImplemented
 }
