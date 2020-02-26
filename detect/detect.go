@@ -17,23 +17,28 @@ type (
 )
 
 const (
+	// VendorUnknown is a unknown Vendor
+	VendorUnknown Vendor = iota
 	// VendorSupermicro identifies all Supermicro servers
-	VendorSupermicro Vendor = iota
+	VendorSupermicro
 	// VendorLenovo identifies all Lenovo servers
 	VendorLenovo
 	// VendorDell identifies all Dell servers
 	VendorDell
 	// VendorVagrant is a virtual machine.
 	VendorVagrant
-	// VendorUnknown is a unknown Vendor
-	VendorUnknown
 )
 
 var (
-	vendors             = [...]string{"Supermicro", "Lenovo", "Dell", "Vagrant", "UNKNOWN"}
-	allVendors          = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
-	errorNotImplemented = fmt.Errorf("not implemented yet")
-	errorUnknownVendor  = fmt.Errorf("vendor unknown")
+	vendors = [...]string{
+		VendorSupermicro: "Supermicro",
+		VendorLenovo:     "Lenovo",
+		VendorDell:       "Dell",
+		VendorVagrant:    "Vagrant",
+		VendorUnknown:    "UNKNOWN",
+	}
+	allVendors         = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
+	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
 func (v Vendor) String() string { return vendors[v] }

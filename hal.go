@@ -16,43 +16,59 @@ type (
 )
 
 const (
+	// PowerUnknownState the server power state is not known
+	PowerUnknownState PowerState = iota
 	// PowerOnState the server is powered on
-	PowerOnState PowerState = iota
+	PowerOnState
 	// PowerOffState the server is powered off
 	PowerOffState
-	// PowerUnknownState the server power state is not known
-	PowerUnknownState
 )
 const (
 	// BootTargetPXE the server boots via PXE
-	BootTargetPXE BootTarget = iota
+	BootTargetPXE BootTarget = iota + 1
 	// BootTargetDisk the server boots from disk
 	BootTargetDisk
 	// BootTargetBios the server boots into Bios
 	BootTargetBios
 )
 const (
+	// IdentifyLEDStateUnknown the LED is unknown
+	IdentifyLEDStateUnknown IdentifyLEDState = iota
 	// IdentifyLEDStateOn the LED is on
-	IdentifyLEDStateOn IdentifyLEDState = iota
+	IdentifyLEDStateOn
 	// IdentifyLEDStateOff the LED is off
 	IdentifyLEDStateOff
-	// IdentifyLEDStateUnknown the LED is unknown
-	IdentifyLEDStateUnknown
 )
 const (
+	// FirmwareModeUnknown server is in unknown firmware state
+	FirmwareModeUnknown FirmwareMode = iota
 	// FirmwareModeLegacy or BIOS
-	FirmwareModeLegacy FirmwareMode = iota
+	FirmwareModeLegacy
 	// FirmwareModeUEFI the server boots in uefi mode
 	FirmwareModeUEFI
-	// FirmwareModeUnknown server is in unknown firmware state
-	FirmwareModeUnknown
 )
 
 var (
-	powerStates   = [...]string{"ON", "OFF", "UNKNOWN"}
-	bootTargets   = [...]string{"PXE", "DISK", "BIOS"}
-	ledStates     = [...]string{"ON", "OFF", "UNKNOWN"}
-	firmwareModes = [...]string{"LEGACY", "UEFI", "UNKNOWN"}
+	powerStates = [...]string{
+		PowerOnState:      "ON",
+		PowerOffState:     "OFF",
+		PowerUnknownState: "UNKNOWN",
+	}
+	bootTargets = [...]string{
+		BootTargetPXE:  "PXE",
+		BootTargetDisk: "DISK",
+		BootTargetBios: "BIOS",
+	}
+	ledStates = [...]string{
+		IdentifyLEDStateOn:      "ON",
+		IdentifyLEDStateOff:     "OFF",
+		IdentifyLEDStateUnknown: "UNKNOWN",
+	}
+	firmwareModes = [...]string{
+		FirmwareModeLegacy:  "LEGACY",
+		FirmwareModeUEFI:    "UEFI",
+		FirmwareModeUnknown: "UNKNOWN",
+	}
 )
 
 func (p PowerState) String() string       { return powerStates[p] }

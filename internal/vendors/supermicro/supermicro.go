@@ -43,6 +43,9 @@ func OutBand(sumBin string, remote bool, ip, user, password *string) (hal.OutBan
 		return nil, err
 	}
 	r, err := redfish.New("https://"+*ip, *user, *password, true)
+	if err != nil {
+		return nil, err
+	}
 	return &outBand{
 		sum:     s,
 		redfish: r,
