@@ -5,14 +5,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/dmi"
-	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/internal/vendors/common"
 )
 
 type (
 	inBand struct {
+		common *common.Common
 	}
 	outBand struct {
+		redfish *redfish.APIClient
+		common  *common.Common
 	}
 )
 
@@ -23,18 +26,51 @@ var (
 
 // InBand create a inband connection to a supermicro server.
 func InBand() (hal.InBand, error) {
-	return &inBand{}, nil
+	return &inBand{
+		common: common.New(nil),
+	}, nil
 }
 
 // OutBand create a outband connection to a supermicro server.
 func OutBand(ip, user, password *string) (hal.OutBand, error) {
-	return &outBand{}, nil
+	r, err := redfish.New("https://"+*ip, *user, *password, true)
+	if err != nil {
+		return nil, err
+	}
+	return &outBand{
+		redfish: r,
+		common:  common.New(r),
+	}, nil
 }
 
 // InBand
 
-func (s *inBand) UUID() (*uuid.UUID, error) {
-	u, err := dmi.MachineUUID()
+func (i *inBand) UUID() (*uuid.UUID, error) {
+	return i.common.UUID()
+}
+func (i *inBand) PowerOff() error {
+	return errorNotImplemented
+}
+func (i *inBand) PowerReset() error {
+	return errorNotImplemented
+}
+func (i *inBand) PowerCycle() error {
+	return errorNotImplemented
+}
+func (i *inBand) BootFrom(hal.BootTarget) error {
+	return errorNotImplemented
+}
+func (i *inBand) Firmware() (hal.FirmwareMode, error) {
+	return i.common.Firmware()
+}
+func (i *inBand) SetFirmware(hal.FirmwareMode) error {
+	return errorNotImplemented
+}
+
+// OutBand
+
+func (o *outBand) UUID() (*uuid.UUID, error) {
+	u, err := o.redfish.MachineUUID()
 	if err != nil {
 		return nil, err
 	}
@@ -44,69 +80,36 @@ func (s *inBand) UUID() (*uuid.UUID, error) {
 	}
 	return &us, nil
 }
-func (s *inBand) PowerOff() error {
+func (o *outBand) PowerState() (hal.PowerState, error) {
+	return o.common.PowerState()
+}
+func (o *outBand) PowerOn() error {
 	return errorNotImplemented
 }
-func (s *inBand) PowerReset() error {
-	return errorNotImplemented
-}
-func (s *inBand) PowerCycle() error {
-	return errorNotImplemented
-}
-func (s *inBand) BootFrom(hal.BootTarget) error {
-	return errorNotImplemented
-}
-func (s *inBand) Firmware() (hal.FirmwareMode, error) {
-	var firmware hal.FirmwareMode
-	switch kernel.Firmware() {
-	case "bios":
-		firmware = hal.FirmwareModeLegacy
-	case "efi":
-		firmware = hal.FirmwareModeUEFI
-	default:
-		firmware = hal.FirmwareModeUnknown
-	}
-	return firmware, nil
-}
-func (s *inBand) SetFirmware(hal.FirmwareMode) error {
+func (o *outBand) PowerOff() error {
 	return errorNotImplemented
 }
 
-// OutBand
-
-func (s *outBand) UUID() (*uuid.UUID, error) {
-	return nil, errorNotImplemented
-}
-func (s *outBand) PowerState() (hal.PowerState, error) {
-	return hal.PowerUnknownState, errorNotImplemented
-}
-func (s *outBand) PowerOn() error {
-	return errorNotImplemented
-}
-func (s *outBand) PowerOff() error {
+func (o *outBand) PowerReset() error {
 	return errorNotImplemented
 }
 
-func (s *outBand) PowerReset() error {
+func (o *outBand) PowerCycle() error {
 	return errorNotImplemented
 }
 
-func (s *outBand) PowerCycle() error {
+func (o *outBand) IdentifyLEDState(hal.IdentifyLEDState) error {
 	return errorNotImplemented
 }
 
-func (s *outBand) IdentifyLEDState(hal.IdentifyLEDState) error {
+func (o *outBand) IdentifyLEDOn() error {
 	return errorNotImplemented
 }
 
-func (s *outBand) IdentifyLEDOn() error {
+func (o *outBand) IdentifyLEDOff() error {
 	return errorNotImplemented
 }
 
-func (s *outBand) IdentifyLEDOff() error {
-	return errorNotImplemented
-}
-
-func (s *outBand) BootFrom(hal.BootTarget) error {
+func (o *outBand) BootFrom(hal.BootTarget) error {
 	return errorNotImplemented
 }

@@ -2,11 +2,14 @@ package redfish
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/metal-stack/go-hal/internal/api"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/redfish"
 )
+
+const defaultUUID = "00000000-0000-0000-0000-000000000000"
 
 type APIClient struct {
 	c *gofish.APIClient
@@ -40,6 +43,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 
 	for _, chass := range chassis {
+		log.Printf("cass:%v\n", chass)
 		if chass.ChassisType == redfish.RackMountChassisType {
 			return &api.Board{
 				Vendor: chass.Manufacturer,
@@ -56,12 +60,28 @@ func (c *APIClient) MachineUUID() (string, error) {
 
 	systems, err := service.Systems()
 	if err != nil {
-		return "00000000-0000-0000-0000-000000000000", err
+		return defaultUUID, err
 	}
 	for _, system := range systems {
+		log.Printf("system:%v\n", system)
 		if system.UUID != "" {
 			return system.UUID, nil
 		}
 	}
-	return "00000000-0000-0000-0000-000000000000", err
+	return defaultUUID, err
+}
+
+func (c *APIClient) PowerState() (string, error) {
+	service := c.c.Service
+
+	systems, err := service.Systems()
+	if err != nil {
+		return "", err
+	}
+	for _, system := range systems {
+		if system.PowerState != "" {
+			return string(system.PowerState), nil
+		}
+	}
+	return "", err
 }

@@ -1,6 +1,8 @@
 package hal
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 )
 
@@ -71,10 +73,21 @@ var (
 	}
 )
 
+// Stringer
 func (p PowerState) String() string       { return powerStates[p] }
 func (b BootTarget) String() string       { return bootTargets[b] }
 func (i IdentifyLEDState) String() string { return ledStates[i] }
 func (f FirmwareMode) String() string     { return firmwareModes[f] }
+
+// Guesser
+func GuessPowerState(powerState string) PowerState {
+	for i, p := range powerStates {
+		if strings.Contains(strings.ToLower(p), strings.ToLower(powerState)) {
+			return PowerState(i)
+		}
+	}
+	return PowerUnknownState
+}
 
 // InBand get and set settings from the server via the inband interface.
 type InBand interface {

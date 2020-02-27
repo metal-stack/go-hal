@@ -62,5 +62,9 @@ func outband() {
 		panic(err)
 	}
 	fmt.Printf("UUID:%s\n", uuid)
-
+	ps, err := outband.PowerState()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Powerstate:%s\n", ps)
 }

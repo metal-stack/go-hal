@@ -61,7 +61,7 @@ func InBand() (*Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Board{Vendor: guess(b.Vendor), Name: b.Name}, nil
+	return &Board{Vendor: guessVendor(b.Vendor), Name: b.Name}, nil
 }
 
 // ConnectInBand will detect the board and choose the correct inband hal implementation
@@ -92,7 +92,7 @@ func OutBand(ip, user, password string) (*Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Board{Vendor: guess(b.Vendor), Name: b.Name}, nil
+	return &Board{Vendor: guessVendor(b.Vendor), Name: b.Name}, nil
 }
 
 // ConnectOutBand will detect the board and choose the correct inband hal implementation
@@ -113,7 +113,7 @@ func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
 	}
 }
 
-func guess(vendor string) Vendor {
+func guessVendor(vendor string) Vendor {
 	for _, v := range allVendors {
 		if strings.Contains(strings.ToLower(v.String()), strings.ToLower(vendor)) {
 			return v
