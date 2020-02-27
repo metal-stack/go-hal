@@ -41,11 +41,12 @@ var (
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
 	}
-	allVendors         = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
-	ErrorUnknownVendor = fmt.Errorf("vendor unknown")
+	allVendors = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
 )
 
 func (v Vendor) String() string { return vendors[v] }
+
+// GuessVendor will try to guess from vendor string
 func GuessVendor(vendor string) Vendor {
 	for _, v := range allVendors {
 		if strings.Contains(strings.ToLower(v.String()), strings.ToLower(vendor)) {

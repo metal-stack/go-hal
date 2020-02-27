@@ -1,12 +1,18 @@
 package detect
 
 import (
+	"fmt"
+
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/api"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
+)
+
+var (
+	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
 // InBand will try to detect the the board vendor
@@ -31,9 +37,9 @@ func ConnectInBand() (hal.InBand, error) {
 	case api.VendorSupermicro:
 		return supermicro.InBand("sum")
 	case api.VendorUnknown:
-		return nil, api.ErrorUnknownVendor
+		return nil, errorUnknownVendor
 	default:
-		return nil, api.ErrorUnknownVendor
+		return nil, errorUnknownVendor
 	}
 }
 
@@ -63,8 +69,8 @@ func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
 	case api.VendorSupermicro:
 		return supermicro.OutBand("sum", true, &ip, &user, &password)
 	case api.VendorUnknown:
-		return nil, api.ErrorUnknownVendor
+		return nil, errorUnknownVendor
 	default:
-		return nil, api.ErrorUnknownVendor
+		return nil, errorUnknownVendor
 	}
 }
