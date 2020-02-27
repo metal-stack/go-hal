@@ -3,6 +3,8 @@ package detect
 import (
 	"reflect"
 	"testing"
+
+	"github.com/metal-stack/go-hal/internal/api"
 )
 
 func TestVendor_String(t *testing.T) {
@@ -28,12 +30,12 @@ func TestVendor_String(t *testing.T) {
 func TestDetectInBand(t *testing.T) {
 	tests := []struct {
 		name    string
-		want    *Board
+		want    api.Vendor
 		wantErr bool
 	}{
 		{
 			name:    "simple",
-			want:    &Board{Vendor: VendorLenovo, Name: "20F9S0G500"},
+			want:    api.VendorLenovo,
 			wantErr: false,
 		},
 	}

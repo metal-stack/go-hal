@@ -34,7 +34,7 @@ func inband() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Board\nVendor:%s\nName:%s\n", board.Vendor, board.Name)
+	fmt.Printf("Board\n%v\n", board)
 
 	inband, err := detect.ConnectInBand()
 	if err != nil {
@@ -52,7 +52,7 @@ func outband() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Board\nVendor:%s\nName:%s\n", board.Vendor, board.Name)
+	fmt.Printf("Board\n%v\n", board)
 	outband, err := detect.ConnectOutBand("10.5.2.93", "ADMIN", "ADMIN")
 	if err != nil {
 		panic(err)

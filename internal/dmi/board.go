@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	boardVendor = "/sys/class/dmi/id/board_vendor"
-	boardName   = "/sys/class/dmi/id/board_name"
+	boardVendor   = "/sys/class/dmi/id/board_vendor"
+	boardName     = "/sys/class/dmi/id/board_name"
+	boardSerial   = "/sys/class/dmi/id/board_serial"
+	productSerial = "/sys/class/dmi/id/product_serial"
+	biosVersion   = "/sys/class/dmi/id/bios_version"
 )
 
 // BoardInfo return raw dmi data of the board
@@ -24,7 +27,25 @@ func BoardInfo() (*api.Board, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &api.Board{Vendor: vendor, Name: name}, nil
+	bserial, err := dmi(boardSerial)
+	if err != nil {
+		return nil, err
+	}
+	pserial, err := dmi(productSerial)
+	if err != nil {
+		return nil, err
+	}
+	version, err := dmi(biosVersion)
+	if err != nil {
+		return nil, err
+	}
+	return &api.Board{
+		VendorString: vendor,
+		Model:        name,
+		SerialNumber: bserial,
+		PartNumber:   pserial,
+		BiosVersion:  version,
+	}, nil
 }
 
 func dmi(path string) (string, error) {
