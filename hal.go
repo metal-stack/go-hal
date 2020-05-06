@@ -110,6 +110,8 @@ type InBand interface {
 	// SetFirmware set the FirmwareMode of the server
 	SetFirmware(FirmwareMode) error
 
+	// Decribe print a basic information about this connection
+	Describe() string
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, User, Password, Interface}
 }
 
@@ -140,5 +142,7 @@ type OutBand interface {
 	// BootFrom set the boot order of the server to the specified target
 	BootFrom(BootTarget) error
 
+	// Decribe print a basic information about this connection
+	Describe() string
 	// TODO implement console access from bmc-proxy
 }

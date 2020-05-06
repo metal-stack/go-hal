@@ -66,6 +66,9 @@ func (i *inBand) Firmware() (hal.FirmwareMode, error) {
 func (i *inBand) SetFirmware(hal.FirmwareMode) error {
 	return errorNotImplemented
 }
+func (i *inBand) Describe() string {
+	return "InBand connected to Lenovo"
+}
 
 // OutBand
 
@@ -112,4 +115,7 @@ func (o *outBand) IdentifyLEDOff() error {
 
 func (o *outBand) BootFrom(hal.BootTarget) error {
 	return errorNotImplemented
+}
+func (o *outBand) Describe() string {
+	return "OutBand connected to Lenovo"
 }
