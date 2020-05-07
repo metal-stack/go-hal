@@ -15,13 +15,14 @@ type Board struct {
 	BiosVersion  string
 	BMC          *BMC
 	BIOS         *BIOS
+	// Firmware can be either pxe or efi
+	Firmware string
 }
 
 // BMC Base Management Controller details
 type BMC struct {
 	IP                  string
 	MAC                 string
-	Firmware            string
 	ChassisPartNumber   string
 	ChassisPartSerial   string
 	BoardMfg            string

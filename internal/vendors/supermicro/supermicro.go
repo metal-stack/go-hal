@@ -7,6 +7,7 @@ import (
 	hal "github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/bios"
 	"github.com/metal-stack/go-hal/internal/ipmi"
+	"github.com/metal-stack/go-hal/internal/kernel"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/common"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -48,6 +49,7 @@ func InBand(board *api.Board, sumBin string) (hal.InBand, error) {
 	}
 	board.BMC = bmc
 	board.BIOS = bios.Bios()
+	board.Firmware = kernel.Firmware()
 
 	return &inBand{
 		sum:    s,
