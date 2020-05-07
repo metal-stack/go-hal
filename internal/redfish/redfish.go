@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/metal-stack/go-hal/internal/api"
+	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/redfish"
 )

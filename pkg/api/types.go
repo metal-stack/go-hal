@@ -13,6 +13,31 @@ type Board struct {
 	PartNumber   string
 	SerialNumber string
 	BiosVersion  string
+	BMC          *BMC
+	BIOS         *BIOS
+}
+
+// BMC Base Management Controller details
+type BMC struct {
+	IP  string
+	MAC string
+
+	ChassisPartNumber   string
+	ChassisPartSerial   string
+	BoardMfg            string
+	BoardMfgSerial      string
+	BoardPartNumber     string
+	ProductManufacturer string
+	ProductPartNumber   string
+	ProductSerial       string
+	FirmwareRevision    string `ipmitool:"Firmware Revision"`
+}
+
+// BIOS information of this machine
+type BIOS struct {
+	Version string
+	Vendor  string
+	Date    string
 }
 
 type (
@@ -58,4 +83,8 @@ func GuessVendor(vendor string) Vendor {
 
 func (b *Board) String() string {
 	return fmt.Sprintf("Vendor:%s Name:%s", b.Vendor, b.Model)
+}
+
+func (b *BIOS) String() string {
+	return "version:" + b.Version + " vendor:" + b.Vendor + " date:" + b.Date
 }

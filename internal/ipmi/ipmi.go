@@ -42,7 +42,7 @@ const (
 // Ipmi defines methods to interact with ipmi
 type Ipmi interface {
 	DevicePresent() bool
-	Run(arg ...string) (string, error)
+	run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
 	EnableUEFI(bootdev Bootdev, persistent bool) error
@@ -149,7 +149,7 @@ func (i *Ipmitool) DevicePresent() bool {
 }
 
 // Run execute ipmitool
-func (i *Ipmitool) Run(args ...string) (string, error) {
+func (i *Ipmitool) run(args ...string) (string, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to locate program:%s in path", i.command)
@@ -166,7 +166,7 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 // GetFru returns the Field Replacable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
 	config := &Fru{}
-	cmdOutput, err := i.Run("fru")
+	cmdOutput, err := i.run("fru")
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'fru':%v", cmdOutput)
 	}
@@ -178,7 +178,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 // GetBMCInfo returns the bmc info
 func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	bmc := &BMCInfo{}
-	cmdOutput, err := i.Run("bmc", "info")
+	cmdOutput, err := i.run("bmc", "info")
 	if err != nil {
 		return *bmc, errors.Wrapf(err, "unable to execute ipmitool 'bmc info':%v", cmdOutput)
 	}
@@ -190,7 +190,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 // GetLanConfig returns the LanConfig
 func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	config := &LanConfig{}
-	cmdOutput, err := i.Run("lan", "print")
+	cmdOutput, err := i.run("lan", "print")
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", cmdOutput)
 	}
@@ -202,7 +202,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 // GetSession returns the Session info
 func (i *Ipmitool) GetSession() (Session, error) {
 	session := &Session{}
-	cmdOutput, err := i.Run("session", "info", "all")
+	cmdOutput, err := i.run("session", "info", "all")
 	if err != nil {
 		return *session, errors.Wrapf(err, "unable to execute ipmitool 'session info all':%v", cmdOutput)
 	}
@@ -213,7 +213,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 
 // CreateUser create a ipmi user with password and privilege level
 func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string, error) {
-	out, err := i.Run("user", "set", "name", uid, username)
+	out, err := i.run("user", "set", "name", uid, username)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to create user %s: %v", username, out)
 	}
@@ -223,7 +223,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	err = retry.Do(
 		func() error {
 			pw = password.Generate(10)
-			out, err = i.Run("user", "set", "password", uid, pw)
+			out, err = i.run("user", "set", "password", uid, pw)
 			if err != nil {
 				log.Printf("ipmi password creation failed for user:%s output:%v", username, out)
 			}
@@ -240,15 +240,15 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	}
 
 	channelnumber := "1"
-	out, err = i.Run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
+	out, err = i.run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to set privilege for user %s: %v", username, out)
 	}
-	out, err = i.Run("user", "enable", uid)
+	out, err = i.run("user", "enable", uid)
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to enable user %s: %v", username, out)
 	}
-	out, err = i.Run("sol", "payload", "enable", channelnumber, uid)
+	out, err = i.run("sol", "payload", "enable", channelnumber, uid)
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to enable user %s for sol access: %v", username, out)
 	}
@@ -273,7 +273,7 @@ func (i *Ipmitool) EnableUEFI(bootdev Bootdev, persistent bool) error {
 	default:
 		devQualifier = "0x24" // conforms to open source SMCIPMITool, IPMI 2.0 conform byte would be 0x08
 	}
-	out, err := i.Run("raw", "0x00", "0x08", "0x05", uefiQualifier, devQualifier, "0x00", "0x00", "0x00")
+	out, err := i.run("raw", "0x00", "0x08", "0x05", uefiQualifier, devQualifier, "0x00", "0x00", "0x00")
 	if err != nil {
 		return errors.Wrapf(err, "unable to enable uefi on:%s persistent:%t out:%v", bootdev, persistent, out)
 	}

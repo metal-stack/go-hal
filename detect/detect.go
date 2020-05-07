@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/api"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 var (
@@ -33,9 +33,9 @@ func ConnectInBand() (hal.InBand, error) {
 	}
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.InBand()
+		return lenovo.InBand(b)
 	case api.VendorSupermicro:
-		return supermicro.InBand("sum")
+		return supermicro.InBand(b, "sum")
 	case api.VendorUnknown:
 		return nil, errorUnknownVendor
 	default:
@@ -65,9 +65,9 @@ func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
 	}
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.OutBand(&ip, &user, &password)
+		return lenovo.OutBand(b, &ip, &user, &password)
 	case api.VendorSupermicro:
-		return supermicro.OutBand("sum", true, &ip, &user, &password)
+		return supermicro.OutBand(b, "sum", true, &ip, &user, &password)
 	case api.VendorUnknown:
 		return nil, errorUnknownVendor
 	default:

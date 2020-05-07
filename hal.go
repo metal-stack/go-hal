@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 type (
@@ -79,7 +80,7 @@ func (b BootTarget) String() string       { return bootTargets[b] }
 func (i IdentifyLEDState) String() string { return ledStates[i] }
 func (f FirmwareMode) String() string     { return firmwareModes[f] }
 
-// Guesser
+// GuessPowerState try to figure out the power state of the server
 func GuessPowerState(powerState string) PowerState {
 	for i, p := range powerStates {
 		if strings.Contains(strings.ToLower(p), strings.ToLower(powerState)) {
@@ -91,6 +92,9 @@ func GuessPowerState(powerState string) PowerState {
 
 // InBand get and set settings from the server via the inband interface.
 type InBand interface {
+	// Board return board information of the current connection
+	Board() *api.Board
+
 	// UUID get the machine UUID
 	// current usage in metal-hammer
 	UUID() (*uuid.UUID, error)
@@ -112,11 +116,22 @@ type InBand interface {
 
 	// Decribe print a basic information about this connection
 	Describe() string
-	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, User, Password, Interface}
+
+	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
+
+	// BMC related calls
+
+	// BMCPresent returns true if the InBand Connection found a usable BMC device
+	BMCPresent() bool
+	// Create a user with given username and uid returns generated password
+	// TODO privilege level
+	BMCCreateUser(username, uid string) (string, error)
 }
 
 // OutBand get and set settings from the server via the out of band interface.
 type OutBand interface {
+	// Board return board information of the current connection
+	Board() *api.Board
 	// UUID get the machine uuid
 	// current usage in ipmi-catcher
 	UUID() (*uuid.UUID, error)

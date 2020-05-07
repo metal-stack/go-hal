@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/metal-stack/go-hal/internal/api"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 func _TestDetectInBand(t *testing.T) {

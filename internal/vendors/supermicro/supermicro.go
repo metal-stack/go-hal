@@ -5,19 +5,25 @@ import (
 
 	"github.com/google/uuid"
 	hal "github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/bios"
+	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/common"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 type (
 	inBand struct {
 		sum    *sum
 		common *common.Common
+		i      ipmi.Ipmi
+		board  *api.Board
 	}
 	outBand struct {
 		sum     *sum
 		redfish *redfish.APIClient
 		common  *common.Common
+		board   *api.Board
 	}
 )
 
@@ -27,19 +33,54 @@ var (
 )
 
 // InBand create a inband connection to a supermicro server.
-func InBand(sumBin string) (hal.InBand, error) {
+func InBand(board *api.Board, sumBin string) (hal.InBand, error) {
 	s, err := newSum(sumBin, false, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
+	i, err := ipmi.New("ipmitool")
+	if err != nil {
+		return nil, err
+	}
+	board.BIOS = bios.Bios()
+
+	lan, err := i.GetLanConfig()
+	if err != nil {
+		return nil, err
+	}
+	fru, err := i.GetFru()
+	if err != nil {
+		return nil, err
+	}
+	info, err := i.GetBMCInfo()
+	if err != nil {
+		return nil, err
+	}
+	bmc := &api.BMC{
+		IP:                  lan.IP,
+		MAC:                 lan.Mac,
+		BoardMfg:            fru.BoardMfg,
+		BoardMfgSerial:      fru.BoardMfgSerial,
+		BoardPartNumber:     fru.BoardPartNumber,
+		ChassisPartNumber:   fru.ChassisPartNumber,
+		ChassisPartSerial:   fru.ChassisPartSerial,
+		ProductManufacturer: fru.ProductManufacturer,
+		ProductPartNumber:   fru.ProductPartNumber,
+		ProductSerial:       fru.ProductSerial,
+		FirmwareRevision:    info.FirmwareRevision,
+	}
+	board.BMC = bmc
+
 	return &inBand{
 		sum:    s,
 		common: common.New(nil),
+		i:      i,
+		board:  board,
 	}, nil
 }
 
 // OutBand create a outband connection to a supermicro server.
-func OutBand(sumBin string, remote bool, ip, user, password *string) (hal.OutBand, error) {
+func OutBand(board *api.Board, sumBin string, remote bool, ip, user, password *string) (hal.OutBand, error) {
 	s, err := newSum(sumBin, remote, ip, user, password)
 	if err != nil {
 		return nil, err
@@ -52,11 +93,14 @@ func OutBand(sumBin string, remote bool, ip, user, password *string) (hal.OutBan
 		sum:     s,
 		redfish: r,
 		common:  common.New(r),
+		board:   board,
 	}, nil
 }
 
 // InBand
-
+func (i *inBand) Board() *api.Board {
+	return i.board
+}
 func (i *inBand) UUID() (*uuid.UUID, error) {
 	return i.common.UUID()
 }
@@ -81,9 +125,17 @@ func (i *inBand) SetFirmware(hal.FirmwareMode) error {
 func (i *inBand) Describe() string {
 	return "InBand connected to Supermicro"
 }
+func (i *inBand) BMCPresent() bool {
+	return i.i.DevicePresent()
+}
+func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
+	return i.i.CreateUser(username, uid, ipmi.Administrator)
+}
 
 // OutBand
-
+func (o *outBand) Board() *api.Board {
+	return o.board
+}
 func (o *outBand) UUID() (*uuid.UUID, error) {
 	u, err := o.redfish.MachineUUID()
 	if err != nil {

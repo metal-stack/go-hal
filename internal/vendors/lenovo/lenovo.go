@@ -5,17 +5,23 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/bios"
+	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/common"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 type (
 	inBand struct {
 		common *common.Common
+		i      ipmi.Ipmi
+		board  *api.Board
 	}
 	outBand struct {
 		redfish *redfish.APIClient
 		common  *common.Common
+		board   *api.Board
 	}
 )
 
@@ -25,14 +31,49 @@ var (
 )
 
 // InBand create a inband connection to a supermicro server.
-func InBand() (hal.InBand, error) {
+func InBand(board *api.Board) (hal.InBand, error) {
+	i, err := ipmi.New("ipmitool")
+	if err != nil {
+		return nil, err
+	}
+	board.BIOS = bios.Bios()
+
+	lan, err := i.GetLanConfig()
+	if err != nil {
+		return nil, err
+	}
+	fru, err := i.GetFru()
+	if err != nil {
+		return nil, err
+	}
+	info, err := i.GetBMCInfo()
+	if err != nil {
+		return nil, err
+	}
+	bmc := &api.BMC{
+		IP:                  lan.IP,
+		MAC:                 lan.Mac,
+		BoardMfg:            fru.BoardMfg,
+		BoardMfgSerial:      fru.BoardMfgSerial,
+		BoardPartNumber:     fru.BoardPartNumber,
+		ChassisPartNumber:   fru.ChassisPartNumber,
+		ChassisPartSerial:   fru.ChassisPartSerial,
+		ProductManufacturer: fru.ProductManufacturer,
+		ProductPartNumber:   fru.ProductPartNumber,
+		ProductSerial:       fru.ProductSerial,
+		FirmwareRevision:    info.FirmwareRevision,
+	}
+	board.BMC = bmc
+
 	return &inBand{
 		common: common.New(nil),
+		i:      i,
+		board:  board,
 	}, nil
 }
 
 // OutBand create a outband connection to a supermicro server.
-func OutBand(ip, user, password *string) (hal.OutBand, error) {
+func OutBand(board *api.Board, ip, user, password *string) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+*ip, *user, *password, true)
 	if err != nil {
 		return nil, err
@@ -40,11 +81,15 @@ func OutBand(ip, user, password *string) (hal.OutBand, error) {
 	return &outBand{
 		redfish: r,
 		common:  common.New(r),
+		board:   board,
 	}, nil
 }
 
 // InBand
 
+func (i *inBand) Board() *api.Board {
+	return i.board
+}
 func (i *inBand) UUID() (*uuid.UUID, error) {
 	return i.common.UUID()
 }
@@ -69,9 +114,17 @@ func (i *inBand) SetFirmware(hal.FirmwareMode) error {
 func (i *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
+func (i *inBand) BMCPresent() bool {
+	return i.i.DevicePresent()
+}
+func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
+	return "", errorNotImplemented
+}
 
 // OutBand
-
+func (o *outBand) Board() *api.Board {
+	return o.board
+}
 func (o *outBand) UUID() (*uuid.UUID, error) {
 	u, err := o.redfish.MachineUUID()
 	if err != nil {

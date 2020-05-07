@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/metal-stack/go-hal/internal/api"
+	"github.com/metal-stack/go-hal/pkg/api"
 )
 
 const (

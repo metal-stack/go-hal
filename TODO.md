@@ -15,3 +15,11 @@ r = requests.get(url, auth=(userid, password), verify=False)
 jsonData = r.json()
 print (jsonData)
 ```
+
+## IPMI Lan
+
+- https://github.com/u-root/u-root/commit/2e744099e570b13805afdebaa4f09d43f3f21272
+
+## Comparable tools
+
+- https://github.com/bmc-toolbox
