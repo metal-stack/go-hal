@@ -19,9 +19,9 @@ type Board struct {
 
 // BMC Base Management Controller details
 type BMC struct {
-	IP  string
-	MAC string
-
+	IP                  string
+	MAC                 string
+	Firmware            string
 	ChassisPartNumber   string
 	ChassisPartSerial   string
 	BoardMfg            string

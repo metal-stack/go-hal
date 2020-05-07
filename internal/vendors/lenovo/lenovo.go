@@ -36,34 +36,12 @@ func InBand(board *api.Board) (hal.InBand, error) {
 	if err != nil {
 		return nil, err
 	}
-	board.BIOS = bios.Bios()
-
-	lan, err := i.GetLanConfig()
+	bmc, err := i.BMC()
 	if err != nil {
 		return nil, err
-	}
-	fru, err := i.GetFru()
-	if err != nil {
-		return nil, err
-	}
-	info, err := i.GetBMCInfo()
-	if err != nil {
-		return nil, err
-	}
-	bmc := &api.BMC{
-		IP:                  lan.IP,
-		MAC:                 lan.Mac,
-		BoardMfg:            fru.BoardMfg,
-		BoardMfgSerial:      fru.BoardMfgSerial,
-		BoardPartNumber:     fru.BoardPartNumber,
-		ChassisPartNumber:   fru.ChassisPartNumber,
-		ChassisPartSerial:   fru.ChassisPartSerial,
-		ProductManufacturer: fru.ProductManufacturer,
-		ProductPartNumber:   fru.ProductPartNumber,
-		ProductSerial:       fru.ProductSerial,
-		FirmwareRevision:    info.FirmwareRevision,
 	}
 	board.BMC = bmc
+	board.BIOS = bios.Bios()
 
 	return &inBand{
 		common: common.New(nil),

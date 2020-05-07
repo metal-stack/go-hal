@@ -18,6 +18,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/metal-stack/go-hal/internal/password"
+	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
 )
 
@@ -48,7 +49,7 @@ type Ipmi interface {
 	EnableUEFI(bootdev Bootdev, persistent bool) error
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
-	GetBMCInfo() (BMCInfo, error)
+	BMC() (*api.BMC, error)
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os.
@@ -136,6 +137,36 @@ func New(ipmitoolBin string) (Ipmi, error) {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
 	}
 	return &Ipmitool{command: ipmitoolBin}, nil
+}
+
+// BMC returns the BMC struct
+func (i *Ipmitool) BMC() (*api.BMC, error) {
+	lan, err := i.GetLanConfig()
+	if err != nil {
+		return nil, err
+	}
+	fru, err := i.GetFru()
+	if err != nil {
+		return nil, err
+	}
+	info, err := i.GetBMCInfo()
+	if err != nil {
+		return nil, err
+	}
+	bmc := &api.BMC{
+		IP:                  lan.IP,
+		MAC:                 lan.Mac,
+		BoardMfg:            fru.BoardMfg,
+		BoardMfgSerial:      fru.BoardMfgSerial,
+		BoardPartNumber:     fru.BoardPartNumber,
+		ChassisPartNumber:   fru.ChassisPartNumber,
+		ChassisPartSerial:   fru.ChassisPartSerial,
+		ProductManufacturer: fru.ProductManufacturer,
+		ProductPartNumber:   fru.ProductPartNumber,
+		ProductSerial:       fru.ProductSerial,
+		FirmwareRevision:    info.FirmwareRevision,
+	}
+	return bmc, nil
 }
 
 // DevicePresent returns true if the ipmi device is present, which is required to talk to the BMC.
