@@ -11,11 +11,11 @@ package main
 
 import (
     "fmt"
-    smc "github.com/metal-stack/go-hal/supermicro"
+    "github.com/metal-stack/go-hal/detect"
 )
 
 func main() {
-    smcInBand,err := smc.InBand()
+    smcInBand, err := detect.ConnectInBand()
     if err != nil {
         panic(err)
     }

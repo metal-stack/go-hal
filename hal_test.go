@@ -29,7 +29,7 @@ func TestBootTarget_String(t *testing.T) {
 		b    BootTarget
 		want string
 	}{
-		{name: "BIOS", b: BootTargetBios, want: "BIOS"},
+		{name: "BIOS", b: BootTargetBIOS, want: "BIOS"},
 		{name: "DISK", b: BootTargetDisk, want: "DISK"},
 		{name: "PXE", b: BootTargetPXE, want: "PXE"},
 	}

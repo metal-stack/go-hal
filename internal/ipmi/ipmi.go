@@ -9,10 +9,13 @@ package ipmi
 import (
 	"bufio"
 	"fmt"
+	"github.com/metal-stack/go-hal"
+	"github.com/vmware/goipmi"
 	"log"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Privilege of a ipmitool user
+// Privilege of an ipmitool user
 type Privilege int
 
 const (
@@ -46,7 +49,9 @@ type Ipmi interface {
 	run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
-	EnableUEFI(bootdev Bootdev, persistent bool) error
+	SendBootOrderRaw(target hal.BootTarget) error
+	SendChassisControlRaw(chassisControl ipmi.ChassisControl) error
+	SendChassisIdentifyRaw(intervalOrOff, forceOn string) error
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
@@ -54,11 +59,11 @@ type Ipmi interface {
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os.
 type Ipmitool struct {
-	command string
-	debug   bool
+	command    string
+	compliance api.Compliance
 }
 
-// LanConfig contains the config of ipmi.
+// LanConfig contains the config of IPMI.
 // tag must contain first column name of ipmitool lan print command output
 // to get the second column value be parsed into the field.
 type LanConfig struct {
@@ -70,7 +75,7 @@ func (l *LanConfig) String() string {
 	return fmt.Sprintf("ip: %s mac:%s", l.IP, l.Mac)
 }
 
-// Session information of the current ipmi session
+// Session holds information about the current IPMI session
 type Session struct {
 	UserID    string `ipmitool:"user id"`
 	Privilege string `ipmitool:"privilege level"`
@@ -120,23 +125,16 @@ type BMCInfo struct {
 	FirmwareRevision string `ipmitool:"Firmware Revision"`
 }
 
-// Bootdev specifies from which device to boot
-type Bootdev string
-
-const (
-	// PXE boot server via PXE
-	PXE = Bootdev("pxe")
-	// Disk boot server from hard disk
-	Disk = Bootdev("disk")
-)
-
-// New create a new Ipmitool with the default command
-func New(ipmitoolBin string) (Ipmi, error) {
+// New creates a new Ipmitool with the default command
+func New(ipmitoolBin string, compliance api.Compliance) (Ipmi, error) {
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
 	}
-	return &Ipmitool{command: ipmitoolBin}, nil
+	return &Ipmitool{
+		command:    ipmitoolBin,
+		compliance: compliance,
+	}, nil
 }
 
 // BMC returns the BMC struct
@@ -187,8 +185,7 @@ func (i *Ipmitool) run(args ...string) (string, error) {
 	}
 	cmd := exec.Command(path, args...)
 	output, err := cmd.Output()
-
-	if i.debug {
+	if err != nil {
 		log.Printf("run ipmitool with args: %v output:%v error:%v", args, string(output), err)
 	}
 	return string(output), err
@@ -287,26 +284,43 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	return pw, nil
 }
 
-// EnableUEFI set the firmware to boot with uefi for given bootdev,
-// bootdev can be one of pxe|disk
-// if persistent is set to true this will last for every subsequent boot, not only the next.
-func (i *Ipmitool) EnableUEFI(bootdev Bootdev, persistent bool) error {
-	// for reference: https://www.intel.com/content/dam/www/public/us/en/documents/product-briefs/ipmi-second-gen-interface-spec-v2-rev1-1.pdf (page 422)
-	var uefiQualifier, devQualifier string
-	if persistent {
-		uefiQualifier = "0xe0"
-	} else {
-		uefiQualifier = "0xa0"
-	}
-	switch bootdev {
-	case PXE:
-		devQualifier = "0x04"
-	default:
-		devQualifier = "0x24" // conforms to open source SMCIPMITool, IPMI 2.0 conform byte would be 0x08
-	}
-	out, err := i.run("raw", "0x00", "0x08", "0x05", uefiQualifier, devQualifier, "0x00", "0x00", "0x00")
+// SendBootOrderRaw persistently sets the boot order to given bootTarget as raw bytes.
+func (i *Ipmitool) SendBootOrderRaw(bootTarget hal.BootTarget) error {
+	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, i.compliance)
+	out, err := i.run("raw", "0x00", "0x08", "0x05", uefiQualifier, bootDevQualifier, "0x00", "0x00", "0x00")
 	if err != nil {
-		return errors.Wrapf(err, "unable to enable uefi on:%s persistent:%t out:%v", bootdev, persistent, out)
+		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", bootTarget, out)
+	}
+	return nil
+}
+
+// SendChassisControlRaw sends the given chassisControl as raw bytes.
+func (i *Ipmitool) SendChassisControlRaw(chassisControl ipmi.ChassisControl) error {
+	var rawByte string
+	switch chassisControl {
+	case ipmi.ControlPowerDown:
+		rawByte = "0x00"
+	case ipmi.ControlPowerUp:
+		rawByte = "0x01"
+	case ipmi.ControlPowerCycle:
+		rawByte = "0x02"
+	case ipmi.ControlPowerHardReset:
+		rawByte = "0x03"
+	default:
+		return fmt.Errorf("unsupported chassis control:%d", chassisControl)
+	}
+	out, err := i.run("raw", "0x00", "0x02", rawByte)
+	if err != nil {
+		return errors.Wrapf(err, "unable to send chassis control:%v out:%v", chassisControl, out)
+	}
+	return nil
+}
+
+// SendChassisIdentifyRaw sends the given chassis identify as raw bytes.
+func (i *Ipmitool) SendChassisIdentifyRaw(intervalOrOff, forceOn string) error {
+	out, err := i.run("raw", "0x00", "0x04", intervalOrOff, forceOn)
+	if err != nil {
+		return errors.Wrapf(err, "unable to send chassis identify raw: intervalOrOff:%s forceOn:%s out:%v", intervalOrOff, forceOn, out)
 	}
 	return nil
 }
@@ -345,4 +359,68 @@ func from(target interface{}, input map[string]string) {
 		ipmitoolKey := tag.Get("ipmitool")
 		valueField.SetString(input[ipmitoolKey])
 	}
+}
+
+const (
+	persistentLegacyQualifier = "0xff"
+	persistentUEFIQualifier   = "0xe0"
+
+	pxeQualifier = "0x04"
+
+	ipmi2HDQualifier       = "0x08"
+	smcipmitoolHDQualifier = "0x24"
+
+	biosQualifier = "0x18"
+)
+
+// GetBootOrderQualifiers returns the qualifiers needed to persistently set the the given bootOrder according to the given compliance.
+func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance) (uefiQualifier, bootDevQualifier string) {
+	/*
+	   Set boot order to UEFI PXE persistently:
+	   raw 0x00 0x08 0x05 0xe0 0x04 0x00 0x00 0x00  (conforms to IPMI 2.0 as well as SMCIPMITool)
+
+	   Set boot order to UEFI HD persistently:
+	   raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00  (IPMI 2.0)
+	   raw 0x00 0x08 0x05 0xe0 0x24 0x00 0x00 0x00  (SMCIPMITool)
+
+	   Set boot order to (UEFI) BIOS persistently:
+	   raw 0x00 0x08 0x05 0xe0 0x18 0x00 0x00 0x00  (IPMI 2.0   , UEFI BIOS)
+	   raw 0x00 0x08 0x05 0xff 0x18 0x00 0x00 0x00  (SMCIPMITool, legacy BIOS)
+
+	   See https://github.com/metal-stack/metal/issues/73#note_151375
+
+	   For reference: https://www.intel.com/content/dam/www/public/us/en/documents/product-briefs/ipmi-second-gen-interface-spec-v2-rev1-1.pdf (page 422)
+	*/
+
+	switch bootTarget {
+	case hal.BootTargetPXE:
+		uefiQualifier = persistentUEFIQualifier
+		bootDevQualifier = pxeQualifier
+	case hal.BootTargetDisk:
+		uefiQualifier = persistentUEFIQualifier
+		switch compliance {
+		case api.IPMI2Compliance:
+			bootDevQualifier = ipmi2HDQualifier
+		case api.SMCIPMIToolCompliance:
+			bootDevQualifier = smcipmitoolHDQualifier
+		}
+	case hal.BootTargetBIOS:
+		switch compliance {
+		case api.IPMI2Compliance:
+			uefiQualifier = persistentUEFIQualifier
+		case api.SMCIPMIToolCompliance:
+			uefiQualifier = persistentLegacyQualifier
+		}
+		bootDevQualifier = biosQualifier
+	}
+
+	return
+}
+
+func Uint8(qualifier string) (uint8, error) {
+	i, err := strconv.Atoi(qualifier)
+	if err != nil {
+		return 0, err
+	}
+	return uint8(i), nil
 }

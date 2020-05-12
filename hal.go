@@ -31,8 +31,8 @@ const (
 	BootTargetPXE BootTarget = iota + 1
 	// BootTargetDisk the server boots from disk
 	BootTargetDisk
-	// BootTargetBios the server boots into Bios
-	BootTargetBios
+	// BootTargetBIOS the server boots into Bios
+	BootTargetBIOS
 )
 const (
 	// IdentifyLEDStateUnknown the LED is unknown
@@ -60,7 +60,7 @@ var (
 	bootTargets = [...]string{
 		BootTargetPXE:  "PXE",
 		BootTargetDisk: "DISK",
-		BootTargetBios: "BIOS",
+		BootTargetBIOS: "BIOS",
 	}
 	ledStates = [...]string{
 		IdentifyLEDStateOn:      "ON",
@@ -106,6 +106,13 @@ type InBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	// IdentifyLEDState get the identify LED state
+	IdentifyLEDState(IdentifyLEDState) error
+	// IdentifyLEDOn set the identify LED to on
+	IdentifyLEDOn() error
+	// IdentifyLEDOff set the identify LED to off
+	IdentifyLEDOff() error
+
 	// BootFrom set the boot order of the server to the specified target
 	BootFrom(BootTarget) error
 
@@ -114,7 +121,7 @@ type InBand interface {
 	// SetFirmware set the FirmwareMode of the server
 	SetFirmware(FirmwareMode) error
 
-	// Decribe print a basic information about this connection
+	// Describe print a basic information about this connection
 	Describe() string
 
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
@@ -157,7 +164,10 @@ type OutBand interface {
 	// BootFrom set the boot order of the server to the specified target
 	BootFrom(BootTarget) error
 
-	// Decribe print a basic information about this connection
+	// Describe print a basic information about this connection
 	Describe() string
+
+	Connection() (ip, user, password string)
+
 	// TODO implement console access from bmc-proxy
 }

@@ -18,24 +18,29 @@ type sum struct {
 	password string
 }
 
-func newSum(sumBin string, remote bool, ip, user, password *string) (*sum, error) {
+func newSum(sumBin string) (*sum, error) {
 	_, err := exec.LookPath(sumBin)
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
 	}
-	s := &sum{
-		sum:    sumBin,
-		remote: remote,
+	return &sum{
+		sum: sumBin,
+	}, nil
+}
+
+func newRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
+	s, err := newSum(sumBin)
+	if err != nil {
+		return nil, err
 	}
-	if remote {
-		s.ip = *ip
-		s.user = *user
-		s.password = *password
-	}
+	s.remote = true
+	s.ip = ip
+	s.user = user
+	s.password = password
 	return s, nil
 }
 
-func (s *sum) execute(args []string) (io.ReadCloser, error) {
+func (s *sum) execute(args ...string) (io.ReadCloser, error) {
 	if s.remote {
 		args = append(args, "-i", s.ip, "-u", s.user, "-p", s.password)
 	}
@@ -58,8 +63,7 @@ func (s *sum) execute(args []string) (io.ReadCloser, error) {
 }
 
 func (s *sum) uuidRemote() (string, error) {
-	args := []string{"--no_banner", "--no_progress", "--journal_level", "0", "-c", "GetDmiInfo"}
-	out, err := s.execute(args)
+	out, err := s.execute("--no_banner", "--no_progress", "--journal_level", "0", "-c", "GetDmiInfo")
 	if err != nil {
 		return "", err
 	}

@@ -2,6 +2,7 @@ package redfish
 
 import (
 	"fmt"
+	"github.com/metal-stack/go-hal"
 	"log"
 
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -12,7 +13,7 @@ import (
 const defaultUUID = "00000000-0000-0000-0000-000000000000"
 
 type APIClient struct {
-	c *gofish.APIClient
+	*gofish.APIClient
 }
 
 func New(url, user, password string, insecure bool) (*APIClient, error) {
@@ -28,16 +29,13 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 		return nil, err
 	}
 	return &APIClient{
-		c: c,
+		APIClient: c,
 	}, nil
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
-	// Retrieve the service root
-	service := c.c.Service
-
 	// Query the chassis data using the session token
-	chassis, err := service.Chassis()
+	chassis, err := c.Service.Chassis()
 	if err != nil {
 		return nil, err
 	}
@@ -59,9 +57,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
-	service := c.c.Service
-
-	systems, err := service.Systems()
+	systems, err := c.Service.Systems()
 	if err != nil {
 		return defaultUUID, err
 	}
@@ -74,17 +70,15 @@ func (c *APIClient) MachineUUID() (string, error) {
 	return defaultUUID, err
 }
 
-func (c *APIClient) PowerState() (string, error) {
-	service := c.c.Service
-
-	systems, err := service.Systems()
+func (c *APIClient) PowerState() (hal.PowerState, error) {
+	systems, err := c.Service.Systems()
 	if err != nil {
-		return "", err
+		return hal.PowerUnknownState, err
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
-			return string(system.PowerState), nil
+			return hal.GuessPowerState(string(system.PowerState)), nil
 		}
 	}
-	return "", err
+	return hal.PowerUnknownState, nil
 }

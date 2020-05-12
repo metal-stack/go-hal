@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/metal-stack/go-hal/pkg/api"
 	"os"
 
 	"github.com/metal-stack/go-hal/detect"
@@ -30,13 +31,7 @@ func main() {
 }
 
 func inband() {
-	board, err := detect.InBand()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Board\n%v\n", board)
-
-	inband, err := detect.ConnectInBand()
+	inband, err := detect.ConnectInBand(api.IPMI2Compliance)
 	if err != nil {
 		panic(err)
 	}
@@ -48,12 +43,7 @@ func inband() {
 }
 
 func outband() {
-	board, err := detect.OutBand("10.5.2.93", "ADMIN", "ADMIN")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Board\n%v\n", board)
-	outband, err := detect.ConnectOutBand("10.5.2.93", "ADMIN", "ADMIN")
+	outband, err := detect.ConnectOutBand("10.5.2.93", "ADMIN", "ADMIN", api.IPMI2Compliance)
 	if err != nil {
 		panic(err)
 	}

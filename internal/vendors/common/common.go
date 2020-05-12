@@ -9,12 +9,12 @@ import (
 )
 
 type Common struct {
-	r *redfish.APIClient
+	*redfish.APIClient
 }
 
 func New(r *redfish.APIClient) *Common {
 	return &Common{
-		r: r,
+		APIClient: r,
 	}
 }
 
@@ -33,20 +33,12 @@ func (c *Common) UUID() (*uuid.UUID, error) {
 func (c *Common) Firmware() (hal.FirmwareMode, error) {
 	var firmware hal.FirmwareMode
 	switch kernel.Firmware() {
-	case "bios":
+	case kernel.BIOS:
 		firmware = hal.FirmwareModeLegacy
-	case "efi":
+	case kernel.EFI:
 		firmware = hal.FirmwareModeUEFI
 	default:
 		firmware = hal.FirmwareModeUnknown
 	}
 	return firmware, nil
-}
-
-func (c *Common) PowerState() (hal.PowerState, error) {
-	ps, err := c.r.PowerState()
-	if err != nil {
-		return hal.PowerUnknownState, err
-	}
-	return hal.GuessPowerState(ps), nil
 }

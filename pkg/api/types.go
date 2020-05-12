@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/metal-stack/go-hal/internal/kernel"
 	"strings"
 )
 
@@ -15,8 +16,7 @@ type Board struct {
 	BiosVersion  string
 	BMC          *BMC
 	BIOS         *BIOS
-	// Firmware can be either pxe or efi
-	Firmware string
+	Firmware     kernel.FirmwareMode
 }
 
 // BMC Base Management Controller details
@@ -40,6 +40,13 @@ type BIOS struct {
 	Vendor  string
 	Date    string
 }
+
+type Compliance int
+
+const (
+	IPMI2Compliance Compliance = iota
+	SMCIPMIToolCompliance
+)
 
 type (
 	// Vendor identifies different server vendors

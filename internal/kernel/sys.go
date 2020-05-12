@@ -2,15 +2,22 @@ package kernel
 
 import "os"
 
-var (
-	sysfirmware = "/sys/firmware/efi"
+type FirmwareMode int
+
+const (
+	BIOS FirmwareMode = iota + 1
+	EFI
 )
 
-// Firmware returns either efi or bios, depending on the boot method.
-func Firmware() string {
-	_, err := os.Stat(sysfirmware)
+var (
+	sysFirmware = "/sys/firmware/efi"
+)
+
+// Firmware returns either EFI or BIOS, depending on the boot method.
+func Firmware() FirmwareMode {
+	_, err := os.Stat(sysFirmware)
 	if os.IsNotExist(err) {
-		return "bios"
+		return BIOS
 	}
-	return "efi"
+	return EFI
 }

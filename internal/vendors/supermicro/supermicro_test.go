@@ -1,6 +1,7 @@
 package supermicro
 
 import (
+	"github.com/metal-stack/go-hal"
 	"testing"
 )
 
@@ -20,7 +21,7 @@ func Test_inBand_PowerOff(t *testing.T) {
 			s := &inBand{
 				sum: tt.fields.sum,
 			}
-			if err := s.PowerOff(); (err != nil) != tt.wantErr {
+			if err := s.SetFirmware(hal.FirmwareModeUEFI); (err != nil) != tt.wantErr {
 				t.Errorf("inBand.PowerOff() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

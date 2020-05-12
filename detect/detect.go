@@ -15,8 +15,8 @@ var (
 	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
-// InBand will try to detect the the board vendor
-func InBand() (*api.Board, error) {
+// inBand will try to detect the board vendor
+func inBand() (*api.Board, error) {
 	b, err := dmi.BoardInfo()
 	if err != nil {
 		return nil, err
@@ -26,29 +26,23 @@ func InBand() (*api.Board, error) {
 }
 
 // ConnectInBand will detect the board and choose the correct inband hal implementation
-func ConnectInBand() (hal.InBand, error) {
-	b, err := InBand()
+func ConnectInBand(compliance api.Compliance) (hal.InBand, error) {
+	b, err := inBand()
 	if err != nil {
 		return nil, err
 	}
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.InBand(b)
+		return lenovo.InBand(b, compliance)
 	case api.VendorSupermicro:
-		return supermicro.InBand(b, "sum")
-	case api.VendorUnknown:
-		return nil, errorUnknownVendor
+		return supermicro.InBand(b, compliance)
 	default:
 		return nil, errorUnknownVendor
 	}
 }
 
-// OutBand will try to detect the the board vendor
-func OutBand(ip, user, password string) (*api.Board, error) {
-	r, err := redfish.New("https://"+ip, user, password, true)
-	if err != nil {
-		return nil, err
-	}
+// outBand will try to detect the board vendor
+func outBand(r *redfish.APIClient) (*api.Board, error) {
 	b, err := r.BoardInfo()
 	if err != nil {
 		return nil, err
@@ -58,18 +52,20 @@ func OutBand(ip, user, password string) (*api.Board, error) {
 }
 
 // ConnectOutBand will detect the board and choose the correct inband hal implementation
-func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
-	b, err := OutBand(ip, user, password)
+func ConnectOutBand(ip, user, password string, compliance api.Compliance) (hal.OutBand, error) {
+	r, err := redfish.New("https://"+ip, user, password, true)
+	if err != nil {
+		return nil, err
+	}
+	b, err := outBand(r)
 	if err != nil {
 		return nil, err
 	}
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.OutBand(b, &ip, &user, &password)
+		return lenovo.OutBand(r, b, ip, user, password, compliance)
 	case api.VendorSupermicro:
-		return supermicro.OutBand(b, "sum", true, &ip, &user, &password)
-	case api.VendorUnknown:
-		return nil, errorUnknownVendor
+		return supermicro.OutBand(r, b, ip, user, password, compliance)
 	default:
 		return nil, errorUnknownVendor
 	}

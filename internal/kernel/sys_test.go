@@ -6,21 +6,21 @@ import (
 )
 
 func TestFirmware(t *testing.T) {
-	sysfirmware = "/tmp/testefi"
-	_, err := os.OpenFile(sysfirmware, os.O_RDONLY|os.O_CREATE, 0666)
+	sysFirmware = "/tmp/testefi"
+	_, err := os.OpenFile(sysFirmware, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(sysfirmware)
+	defer os.Remove(sysFirmware)
 
 	firmware := Firmware()
-	if firmware != "efi" {
+	if firmware != EFI {
 		t.Error("expected efi firmware but didn't get")
 	}
 
-	sysfirmware = "/tmp/testbios"
+	sysFirmware = "/tmp/testbios"
 	firmware = Firmware()
-	if firmware != "bios" {
+	if firmware != BIOS {
 		t.Error("expected bios firmware but didn't get")
 	}
 }
