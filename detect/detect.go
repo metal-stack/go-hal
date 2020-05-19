@@ -19,33 +19,7 @@ var (
 func inBand() *api.Board {
 	b, err := dmi.BoardInfo()
 	if err != nil {
-		b = &api.Board{
-			VendorString: "vagrant",
-			Vendor:       0,
-			Model:        "vagrant",
-			PartNumber:   "vagrant",
-			SerialNumber: "vagrant",
-			BiosVersion:  "0",
-			BMC:          &api.BMC{
-				IP:                  "1.1.1.1",
-				MAC:                 "aa:bb:cc:dd:ee:ff",
-				ChassisPartNumber:   "vagrant",
-				ChassisPartSerial:   "vagrant",
-				BoardMfg:            "vagrant",
-				BoardMfgSerial:      "vagrant",
-				BoardPartNumber:     "vagrant",
-				ProductManufacturer: "vagrant",
-				ProductPartNumber:   "vagrant",
-				ProductSerial:       "vagrant",
-				FirmwareRevision:    "vagrant",
-			},
-			BIOS:         &api.BIOS{
-				Version: "0",
-				Vendor:  "vagrant",
-				Date: "01/01/2020",
-			},
-			Firmware:     0,
-		}
+		b = api.VagrantBoard
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
 	return b
