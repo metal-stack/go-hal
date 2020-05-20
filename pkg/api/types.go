@@ -44,7 +44,7 @@ type BIOS struct {
 var (
 	VagrantBoard = &Board{
 		VendorString: "vagrant",
-		Vendor:       0,
+		Vendor:       VendorVagrant,
 		Model:        "vagrant",
 		PartNumber:   "vagrant",
 		SerialNumber: "vagrant",

@@ -2,6 +2,7 @@ package detect
 
 import (
 	"fmt"
+	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
@@ -33,6 +34,8 @@ func ConnectInBand(compliance api.Compliance) (hal.InBand, error) {
 		return lenovo.InBand(b, compliance)
 	case api.VendorSupermicro:
 		return supermicro.InBand(b, compliance)
+	case api.VendorVagrant:
+		return vagrant.InBand(b, compliance)
 	default:
 		return nil, errorUnknownVendor
 	}
@@ -63,6 +66,8 @@ func ConnectOutBand(ip, user, password string, compliance api.Compliance) (hal.O
 		return lenovo.OutBand(r, b, ip, user, password, compliance)
 	case api.VendorSupermicro:
 		return supermicro.OutBand(r, b, ip, user, password, compliance)
+	case api.VendorVagrant:
+		return vagrant.OutBand(r, b, ip, user, password, compliance)
 	default:
 		return nil, errorUnknownVendor
 	}
