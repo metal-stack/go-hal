@@ -16,39 +16,24 @@ var (
 	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
-// inBand will try to detect the board vendor
-func inBand() *api.Board {
+// ConnectInBand will detect the board and choose the correct inband hal implementation
+func ConnectInBand() (hal.InBand, error) {
 	b, err := dmi.BoardInfo()
 	if err != nil {
 		b = api.VagrantBoard
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
-	return b
-}
 
-// ConnectInBand will detect the board and choose the correct inband hal implementation
-func ConnectInBand(compliance api.Compliance) (hal.InBand, error) {
-	b := inBand()
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.InBand(b, compliance)
+		return lenovo.InBand(b)
 	case api.VendorSupermicro:
-		return supermicro.InBand(b, compliance)
+		return supermicro.InBand(b)
 	case api.VendorVagrant:
-		return vagrant.InBand(b, compliance)
+		return vagrant.InBand(b)
 	default:
 		return nil, errorUnknownVendor
 	}
-}
-
-// outBand will try to detect the board vendor
-func outBand(r *redfish.APIClient) (*api.Board, error) {
-	b, err := r.BoardInfo()
-	if err != nil {
-		return nil, err
-	}
-	b.Vendor = api.GuessVendor(b.VendorString)
-	return b, nil
 }
 
 // ConnectOutBand will detect the board and choose the correct inband hal implementation
@@ -57,10 +42,12 @@ func ConnectOutBand(ip, user, password string, compliance api.Compliance) (hal.O
 	if err != nil {
 		return nil, err
 	}
-	b, err := outBand(r)
+	b, err := r.BoardInfo()
 	if err != nil {
 		return nil, err
 	}
+	b.Vendor = api.GuessVendor(b.VendorString)
+
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b, ip, user, password, compliance)

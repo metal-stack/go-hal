@@ -31,7 +31,7 @@ func main() {
 }
 
 func inband() {
-	inband, err := detect.ConnectInBand(api.IPMI2Compliance)
+	inband, err := detect.ConnectInBand()
 	if err != nil {
 		panic(err)
 	}

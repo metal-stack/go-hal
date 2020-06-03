@@ -37,8 +37,8 @@ var (
 )
 
 // InBand creates an inband connection to a vagrant VM.
-func InBand(board *api.Board, compliance api.Compliance) (hal.InBand, error) {
-	i, err := ipmi.New(ipmiToolBin, compliance)
+func InBand(board *api.Board) (hal.InBand, error) {
+	i, err := ipmi.New(ipmiToolBin, api.IPMI2Compliance)
 	if err != nil {
 		return nil, err
 	}

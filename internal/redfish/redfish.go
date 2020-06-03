@@ -1,9 +1,16 @@
 package redfish
 
 import (
+	"bytes"
+	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/metal-stack/go-hal"
 	"log"
+	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
@@ -14,10 +21,13 @@ const defaultUUID = "00000000-0000-0000-0000-000000000000"
 
 type APIClient struct {
 	*gofish.APIClient
+	*http.Client
+	urlPrefix string
+	auth      string
 }
 
 func New(url, user, password string, insecure bool) (*APIClient, error) {
-	// Create a new instance of gofish client, ignoring self-signed certs
+	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
 		Endpoint: url,
 		Username: user,
@@ -28,8 +38,14 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	return &APIClient{
 		APIClient: c,
+		Client:    &http.Client{Transport: tr},
+		auth:      base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
 	}, nil
 }
 
@@ -81,4 +97,136 @@ func (c *APIClient) PowerState() (hal.PowerState, error) {
 		}
 	}
 	return hal.PowerUnknownState, nil
+}
+
+func (c *APIClient) PowerOn() error {
+	return c.setPower(redfish.ForceOnResetType)
+}
+
+func (c *APIClient) PowerOff() error {
+	return c.setPower(redfish.ForceOffResetType)
+}
+
+func (c *APIClient) PowerReset() error {
+	return c.setPower(redfish.ForceRestartResetType)
+}
+
+func (c *APIClient) PowerCycle() error {
+	return c.setPower(redfish.PowerCycleResetType)
+}
+
+func (c *APIClient) setPower(resetType redfish.ResetType) error {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return err
+	}
+	for _, system := range systems {
+		err = system.Reset(resetType)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
+}
+
+func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
+	if target == hal.BootTargetBIOS {
+		return c.setNextBootBIOS()
+	}
+
+	currentBootOrder, err := c.retrieveBootOrder(vendor)
+	if err != nil {
+		return err
+	}
+	switch target {
+	default:
+		return c.setPersistentPXE(currentBootOrder)
+	case hal.BootTargetDisk:
+		return c.setPersistentHDD(currentBootOrder)
+	}
+}
+
+func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //TODO move out
+	if vendor != api.VendorLenovo { // TODO implement also for Supermicro
+		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
+	if err != nil {
+		return nil, err
+	}
+	c.addHeaders(req)
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	type boot struct {
+		BootOrderCurrent []string `json:"BootOrderCurrent"`
+	}
+	b := boot{}
+	err = json.Unmarshal(buf.Bytes(), &b)
+	return b.BootOrderCurrent, err
+}
+
+func (c *APIClient) setPersistentPXE(bootOrder []string) error {
+	sort.SliceStable(bootOrder, func(i, j int) bool {
+		if strings.ToLower(bootOrder[i]) == "network" {
+			return true
+		}
+		return !strings.Contains(bootOrder[i], "metal")
+	})
+	return c.setBootOrder(bootOrder)
+}
+
+func (c *APIClient) setPersistentHDD(bootOrder []string) error {
+	sort.SliceStable(bootOrder, func(i, j int) bool {
+		return strings.Contains(bootOrder[i], "metal")
+	})
+	return c.setBootOrder(bootOrder)
+}
+
+func (c *APIClient) setBootOrder(bootOrder []string) error {
+	type boot struct {
+		BootOrderNext []string `json:"BootOrderNext"`
+	}
+	body, err := json.Marshal(&boot{
+		BootOrderNext: bootOrder,
+	})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeaders(req)
+	_, err = c.Do(req)
+	return err
+}
+
+func (c *APIClient) addHeaders(req *http.Request) {
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", "Basic "+c.auth)
+}
+
+func (c *APIClient) setNextBootBIOS() error {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return err
+	}
+	for _, system := range systems {
+		boot := system.Boot
+		boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
+		boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
+		err = system.SetBoot(boot)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }

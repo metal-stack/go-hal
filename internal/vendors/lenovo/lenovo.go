@@ -35,9 +35,9 @@ var (
 	errorNotImplemented = fmt.Errorf("not implemented yet")
 )
 
-// InBand creates an inband connection to a supermicro server.
-func InBand(board *api.Board, compliance api.Compliance) (hal.InBand, error) {
-	i, err := ipmi.New(ipmiToolBin, compliance)
+// InBand creates an inband connection to a Lenovo server.
+func InBand(board *api.Board) (hal.InBand, error) {
+	i, err := ipmi.New(ipmiToolBin, api.IPMI2Compliance)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func InBand(board *api.Board, compliance api.Compliance) (hal.InBand, error) {
 	}, nil
 }
 
-// OutBand creates an outband connection to a supermicro server.
+// OutBand creates an outband connection to a Lenovo server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string, compliance api.Compliance) (hal.OutBand, error) {
 	return &outBand{
 		common:     common.New(r),
@@ -154,19 +154,19 @@ func (o *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (o *outBand) PowerOn() error {
-	return errorNotImplemented
+	return o.common.PowerReset() // PowerOn is not supported
 }
 
 func (o *outBand) PowerOff() error {
-	return errorNotImplemented
+	return errorNotImplemented // PowerOff is not supported
 }
 
 func (o *outBand) PowerReset() error {
-	return errorNotImplemented
+	return o.common.PowerReset()
 }
 
 func (o *outBand) PowerCycle() error {
-	return errorNotImplemented
+	return o.common.PowerReset() // PowerCycle is not supported
 }
 
 func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
@@ -188,8 +188,8 @@ func (o *outBand) IdentifyLEDOff() error {
 	return errorNotImplemented
 }
 
-func (o *outBand) BootFrom(hal.BootTarget) error {
-	return errorNotImplemented
+func (o *outBand) BootFrom(target hal.BootTarget) error {
+	return o.common.SetBootOrder(target, api.VendorLenovo)
 }
 
 func (o *outBand) Describe() string {

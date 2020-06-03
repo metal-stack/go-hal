@@ -43,12 +43,12 @@ var (
 )
 
 // InBand creates an inband connection to a supermicro server.
-func InBand(board *api.Board, compliance api.Compliance) (hal.InBand, error) {
+func InBand(board *api.Board) (hal.InBand, error) {
 	s, err := newSum(sumBin)
 	if err != nil {
 		return nil, err
 	}
-	i, err := ipmi.New(ipmiToolBin, compliance)
+	i, err := ipmi.New(ipmiToolBin, api.SMCIPMIToolCompliance)
 	if err != nil {
 		return nil, err
 	}
