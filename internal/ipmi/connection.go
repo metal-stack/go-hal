@@ -26,10 +26,10 @@ func OpenClientConnection(ip, user, password string) (*goipmi.Client, error) {
 	return client, nil
 }
 
-func SendSystemBootRaw(client *goipmi.Client, param uint8, data ...uint8) error {
+func SetSystemBoot(client *goipmi.Client, param uint8, data ...uint8) error {
 	r := &goipmi.Request{
-		NetworkFunction: goipmi.NetworkFunctionChassis,      // 0x00
-		Command:         goipmi.CommandSetSystemBootOptions, // 0x08
+		NetworkFunction: goipmi.NetworkFunctionChassis,
+		Command:         goipmi.CommandSetSystemBootOptions,
 		Data: &goipmi.SetSystemBootOptionsRequest{
 			Param: param,
 			Data:  data,
@@ -38,13 +38,9 @@ func SendSystemBootRaw(client *goipmi.Client, param uint8, data ...uint8) error 
 	return client.Send(r, &goipmi.SetSystemBootOptionsResponse{})
 }
 
-const (
-	CommandChassisIdentifyOptions = goipmi.Command(0x04)
-)
-
 // ChassisIdentifyRequest per section 28.5
 type ChassisIdentifyRequest struct {
-	IntervalOrOff uint8
+	ForceOnOption uint8
 	ForceOn       uint8
 }
 
@@ -53,12 +49,12 @@ type ChassisIdentifyResponse struct {
 	goipmi.CompletionCode
 }
 
-func SendChassisIdentifyRaw(client *goipmi.Client, intervalOrOff, forceOn uint8) error {
+func SetChassisIdentify(client *goipmi.Client, forceOn uint8) error {
 	r := &goipmi.Request{
-		NetworkFunction: goipmi.NetworkFunctionChassis, // 0x00
-		Command:         CommandChassisIdentifyOptions, // 0x04
+		NetworkFunction: goipmi.NetworkFunctionChassis,
+		Command:         goipmi.Command(ChassisIdentify),
 		Data: &ChassisIdentifyRequest{
-			IntervalOrOff: intervalOrOff,
+			ForceOnOption: 0,
 			ForceOn:       forceOn,
 		},
 	}

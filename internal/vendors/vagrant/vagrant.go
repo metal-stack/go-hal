@@ -72,15 +72,15 @@ func (i *inBand) UUID() (*uuid.UUID, error) {
 }
 
 func (i *inBand) PowerOff() error {
-	return i.i.SendChassisControlRaw(goipmi.ControlPowerDown)
-}
-
-func (i *inBand) PowerReset() error {
-	return i.i.SendChassisControlRaw(goipmi.ControlPowerHardReset)
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerUp)
 }
 
 func (i *inBand) PowerCycle() error {
-	return i.i.SendChassisControlRaw(goipmi.ControlPowerCycle)
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerCycle)
+}
+
+func (i *inBand) PowerReset() error {
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlHardReset)
 }
 
 func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
@@ -95,15 +95,15 @@ func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 }
 
 func (i *inBand) IdentifyLEDOn() error {
-	return i.i.SendChassisIdentifyRaw("0x00", "0x01")
+	return i.i.SetChassisIdentifyLEDOn()
 }
 
 func (i *inBand) IdentifyLEDOff() error {
-	return i.i.SendChassisIdentifyRaw("0x00", "0x00")
+	return i.i.SetChassisIdentifyLEDOff()
 }
 
 func (i *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return i.i.SendBootOrderRaw(bootTarget)
+	return i.i.SetBootOrder(bootTarget)
 }
 
 func (i *inBand) Firmware() (hal.FirmwareMode, error) {
@@ -123,7 +123,7 @@ func (i *inBand) BMCPresent() bool {
 }
 
 func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
-	return i.i.CreateUser(username, uid, ipmi.Administrator)
+	return i.i.CreateUser(username, uid, ipmi.AdministratorPrivilege)
 }
 
 // OutBand
@@ -148,26 +148,27 @@ func (o *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (o *outBand) PowerOn() error {
-	return o.sendChassisControl(goipmi.ControlPowerUp)
+	return o.setChassisControl(goipmi.ControlPowerUp)
 }
 
 func (o *outBand) PowerOff() error {
-	return o.sendChassisControl(goipmi.ControlPowerDown)
+	return o.setChassisControl(goipmi.ControlPowerDown)
 }
 
 func (o *outBand) PowerReset() error {
-	return o.sendChassisControl(goipmi.ControlPowerHardReset)
+	return o.setChassisControl(goipmi.ControlPowerHardReset)
 }
 
 func (o *outBand) PowerCycle() error {
-	return o.sendChassisControl(goipmi.ControlPowerCycle)
+	return o.setChassisControl(goipmi.ControlPowerCycle)
 }
 
-func (o *outBand) sendChassisControl(chassisControl goipmi.ChassisControl) error {
+func (o *outBand) setChassisControl(chassisControl goipmi.ChassisControl) error {
 	client, err := ipmi.OpenClientConnection(o.Connection())
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 	return client.Control(chassisControl)
 }
 
@@ -183,19 +184,20 @@ func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 }
 
 func (o *outBand) IdentifyLEDOn() error {
-	return o.sendChassisIdentifyRaw(0x00, 0x01)
+	return o.setChassisIdentify(0x01)
 }
 
 func (o *outBand) IdentifyLEDOff() error {
-	return o.sendChassisIdentifyRaw(0x00, 0x00)
+	return o.setChassisIdentify(0x00)
 }
 
-func (o *outBand) sendChassisIdentifyRaw(intervalOrOff, forceOn uint8) error {
+func (o *outBand) setChassisIdentify(forceOn uint8) error {
 	client, err := ipmi.OpenClientConnection(o.Connection())
 	if err != nil {
 		return err
 	}
-	return ipmi.SendChassisIdentifyRaw(client, intervalOrOff, forceOn)
+	defer client.Close()
+	return ipmi.SetChassisIdentify(client, forceOn)
 }
 
 func (o *outBand) BootFrom(bootTarget hal.BootTarget) error {
@@ -203,43 +205,36 @@ func (o *outBand) BootFrom(bootTarget hal.BootTarget) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	useProgress := true
 	// set set-in-progress flag
-	err = ipmi.SendSystemBootRaw(client, goipmi.BootParamSetInProgress, 0x01)
+	err = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 1)
 	if err != nil {
 		useProgress = false
 	}
 
-	err = ipmi.SendSystemBootRaw(client, goipmi.BootParamInfoAck, 0x01, 0x01)
+	err = ipmi.SetSystemBoot(client, goipmi.BootParamInfoAck, 1, 1)
 	if err != nil {
 		if useProgress {
 			// set-in-progress = set-complete
-			_ = ipmi.SendSystemBootRaw(client, goipmi.BootParamSetInProgress, 0x00)
+			_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 0)
 		}
 		return err
 	}
 
 	uefiQualifier, bootDevQualifier := ipmi.GetBootOrderQualifiers(bootTarget, o.compliance)
-	uq, err := ipmi.Uint8(uefiQualifier)
-	if err != nil {
-		return err
-	}
-	bdq, err := ipmi.Uint8(bootDevQualifier)
-	if err != nil {
-		return err
-	}
-	err = ipmi.SendSystemBootRaw(client, goipmi.BootParamBootFlags, uq, bdq, 0x00, 0x00, 0x00)
+	err = ipmi.SetSystemBoot(client, goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
 	if err == nil {
 		if useProgress {
 			// set-in-progress = commit-write
-			_ = ipmi.SendSystemBootRaw(client, goipmi.BootParamSetInProgress, 0x02)
+			_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 2)
 		}
 	}
 
 	if useProgress {
 		// set-in-progress = set-complete
-		_ = ipmi.SendSystemBootRaw(client, goipmi.BootParamSetInProgress, 0x00)
+		_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 0)
 	}
 
 	return err

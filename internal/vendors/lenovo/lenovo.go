@@ -78,15 +78,15 @@ func (i *inBand) UUID() (*uuid.UUID, error) {
 }
 
 func (i *inBand) PowerOff() error {
-	return errorNotImplemented
-}
-
-func (i *inBand) PowerReset() error {
-	return errorNotImplemented
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerUp)
 }
 
 func (i *inBand) PowerCycle() error {
-	return errorNotImplemented
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerCycle)
+}
+
+func (i *inBand) PowerReset() error {
+	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlHardReset)
 }
 
 func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
@@ -101,15 +101,15 @@ func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 }
 
 func (i *inBand) IdentifyLEDOn() error {
-	return i.i.SendChassisIdentifyRaw("0x00", "0x01")
+	return i.i.SetChassisIdentifyLEDOn()
 }
 
 func (i *inBand) IdentifyLEDOff() error {
-	return i.i.SendChassisIdentifyRaw("0x00", "0x00")
+	return i.i.SetChassisIdentifyLEDOff()
 }
 
 func (i *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return i.i.SendBootOrderRaw(bootTarget)
+	return i.i.SetBootOrder(bootTarget)
 }
 
 func (i *inBand) Firmware() (hal.FirmwareMode, error) {

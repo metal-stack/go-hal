@@ -10,12 +10,10 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/metal-stack/go-hal"
-	"github.com/vmware/goipmi"
 	"log"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -25,22 +23,29 @@ import (
 	"github.com/pkg/errors"
 )
 
+type Bool = uint8
+
+const (
+	False Bool = iota
+	True
+)
+
 // Privilege of an ipmitool user
 type Privilege int
 
 const (
 	// Callback ipmi privilege
-	Callback = Privilege(1)
+	CallbackPrivilege = Privilege(1)
 	// User ipmi privilege
-	User = Privilege(2)
+	UserPrivilege = Privilege(2)
 	// Operator ipmi privilege
-	Operator = Privilege(3)
+	OperatorPrivilege = Privilege(3)
 	// Administrator ipmi privilege
-	Administrator = Privilege(4)
+	AdministratorPrivilege = Privilege(4)
 	// OEM ipmi privilege
-	OEM = Privilege(5)
+	OEMPrivilege = Privilege(5)
 	// NoAccess ipmi privilege
-	NoAccess = Privilege(15)
+	NoAccessPrivilege = Privilege(15)
 )
 
 // Ipmi defines methods to interact with ipmi
@@ -49,9 +54,10 @@ type Ipmi interface {
 	run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
-	SendBootOrderRaw(target hal.BootTarget) error
-	SendChassisControlRaw(chassisControl ipmi.ChassisControl) error
-	SendChassisIdentifyRaw(intervalOrOff, forceOn string) error
+	SetBootOrder(target hal.BootTarget) error
+	ExecuteChassisControlFunction(ChassisControlFunction) error
+	SetChassisIdentifyLEDOn() error
+	SetChassisIdentifyLEDOff() error
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
@@ -284,43 +290,38 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	return pw, nil
 }
 
-// SendBootOrderRaw persistently sets the boot order to given bootTarget as raw bytes.
-func (i *Ipmitool) SendBootOrderRaw(bootTarget hal.BootTarget) error {
-	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, i.compliance)
-	out, err := i.run("raw", "0x00", "0x08", "0x05", uefiQualifier, bootDevQualifier, "0x00", "0x00", "0x00")
+// SetBootOrder persistently sets the boot order to given bootTarget as raw bytes.
+func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
+	out, err := i.run(RawSetSystemBootOptions(target, i.compliance)...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", bootTarget, out)
+		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", target, out)
 	}
 	return nil
 }
 
-// SendChassisControlRaw sends the given chassisControl as raw bytes.
-func (i *Ipmitool) SendChassisControlRaw(chassisControl ipmi.ChassisControl) error {
-	var rawByte string
-	switch chassisControl {
-	case ipmi.ControlPowerDown:
-		rawByte = "0x00"
-	case ipmi.ControlPowerUp:
-		rawByte = "0x01"
-	case ipmi.ControlPowerCycle:
-		rawByte = "0x02"
-	case ipmi.ControlPowerHardReset:
-		rawByte = "0x03"
-	default:
-		return fmt.Errorf("unsupported chassis control:%d", chassisControl)
-	}
-	out, err := i.run("raw", "0x00", "0x02", rawByte)
+// ExecuteChassisControlFunction executes the given chassis control function.
+func (i *Ipmitool) ExecuteChassisControlFunction(fn ChassisControlFunction) error {
+	_, err := i.run(RawChassisControl(fn)...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to send chassis control:%v out:%v", chassisControl, out)
+		return errors.Wrapf(err, "unable to set chassis control function:%X", fn)
 	}
 	return nil
 }
 
-// SendChassisIdentifyRaw sends the given chassis identify as raw bytes.
-func (i *Ipmitool) SendChassisIdentifyRaw(intervalOrOff, forceOn string) error {
-	out, err := i.run("raw", "0x00", "0x04", intervalOrOff, forceOn)
+// SetChassisIdentifyLEDOn turns on the chassis identify LED.
+func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
+	_, err := i.run(RawChassisIdentifyOn()...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to send chassis identify raw: intervalOrOff:%s forceOn:%s out:%v", intervalOrOff, forceOn, out)
+		return errors.Wrapf(err, "unable to turn on the chassis identify LED")
+	}
+	return nil
+}
+
+// SetChassisIdentifyLEDOff turns off the chassis identify LED.
+func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
+	_, err := i.run(RawChassisIdentifyOff()...)
+	if err != nil {
+		return errors.Wrapf(err, "unable to turn off the chassis identify LED")
 	}
 	return nil
 }
@@ -362,19 +363,19 @@ func from(target interface{}, input map[string]string) {
 }
 
 const (
-	persistentLegacyQualifier = "0xff"
-	persistentUEFIQualifier   = "0xe0"
+	persistentLegacyQualifier = uint8(0xFF)
+	persistentUEFIQualifier   = uint8(0xE0)
 
-	pxeQualifier = "0x04"
+	pxeQualifier = uint8(0x04)
 
-	ipmi2HDQualifier       = "0x08"
-	smcipmitoolHDQualifier = "0x24"
+	ipmi2HDQualifier       = uint8(0x08)
+	smcipmitoolHDQualifier = uint8(0x24)
 
-	biosQualifier = "0x18"
+	biosQualifier = uint8(0x18)
 )
 
 // GetBootOrderQualifiers returns the qualifiers needed to persistently set the the given bootOrder according to the given compliance.
-func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance) (uefiQualifier, bootDevQualifier string) {
+func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance) (uefiQualifier, bootDevQualifier uint8) {
 	/*
 	   Set boot order to UEFI PXE persistently:
 	   raw 0x00 0x08 0x05 0xe0 0x04 0x00 0x00 0x00  (conforms to IPMI 2.0 as well as SMCIPMITool)
@@ -415,12 +416,4 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance
 	}
 
 	return
-}
-
-func Uint8(qualifier string) (uint8, error) {
-	i, err := strconv.Atoi(qualifier)
-	if err != nil {
-		return 0, err
-	}
-	return uint8(i), nil
 }
