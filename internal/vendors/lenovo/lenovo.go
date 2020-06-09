@@ -141,7 +141,8 @@ func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
 	}
 	userID := uint8(id)
 
-	o, err := i.i.Run(ipmi.RawSetChannelAccess(3, ipmi.AdministratorPrivilege)...)
+	channelNumber := uint8(1)
+	o, err := i.i.Run(ipmi.RawUserAccess(channelNumber, ipmi.AdministratorPrivilege)...)
 	if err != nil {
 		return "", err
 	}

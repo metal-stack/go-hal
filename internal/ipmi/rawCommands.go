@@ -10,6 +10,10 @@ func RawSetChannelAccess(channelNumber uint8, privilege Privilege) []string {
 	return rawCommand(AppNetworkFunction, SetChannelAccess, channelNumber, 0, privilege)
 }
 
+func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
+	return rawCommand(AppNetworkFunction, SetChannelAccess, channelNumber, uid, privilege)
+}
+
 func RawSetUserName(uid uint8, username string) []string {
 	args := []uint8{AppNetworkFunction, SetUserName, uid}
 	bb := []byte(username)
