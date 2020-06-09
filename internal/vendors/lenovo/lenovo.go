@@ -141,14 +141,7 @@ func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
 	}
 	userID := uint8(id)
 
-	channelNumber := uint8(1)
-	o, err := i.i.Run(ipmi.RawUserAccess(channelNumber, userID, ipmi.AdministratorPrivilege)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.i.Run(ipmi.RawSetUserName(userID, username)...)
+	o, err := i.i.Run(ipmi.RawSetUserName(userID, username)...)
 	if err != nil {
 		return "", err
 	}
@@ -162,6 +155,19 @@ func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
 	out = append(out, o)
 
 	o, err = i.i.Run(ipmi.RawEnableUser(userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	channelNumber := uint8(1)
+	o, err = i.i.Run(ipmi.RawUserAccess(channelNumber, userID, ipmi.AdministratorPrivilege)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.i.Run(ipmi.RawActivateSOLPayload(channelNumber)...)
 	if err != nil {
 		return "", err
 	}

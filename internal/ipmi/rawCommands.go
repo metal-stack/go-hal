@@ -14,6 +14,10 @@ func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
 	return rawCommand(AppNetworkFunction, SetChannelAccess, channelNumber, uid, privilege)
 }
 
+func RawActivateSOLPayload(channelNumber uint8) []string {
+	return rawCommand(AppNetworkFunction, SetSOLConfigurationParameters, 1, channelNumber, 1)
+}
+
 func RawSetUserName(uid uint8, username string) []string {
 	args := []uint8{AppNetworkFunction, SetUserName, uid}
 	bb := []byte(username)
