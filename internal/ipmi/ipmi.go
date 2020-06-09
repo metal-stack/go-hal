@@ -31,27 +31,27 @@ const (
 )
 
 // Privilege of an ipmitool user
-type Privilege int
+type Privilege = uint8
 
 const (
 	// Callback ipmi privilege
-	CallbackPrivilege = Privilege(1)
+	CallbackPrivilege Privilege = iota + 1
 	// User ipmi privilege
-	UserPrivilege = Privilege(2)
+	UserPrivilege
 	// Operator ipmi privilege
-	OperatorPrivilege = Privilege(3)
+	OperatorPrivilege
 	// Administrator ipmi privilege
-	AdministratorPrivilege = Privilege(4)
+	AdministratorPrivilege
 	// OEM ipmi privilege
-	OEMPrivilege = Privilege(5)
+	OEMPrivilege
 	// NoAccess ipmi privilege
-	NoAccessPrivilege = Privilege(15)
+	NoAccessPrivilege
 )
 
 // Ipmi defines methods to interact with ipmi
 type Ipmi interface {
 	DevicePresent() bool
-	run(arg ...string) (string, error)
+	Run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget) error
@@ -184,7 +184,7 @@ func (i *Ipmitool) DevicePresent() bool {
 }
 
 // Run execute ipmitool
-func (i *Ipmitool) run(args ...string) (string, error) {
+func (i *Ipmitool) Run(args ...string) (string, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to locate program:%s in path", i.command)
@@ -200,7 +200,7 @@ func (i *Ipmitool) run(args ...string) (string, error) {
 // GetFru returns the Field Replacable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
 	config := &Fru{}
-	cmdOutput, err := i.run("fru")
+	cmdOutput, err := i.Run("fru")
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'fru':%v", cmdOutput)
 	}
@@ -212,7 +212,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 // GetBMCInfo returns the bmc info
 func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	bmc := &BMCInfo{}
-	cmdOutput, err := i.run("bmc", "info")
+	cmdOutput, err := i.Run("bmc", "info")
 	if err != nil {
 		return *bmc, errors.Wrapf(err, "unable to execute ipmitool 'bmc info':%v", cmdOutput)
 	}
@@ -224,7 +224,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 // GetLanConfig returns the LanConfig
 func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	config := &LanConfig{}
-	cmdOutput, err := i.run("lan", "print")
+	cmdOutput, err := i.Run("lan", "print")
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", cmdOutput)
 	}
@@ -236,7 +236,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 // GetSession returns the Session info
 func (i *Ipmitool) GetSession() (Session, error) {
 	session := &Session{}
-	cmdOutput, err := i.run("session", "info", "all")
+	cmdOutput, err := i.Run("session", "info", "all")
 	if err != nil {
 		return *session, errors.Wrapf(err, "unable to execute ipmitool 'session info all':%v", cmdOutput)
 	}
@@ -247,7 +247,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 
 // CreateUser create a ipmi user with password and privilege level
 func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string, error) {
-	out, err := i.run("user", "set", "name", uid, username)
+	out, err := i.Run("user", "set", "name", uid, username)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to create user %s: %v", username, out)
 	}
@@ -257,7 +257,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	err = retry.Do(
 		func() error {
 			pw = password.Generate(10)
-			out, err = i.run("user", "set", "password", uid, pw)
+			out, err = i.Run("user", "set", "password", uid, pw)
 			if err != nil {
 				log.Printf("ipmi password creation failed for user:%s output:%v", username, out)
 			}
@@ -274,15 +274,15 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	}
 
 	channelnumber := "1"
-	out, err = i.run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
+	out, err = i.Run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to set privilege for user %s: %v", username, out)
 	}
-	out, err = i.run("user", "enable", uid)
+	out, err = i.Run("user", "enable", uid)
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to enable user %s: %v", username, out)
 	}
-	out, err = i.run("sol", "payload", "enable", channelnumber, uid)
+	out, err = i.Run("sol", "payload", "enable", channelnumber, uid)
 	if err != nil {
 		return pw, errors.Wrapf(err, "unable to enable user %s for sol access: %v", username, out)
 	}
@@ -292,7 +292,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 
 // SetBootOrder persistently sets the boot order to given bootTarget as raw bytes.
 func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
-	out, err := i.run(RawSetSystemBootOptions(target, i.compliance)...)
+	out, err := i.Run(RawSetSystemBootOptions(target, i.compliance)...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", target, out)
 	}
@@ -301,7 +301,7 @@ func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
 
 // ExecuteChassisControlFunction executes the given chassis control function.
 func (i *Ipmitool) ExecuteChassisControlFunction(fn ChassisControlFunction) error {
-	_, err := i.run(RawChassisControl(fn)...)
+	_, err := i.Run(RawChassisControl(fn)...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to set chassis control function:%X", fn)
 	}
@@ -310,7 +310,7 @@ func (i *Ipmitool) ExecuteChassisControlFunction(fn ChassisControlFunction) erro
 
 // SetChassisIdentifyLEDOn turns on the chassis identify LED.
 func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
-	_, err := i.run(RawChassisIdentifyOn()...)
+	_, err := i.Run(RawChassisIdentifyOn()...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to turn on the chassis identify LED")
 	}
@@ -319,7 +319,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED.
 func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
-	_, err := i.run(RawChassisIdentifyOff()...)
+	_, err := i.Run(RawChassisIdentifyOff()...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to turn off the chassis identify LED")
 	}

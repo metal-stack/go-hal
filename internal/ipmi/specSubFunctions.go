@@ -4,6 +4,23 @@ package ipmi
 
 // Appendix H - Sub-function Assignments
 
+type SetSystemBootOptionsFunction = uint8
+
+const (
+	ServicePartitionSelector SetSystemBootOptionsFunction = iota + 1
+	ServicePartitionScan
+	ValidBitClearing
+	BootInfoAcknowledge
+	BootFlags
+	InitiatorInfo
+	InitiatorMailbox
+	OEMHasHandledBootInfo
+	SMSHasHandledBootInfo
+	OSServicePartitionHasHandledBootInfo
+	OSLoaderHasHandledBootInfo
+	BIOSPOSTHasHandledBootInfo
+)
+
 type ChassisControlFunction = uint8
 
 const (

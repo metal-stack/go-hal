@@ -7,9 +7,14 @@ import (
 	"github.com/metal-stack/go-hal/internal/bios"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/internal/password"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/internal/vendors/common"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/pkg/errors"
+	goipmi "github.com/vmware/goipmi"
+	"strconv"
+	"strings"
 )
 
 type (
@@ -129,7 +134,39 @@ func (i *inBand) BMCPresent() bool {
 }
 
 func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
-	return "", errorNotImplemented
+	var out []string
+	id, err := strconv.Atoi(uid)
+	if err != nil {
+		return "", errors.Wrapf(err, "invalid userID:%s", uid)
+	}
+	userID := uint8(id)
+
+	o, err := i.i.Run(ipmi.RawSetChannelAccess(3, ipmi.AdministratorPrivilege)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.i.Run(ipmi.RawSetUserName(userID, username)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	pw := password.Generate(10)
+	o, err = i.i.Run(ipmi.RawSetUserPassword(userID, pw)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.i.Run(ipmi.RawEnableUser(userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	return strings.Join(out, "\n"), nil
 }
 
 // OutBand
@@ -158,7 +195,12 @@ func (o *outBand) PowerOn() error {
 }
 
 func (o *outBand) PowerOff() error {
-	return errorNotImplemented // PowerOff is not supported
+	client, err := ipmi.OpenClientConnection(o.Connection())
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	return client.Control(goipmi.ControlPowerDown)
 }
 
 func (o *outBand) PowerReset() error {
@@ -181,11 +223,20 @@ func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 }
 
 func (o *outBand) IdentifyLEDOn() error {
-	return errorNotImplemented
+	return o.setChassisIdentify(0x01)
 }
 
 func (o *outBand) IdentifyLEDOff() error {
-	return errorNotImplemented
+	return o.setChassisIdentify(0x00)
+}
+
+func (o *outBand) setChassisIdentify(forceOn uint8) error {
+	client, err := ipmi.OpenClientConnection(o.Connection())
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	return ipmi.SetChassisIdentify(client, forceOn)
 }
 
 func (o *outBand) BootFrom(target hal.BootTarget) error {
