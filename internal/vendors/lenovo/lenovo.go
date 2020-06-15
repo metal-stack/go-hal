@@ -173,7 +173,7 @@ func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
 	}
 	out = append(out, o)
 
-	o, err = i.i.Run(ipmi.RawActivateSOLPayload(channelNumber)...)
+	o, err = i.i.Run(ipmi.RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
 	if err != nil {
 		return "", err
 	}
