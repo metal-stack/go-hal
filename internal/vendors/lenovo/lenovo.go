@@ -147,6 +147,12 @@ func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
 	}
 	out = append(out, o)
 
+	o, err = i.i.Run(ipmi.RawDisableUser(userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
 	pw := password.Generate(10)
 	o, err = i.i.Run(ipmi.RawSetUserPassword(userID, pw)...)
 	if err != nil {

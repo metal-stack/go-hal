@@ -24,6 +24,10 @@ func RawSetUserName(uid uint8, username string) []string {
 	return rawCommand(args...)
 }
 
+func RawDisableUser(uid uint8) []string {
+	return rawCommand(AppNetworkFunction, SetUserPassword, uid, 0)
+}
+
 func RawEnableUser(uid uint8) []string {
 	return rawCommand(AppNetworkFunction, SetUserPassword, uid, 1)
 }
