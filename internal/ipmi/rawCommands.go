@@ -6,10 +6,6 @@ import (
 	"github.com/metal-stack/go-hal/pkg/api"
 )
 
-func RawSetChannelAccess(channelNumber uint8, privilege Privilege) []string {
-	return rawCommand(AppNetworkFunction, SetChannelAccess, channelNumber, 0, privilege)
-}
-
 func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
 	return rawCommand(AppNetworkFunction, SetUserAccess, channelNumber, uid, privilege)
 }
@@ -59,15 +55,18 @@ func rawCommand(bytes ...uint8) []string {
 	uu := make([]string, len(bytes)+1)
 	uu[0] = "raw"
 	for i, b := range bytes {
-		uu[i+1] = fmt.Sprintf("%X", b)
+		uu[i+1] = fmt.Sprintf("%d", b)
 	}
 	return uu
 }
 
 func fixedBytes(s string, length int) []uint8 {
-	bb := []byte(s)
-	for i := len(bb); i < length; i++ {
-		bb[i] = 0
+	bb := make([]byte, length)
+	for i, b := range []byte(s) {
+		if i == length {
+			break
+		}
+		bb[i] = b
 	}
 	if len(bb) > length {
 		bb = bb[:length]
