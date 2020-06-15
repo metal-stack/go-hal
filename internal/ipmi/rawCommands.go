@@ -11,7 +11,7 @@ func RawSetChannelAccess(channelNumber uint8, privilege Privilege) []string {
 }
 
 func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
-	return rawCommand(AppNetworkFunction, SetChannelAccess, channelNumber, uid, privilege)
+	return rawCommand(AppNetworkFunction, SetUserAccess, channelNumber, uid, privilege)
 }
 
 func RawActivateSOLPayload(channelNumber uint8) []string {
@@ -20,7 +20,7 @@ func RawActivateSOLPayload(channelNumber uint8) []string {
 
 func RawSetUserName(uid uint8, username string) []string {
 	args := []uint8{AppNetworkFunction, SetUserName, uid}
-	args = append(args, toByteArray(username, 16)...)
+	args = append(args, fixedBytes(username, 16)...)
 	return rawCommand(args...)
 }
 
@@ -29,8 +29,8 @@ func RawEnableUser(uid uint8) []string {
 }
 
 func RawSetUserPassword(uid uint8, password string) []string {
-	args := []uint8{AppNetworkFunction, SetUserPassword, uid, 2}
-	args = append(args, toByteArray(password, 16)...)
+	args := []uint8{AppNetworkFunction, SetUserPassword, 128 + uid, 2}
+	args = append(args, fixedBytes(password, 20)...)
 	return rawCommand(args...)
 }
 
@@ -60,7 +60,7 @@ func rawCommand(bytes ...uint8) []string {
 	return uu
 }
 
-func toByteArray(s string, length int) []byte {
+func fixedBytes(s string, length int) []uint8 {
 	bb := []byte(s)
 	for i := len(bb); i < length; i++ {
 		bb[i] = 0
