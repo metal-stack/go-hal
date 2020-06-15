@@ -20,11 +20,7 @@ func RawActivateSOLPayload(channelNumber uint8) []string {
 
 func RawSetUserName(uid uint8, username string) []string {
 	args := []uint8{AppNetworkFunction, SetUserName, uid}
-	bb := []byte(username)
-	if len(bb) > 16 {
-		bb = bb[:16]
-	}
-	args = append(args, bb...)
+	args = append(args, toByteArray(username, 16)...)
 	return rawCommand(args...)
 }
 
@@ -34,11 +30,7 @@ func RawEnableUser(uid uint8) []string {
 
 func RawSetUserPassword(uid uint8, password string) []string {
 	args := []uint8{AppNetworkFunction, SetUserPassword, uid, 2}
-	bb := []byte(password)
-	if len(bb) > 16 {
-		bb = bb[:16]
-	}
-	args = append(args, bb...)
+	args = append(args, toByteArray(password, 16)...)
 	return rawCommand(args...)
 }
 
@@ -66,4 +58,15 @@ func rawCommand(bytes ...uint8) []string {
 		uu[i+1] = fmt.Sprintf("%X", b)
 	}
 	return uu
+}
+
+func toByteArray(s string, length int) []byte {
+	bb := []byte(s)
+	for i := len(bb); i < length; i++ {
+		bb[i] = 0
+	}
+	if len(bb) > length {
+		bb = bb[:length]
+	}
+	return bb
 }
