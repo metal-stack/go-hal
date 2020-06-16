@@ -33,7 +33,10 @@ type (
 	}
 )
 
-const ipmiToolBin = "ipmitool"
+const (
+	ipmiToolBin = "ipmitool"
+	compliance  = api.IPMI2Compliance
+)
 
 var (
 	// errorNotImplemented for all funcs which are not implemented yet
@@ -42,7 +45,7 @@ var (
 
 // InBand creates an inband connection to a Lenovo server.
 func InBand(board *api.Board) (hal.InBand, error) {
-	i, err := ipmi.New(ipmiToolBin, api.IPMI2Compliance)
+	i, err := ipmi.New(ipmiToolBin, compliance)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a Lenovo server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string, compliance api.Compliance) (hal.OutBand, error) {
+func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) (hal.OutBand, error) {
 	return &outBand{
 		common:     common.New(r),
 		compliance: compliance,

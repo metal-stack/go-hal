@@ -35,6 +35,7 @@ type (
 const (
 	sumBin      = "sum"
 	ipmiToolBin = "ipmitool"
+	compliance  = api.SMCIPMIToolCompliance
 )
 
 var (
@@ -48,7 +49,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 	if err != nil {
 		return nil, err
 	}
-	i, err := ipmi.New(ipmiToolBin, api.SMCIPMIToolCompliance)
+	i, err := ipmi.New(ipmiToolBin, compliance)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a supermicro server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string, compliance api.Compliance) (hal.OutBand, error) {
+func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) (hal.OutBand, error) {
 	s, err := newRemoteSum(sumBin, ip, user, password)
 	if err != nil {
 		return nil, err
