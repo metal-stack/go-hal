@@ -7,13 +7,6 @@ import (
 	"testing"
 )
 
-func Test_fixedBytes(t *testing.T) {
-	require.Equal(t, []uint8{116, 101, 115, 116}, fixedBytes("test", 4))
-	require.Equal(t, []uint8{116, 101, 115, 116, 0}, fixedBytes("test", 5))
-	require.Equal(t, []uint8{116, 101, 115}, fixedBytes("test", 3))
-	require.Equal(t, []uint8{}, fixedBytes("test", 0))
-}
-
 func TestRawCommands(t *testing.T) {
 	// given
 	channelNumber := uint8(1)

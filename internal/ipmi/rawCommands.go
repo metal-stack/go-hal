@@ -1,9 +1,9 @@
 package ipmi
 
 import (
-	"fmt"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"strconv"
 )
 
 func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
@@ -29,7 +29,7 @@ func RawEnableUser(uid uint8) []string {
 }
 
 func RawSetUserPassword(uid uint8, password string) []string {
-	args := []uint8{AppNetworkFunction, SetUserPassword, 128 + uid, 2}
+	args := []uint8{AppNetworkFunction, SetUserPassword, setBit(uid, 7), 2}
 	args = append(args, fixedBytes(password, 20)...)
 	return rawCommand(args...)
 }
@@ -55,21 +55,7 @@ func rawCommand(bytes ...uint8) []string {
 	uu := make([]string, len(bytes)+1)
 	uu[0] = "raw"
 	for i, b := range bytes {
-		uu[i+1] = fmt.Sprintf("%d", b)
+		uu[i+1] = strconv.Itoa(int(b))
 	}
 	return uu
-}
-
-func fixedBytes(s string, length int) []uint8 {
-	bb := make([]byte, length)
-	for i, b := range []byte(s) {
-		if i == length {
-			break
-		}
-		bb[i] = b
-	}
-	if len(bb) > length {
-		bb = bb[:length]
-	}
-	return bb
 }
