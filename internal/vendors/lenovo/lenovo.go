@@ -126,15 +126,21 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.SetChassisIdentifyLEDState(state)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDState(state)
+	})
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.SetChassisIdentifyLEDOn()
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDOn()
+	})
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.SetChassisIdentifyLEDOff()
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDOff()
+	})
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {

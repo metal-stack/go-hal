@@ -12,13 +12,13 @@ import (
 	goipmi "github.com/vmware/goipmi"
 )
 
-const (
-	compliance = api.IPMI2Compliance
-)
-
 var (
 	// errorNotImplemented for all functions that are not implemented yet
 	errorNotImplemented = fmt.Errorf("not implemented yet")
+)
+
+const (
+	compliance = api.IPMI2Compliance
 )
 
 type (
@@ -111,35 +111,51 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.SetChassisControl(goipmi.ControlPowerDown)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.Control(goipmi.ControlPowerDown)
+	})
 }
 
 func (ob *outBand) PowerOn() error {
-	return ob.SetChassisControl(goipmi.ControlPowerUp)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.Control(goipmi.ControlPowerUp)
+	})
 }
 
 func (ob *outBand) PowerReset() error {
-	return ob.SetChassisControl(goipmi.ControlPowerHardReset)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.Control(goipmi.ControlPowerHardReset)
+	})
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.SetChassisControl(goipmi.ControlPowerCycle)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.Control(goipmi.ControlPowerCycle)
+	})
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.SetChassisIdentifyLEDState(state)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDState(state)
+	})
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.SetChassisIdentifyLEDOn()
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDOn()
+	})
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.SetChassisIdentifyLEDOff()
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetChassisIdentifyLEDOff()
+	})
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ob.SetBootOrder(bootTarget)
+	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+		return client.SetBootOrder(bootTarget, ob.Compliance)
+	})
 }
 
 func (ob *outBand) Describe() string {

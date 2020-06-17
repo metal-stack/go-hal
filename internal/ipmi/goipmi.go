@@ -2,6 +2,9 @@ package ipmi
 
 import (
 	"errors"
+	"fmt"
+	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/pkg/api"
 	goipmi "github.com/vmware/goipmi"
 )
 
@@ -55,7 +58,26 @@ type ChassisIdentifyResponse struct {
 	goipmi.CompletionCode
 }
 
-func (cc *ClientConnection) SetChassisIdentify(forceOn uint8) error {
+func (cc *ClientConnection) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
+	switch state {
+	case hal.IdentifyLEDStateOff:
+		return cc.SetChassisIdentifyLEDOff()
+	case hal.IdentifyLEDStateOn:
+		return cc.SetChassisIdentifyLEDOn()
+	default:
+		return fmt.Errorf("unknown identify LED state: %s", state)
+	}
+}
+
+func (cc *ClientConnection) SetChassisIdentifyLEDOff() error {
+	return cc.setChassisIdentifyLED(False)
+}
+
+func (cc *ClientConnection) SetChassisIdentifyLEDOn() error {
+	return cc.setChassisIdentifyLED(True)
+}
+
+func (cc *ClientConnection) setChassisIdentifyLED(forceOn uint8) error {
 	r := &goipmi.Request{
 		NetworkFunction: goipmi.NetworkFunctionChassis,
 		Command:         goipmi.Command(ChassisIdentify),
@@ -75,6 +97,36 @@ func (cc *ClientConnection) SetChassisIdentify(forceOn uint8) error {
 	return nil
 }
 
-func (cc *ClientConnection) SetChassisControl(control goipmi.ChassisControl) error {
-	return cc.Control(control)
+func (cc *ClientConnection) SetBootOrder(bootTarget hal.BootTarget, compliance api.Compliance) error {
+	useProgress := true
+	// set set-in-progress flag
+	err := cc.SetSystemBoot(goipmi.BootParamSetInProgress, 1)
+	if err != nil {
+		useProgress = false
+	}
+
+	err = cc.SetSystemBoot(goipmi.BootParamInfoAck, 1, 1)
+	if err != nil {
+		if useProgress {
+			// set-in-progress = set-complete
+			_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
+		}
+		return err
+	}
+
+	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, compliance)
+	err = cc.SetSystemBoot(goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
+	if err == nil {
+		if useProgress {
+			// set-in-progress = commit-write
+			_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 2)
+		}
+	}
+
+	if useProgress {
+		// set-in-progress = set-complete
+		_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
+	}
+
+	return err
 }
