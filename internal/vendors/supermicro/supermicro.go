@@ -55,12 +55,8 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) 
 	if err != nil {
 		return nil, err
 	}
-	ob, err := outband.New(r, board, compliance, ip, user, password)
-	if err != nil {
-		return nil, err
-	}
 	return &outBand{
-		OutBand: ob,
+		OutBand: outband.New(r, board, compliance, ip, user, password),
 		sum:     rs,
 	}, nil
 }

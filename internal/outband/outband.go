@@ -18,7 +18,7 @@ type OutBand struct {
 	password   string
 }
 
-func New(r *redfish.APIClient, board *api.Board, compliance api.Compliance, ip, user, password string) (*OutBand, error) {
+func New(r *redfish.APIClient, board *api.Board, compliance api.Compliance, ip, user, password string) *OutBand {
 	return &OutBand{
 		Redfish:    r,
 		board:      board,
@@ -26,7 +26,7 @@ func New(r *redfish.APIClient, board *api.Board, compliance api.Compliance, ip, 
 		ip:         ip,
 		user:       user,
 		password:   password,
-	}, nil
+	}
 }
 
 func (ob *OutBand) Board() *api.Board {
