@@ -75,31 +75,6 @@ func (cc *ClientConnection) SetChassisIdentify(forceOn uint8) error {
 	return nil
 }
 
-// ChassisControlRequest per section 28.3
-type ChassisControlRequest struct {
-	control uint8
-}
-
-// ChassisControlResponse per section 28.3
-type ChassisControlResponse struct {
-	goipmi.CompletionCode
-}
-
 func (cc *ClientConnection) SetChassisControl(control goipmi.ChassisControl) error {
-	r := &goipmi.Request{
-		NetworkFunction: goipmi.NetworkFunctionChassis,
-		Command:         goipmi.Command(ChassisIdentify),
-		Data: &ChassisControlRequest{
-			control: uint8(control),
-		},
-	}
-	resp := &ChassisControlResponse{}
-	err := cc.Send(r, resp)
-	if err != nil {
-		return err
-	}
-	if goipmi.CompletionCode(resp.CompletionCode.Code()) != goipmi.CommandCompleted {
-		return errors.New(resp.Error())
-	}
-	return nil
+	return cc.Control(control)
 }
