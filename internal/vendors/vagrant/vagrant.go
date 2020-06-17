@@ -52,6 +52,10 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) 
 }
 
 // InBand
+func (ib *inBand) PowerOff() error {
+	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
+
 func (ib *inBand) PowerCycle() error {
 	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
@@ -107,6 +111,10 @@ func (ob *outBand) UUID() (*uuid.UUID, error) {
 
 func (ob *outBand) PowerState() (hal.PowerState, error) {
 	return ob.Redfish.PowerState()
+}
+
+func (ob *outBand) PowerOff() error {
+	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
 
 func (ob *outBand) PowerOn() error {

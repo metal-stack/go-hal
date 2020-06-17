@@ -24,7 +24,8 @@ const (
 type ChassisControlFunction = uint8
 
 const (
-	ChassisControlPowerUp ChassisControlFunction = iota + 1
+	ChassisControlPowerDown ChassisControlFunction = iota
+	ChassisControlPowerUp
 	ChassisControlPowerCycle
 	ChassisControlHardReset
 	ChassisControlPulseDiagnosticInterrupt

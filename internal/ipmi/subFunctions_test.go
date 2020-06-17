@@ -19,6 +19,7 @@ func TestSpecSubFunctions(t *testing.T) {
 	require.Equal(t, uint8(11), OSLoaderHasHandledBootInfo)
 	require.Equal(t, uint8(12), BIOSPOSTHasHandledBootInfo)
 
+	require.Equal(t, uint8(0), ChassisControlPowerDown)
 	require.Equal(t, uint8(1), ChassisControlPowerUp)
 	require.Equal(t, uint8(2), ChassisControlPowerCycle)
 	require.Equal(t, uint8(3), ChassisControlHardReset)
