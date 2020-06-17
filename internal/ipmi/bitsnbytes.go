@@ -1,5 +1,12 @@
 package ipmi
 
+type Bool = uint8
+
+const (
+	False Bool = iota
+	True
+)
+
 func fixedBytes(s string, length int) []uint8 {
 	bb := make([]byte, length)
 	for i, b := range []byte(s) {

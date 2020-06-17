@@ -2,44 +2,33 @@ package supermicro
 
 import (
 	"fmt"
-	goipmi "github.com/vmware/goipmi"
-
 	"github.com/google/uuid"
-	hal "github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/bios"
+	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
-	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
-	"github.com/metal-stack/go-hal/internal/vendors/common"
 	"github.com/metal-stack/go-hal/pkg/api"
+)
+
+const (
+	sumBin     = "sum"
+	compliance = api.SMCIPMIToolCompliance
 )
 
 type (
 	inBand struct {
-		common *common.Common
-		i      ipmi.Ipmi
-		board  *api.Board
-		sum    *sum
+		*inband.InBand
+		sum *sum
 	}
 	outBand struct {
-		common     *common.Common
-		compliance api.Compliance
-		board      *api.Board
-		sum        *sum
-		ip         string
-		user       string
-		password   string
+		*outband.OutBand
+		sum *sum
 	}
-)
-
-const (
-	sumBin      = "sum"
-	ipmiToolBin = "ipmitool"
-	compliance  = api.SMCIPMIToolCompliance
 )
 
 var (
-	// errorNotImplemented for all funcs which are not implemented yet
+	// errorNotImplemented for all functions that are not implemented yet
 	errorNotImplemented = fmt.Errorf("not implemented yet")
 )
 
@@ -49,116 +38,78 @@ func InBand(board *api.Board) (hal.InBand, error) {
 	if err != nil {
 		return nil, err
 	}
-	i, err := ipmi.New(ipmiToolBin, compliance)
+	ib, err := inband.New(compliance, board, true)
 	if err != nil {
 		return nil, err
 	}
-	bmc, err := i.BMC()
-	if err != nil {
-		return nil, err
-	}
-	board.BMC = bmc
-	board.BIOS = bios.Bios()
-	board.Firmware = kernel.Firmware()
-
 	return &inBand{
-		common: common.New(nil),
-		i:      i,
-		board:  board,
+		InBand: ib,
 		sum:    s,
 	}, nil
 }
 
 // OutBand creates an outband connection to a supermicro server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) (hal.OutBand, error) {
-	s, err := newRemoteSum(sumBin, ip, user, password)
+	rs, err := newRemoteSum(sumBin, ip, user, password)
+	if err != nil {
+		return nil, err
+	}
+	ob, err := outband.New(r, board, compliance, ip, user, password)
 	if err != nil {
 		return nil, err
 	}
 	return &outBand{
-		common:     common.New(r),
-		board:      board,
-		sum:        s,
-		ip:         ip,
-		user:       user,
-		password:   password,
-		compliance: compliance,
+		OutBand: ob,
+		sum:     rs,
 	}, nil
 }
 
 // InBand
-func (i *inBand) Board() *api.Board {
-	return i.board
+func (ib *inBand) PowerCycle() error {
+	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
-func (i *inBand) UUID() (*uuid.UUID, error) {
-	return i.common.UUID()
+func (ib *inBand) PowerReset() error {
+	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
-func (i *inBand) PowerOff() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerUp)
+func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return ib.Ipmi.SetChassisIdentifyLEDState(state)
 }
 
-func (i *inBand) PowerCycle() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerCycle)
+func (ib *inBand) IdentifyLEDOn() error {
+	return ib.Ipmi.SetChassisIdentifyLEDOn()
 }
 
-func (i *inBand) PowerReset() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlHardReset)
+func (ib *inBand) IdentifyLEDOff() error {
+	return ib.Ipmi.SetChassisIdentifyLEDOff()
 }
 
-func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	switch state {
-	case hal.IdentifyLEDStateOn:
-		return i.IdentifyLEDOn()
-	case hal.IdentifyLEDStateOff:
-		return i.IdentifyLEDOff()
-	default:
-		return fmt.Errorf("unknown identify LED state: %s", state)
-	}
+func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
+	return ib.Ipmi.SetBootOrder(bootTarget)
 }
 
-func (i *inBand) IdentifyLEDOn() error {
-	return i.i.SetChassisIdentifyLEDOn()
-}
-
-func (i *inBand) IdentifyLEDOff() error {
-	return i.i.SetChassisIdentifyLEDOff()
-}
-
-func (i *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return i.i.SetBootOrder(bootTarget)
-}
-
-func (i *inBand) Firmware() (hal.FirmwareMode, error) {
-	return i.common.Firmware()
-}
-
-func (i *inBand) SetFirmware(hal.FirmwareMode) error {
+func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
 	return errorNotImplemented //TODO
 }
 
-func (i *inBand) Describe() string {
+func (ib *inBand) Describe() string {
 	return "InBand connected to Supermicro"
 }
 
-func (i *inBand) BMCPresent() bool {
-	return i.i.DevicePresent()
+func (ib *inBand) BMCPresent() bool {
+	return ib.Ipmi.DevicePresent()
 }
 
-func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
-	return i.i.CreateUser(username, uid, ipmi.AdministratorPrivilege)
+func (ib *inBand) BMCCreateUser(username, uid string) (string, error) {
+	return ib.Ipmi.CreateUser(username, uid, ipmi.AdministratorPrivilege)
 }
 
 // OutBand
-func (o *outBand) Board() *api.Board {
-	return o.board
-}
-
-func (o *outBand) UUID() (*uuid.UUID, error) {
-	u, err := o.common.APIClient.MachineUUID()
+func (ob *outBand) UUID() (*uuid.UUID, error) {
+	u, err := ob.Redfish.MachineUUID()
 	if err != nil {
-		u, err = o.sum.uuidRemote()
+		u, err = ob.sum.uuidRemote()
 		if err != nil {
 			return nil, err
 		}
@@ -170,107 +121,38 @@ func (o *outBand) UUID() (*uuid.UUID, error) {
 	return &us, nil
 }
 
-func (o *outBand) PowerState() (hal.PowerState, error) {
-	return o.common.PowerState()
+func (ob *outBand) PowerState() (hal.PowerState, error) {
+	return ob.Redfish.PowerState()
 }
 
-func (o *outBand) PowerOn() error {
-	return o.setChassisControl(goipmi.ControlPowerUp)
+func (ob *outBand) PowerOn() error {
+	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerUp)
 }
 
-func (o *outBand) PowerOff() error {
-	return o.setChassisControl(goipmi.ControlPowerDown)
+func (ob *outBand) PowerReset() error {
+	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
-func (o *outBand) PowerReset() error {
-	return o.setChassisControl(goipmi.ControlPowerHardReset)
+func (ob *outBand) PowerCycle() error {
+	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
-func (o *outBand) PowerCycle() error {
-	return o.setChassisControl(goipmi.ControlPowerCycle)
+func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return ob.Ipmi.SetChassisIdentifyLEDState(state)
 }
 
-func (o *outBand) setChassisControl(chassisControl goipmi.ChassisControl) error {
-	client, err := ipmi.OpenClientConnection(o.Connection())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	return client.Control(chassisControl)
+func (ob *outBand) IdentifyLEDOn() error {
+	return ob.Ipmi.SetChassisIdentifyLEDOn()
 }
 
-func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	switch state {
-	case hal.IdentifyLEDStateOn:
-		return o.IdentifyLEDOn()
-	case hal.IdentifyLEDStateOff:
-		return o.IdentifyLEDOff()
-	default:
-		return fmt.Errorf("unknown identify LED state: %s", state)
-	}
+func (ob *outBand) IdentifyLEDOff() error {
+	return ob.Ipmi.SetChassisIdentifyLEDOff()
 }
 
-func (o *outBand) IdentifyLEDOn() error {
-	return o.setChassisIdentify(0x01)
+func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
+	return ob.Ipmi.SetBootOrder(bootTarget)
 }
 
-func (o *outBand) IdentifyLEDOff() error {
-	return o.setChassisIdentify(0x00)
-}
-
-func (o *outBand) setChassisIdentify(forceOn uint8) error {
-	client, err := ipmi.OpenClientConnection(o.Connection())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	return ipmi.SetChassisIdentify(client, forceOn)
-}
-
-func (o *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	client, err := ipmi.OpenClientConnection(o.Connection())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	useProgress := true
-	// set set-in-progress flag
-	err = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 1)
-	if err != nil {
-		useProgress = false
-	}
-
-	err = ipmi.SetSystemBoot(client, goipmi.BootParamInfoAck, 1, 1)
-	if err != nil {
-		if useProgress {
-			// set-in-progress = set-complete
-			_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 0)
-		}
-		return err
-	}
-
-	uefiQualifier, bootDevQualifier := ipmi.GetBootOrderQualifiers(bootTarget, o.compliance)
-	err = ipmi.SetSystemBoot(client, goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
-	if err == nil {
-		if useProgress {
-			// set-in-progress = commit-write
-			_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 2)
-		}
-	}
-
-	if useProgress {
-		// set-in-progress = set-complete
-		_ = ipmi.SetSystemBoot(client, goipmi.BootParamSetInProgress, 0)
-	}
-
-	return err
-}
-
-func (o *outBand) Describe() string {
+func (ob *outBand) Describe() string {
 	return "OutBand connected to Supermicro"
-}
-
-func (o *outBand) Connection() (string, string, string) {
-	return o.ip, o.user, o.password
 }

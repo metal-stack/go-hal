@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,13 +22,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/password"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
-)
-
-type Bool = uint8
-
-const (
-	False Bool = iota
-	True
 )
 
 // Privilege of an ipmitool user
@@ -53,9 +47,11 @@ type Ipmi interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
+	CreateUserRaw(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget) error
-	ExecuteChassisControlFunction(ChassisControlFunction) error
+	SetChassisControl(ChassisControlFunction) error
+	SetChassisIdentifyLEDState(hal.IdentifyLEDState) error
 	SetChassisIdentifyLEDOn() error
 	SetChassisIdentifyLEDOff() error
 	GetFru() (Fru, error)
@@ -290,6 +286,55 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	return pw, nil
 }
 
+func (i *Ipmitool) CreateUserRaw(username, uid string, privilege Privilege) (string, error) {
+	var out []string
+	id, err := strconv.Atoi(uid)
+	if err != nil {
+		return "", errors.Wrapf(err, "invalid userID:%s", uid)
+	}
+	userID := uint8(id)
+
+	o, err := i.Run(RawSetUserName(userID, username)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.Run(RawDisableUser(userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	pw := password.Generate(10)
+	o, err = i.Run(RawSetUserPassword(userID, pw)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.Run(RawEnableUser(userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	channelNumber := uint8(1)
+	o, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	o, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
+	if err != nil {
+		return "", err
+	}
+	out = append(out, o)
+
+	return strings.Join(out, "\n"), nil
+}
+
 // SetBootOrder persistently sets the boot order to given bootTarget as raw bytes.
 func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
 	out, err := i.Run(RawSetSystemBootOptions(target, i.compliance)...)
@@ -299,13 +344,25 @@ func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
 	return nil
 }
 
-// ExecuteChassisControlFunction executes the given chassis control function.
-func (i *Ipmitool) ExecuteChassisControlFunction(fn ChassisControlFunction) error {
+// SetChassisControl executes the given chassis control function.
+func (i *Ipmitool) SetChassisControl(fn ChassisControlFunction) error {
 	_, err := i.Run(RawChassisControl(fn)...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to set chassis control function:%X", fn)
 	}
 	return nil
+}
+
+// SetChassisIdentifyLEDOn turns on the chassis identify LED.
+func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
+	switch state {
+	case hal.IdentifyLEDStateOn:
+		return i.SetChassisIdentifyLEDOn()
+	case hal.IdentifyLEDStateOff:
+		return i.SetChassisIdentifyLEDOff()
+	default:
+		return fmt.Errorf("unknown identify LED state: %s", state)
+	}
 }
 
 // SetChassisIdentifyLEDOn turns on the chassis identify LED.

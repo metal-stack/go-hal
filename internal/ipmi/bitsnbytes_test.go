@@ -5,6 +5,11 @@ import (
 	"testing"
 )
 
+func TestBoolValues(t *testing.T) {
+	require.Equal(t, uint8(0), False)
+	require.Equal(t, uint8(1), True)
+}
+
 func Test_fixedBytes(t *testing.T) {
 	require.Equal(t, []uint8{116, 101, 115, 116}, fixedBytes("test", 4))
 	require.Equal(t, []uint8{116, 101, 115, 116, 0}, fixedBytes("test", 5))

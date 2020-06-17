@@ -4,194 +4,97 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/bios"
+	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
-	"github.com/metal-stack/go-hal/internal/kernel"
-	"github.com/metal-stack/go-hal/internal/password"
+	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
-	"github.com/metal-stack/go-hal/internal/vendors/common"
 	"github.com/metal-stack/go-hal/pkg/api"
-	"github.com/pkg/errors"
-	goipmi "github.com/vmware/goipmi"
-	"strconv"
-	"strings"
+)
+
+var (
+	// errorNotImplemented for all functions that are not implemented yet
+	errorNotImplemented = fmt.Errorf("not implemented yet")
+)
+
+const (
+	compliance = api.IPMI2Compliance
 )
 
 type (
 	inBand struct {
-		common *common.Common
-		i      ipmi.Ipmi
-		board  *api.Board
+		*inband.InBand
 	}
 	outBand struct {
-		common     *common.Common
-		compliance api.Compliance
-		board      *api.Board
-		ip         string
-		user       string
-		password   string
+		*outband.OutBand
 	}
-)
-
-const (
-	ipmiToolBin = "ipmitool"
-	compliance  = api.IPMI2Compliance
-)
-
-var (
-	// errorNotImplemented for all funcs which are not implemented yet
-	errorNotImplemented = fmt.Errorf("not implemented yet")
 )
 
 // InBand creates an inband connection to a Lenovo server.
 func InBand(board *api.Board) (hal.InBand, error) {
-	i, err := ipmi.New(ipmiToolBin, compliance)
+	ib, err := inband.New(compliance, board, true)
 	if err != nil {
 		return nil, err
 	}
-	bmc, err := i.BMC()
-	if err != nil {
-		return nil, err
-	}
-	board.BMC = bmc
-	board.BIOS = bios.Bios()
-	board.Firmware = kernel.Firmware()
-
 	return &inBand{
-		common: common.New(nil),
-		i:      i,
-		board:  board,
+		InBand: ib,
 	}, nil
 }
 
 // OutBand creates an outband connection to a Lenovo server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) (hal.OutBand, error) {
+	ob, err := outband.New(r, board, compliance, ip, user, password)
+	if err != nil {
+		return nil, err
+	}
 	return &outBand{
-		common:     common.New(r),
-		compliance: compliance,
-		board:      board,
-		ip:         ip,
-		user:       user,
-		password:   password,
+		OutBand: ob,
 	}, nil
 }
 
 // InBand
-func (i *inBand) Board() *api.Board {
-	return i.board
+func (ib *inBand) PowerCycle() error {
+	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
-func (i *inBand) UUID() (*uuid.UUID, error) {
-	return i.common.UUID()
+func (ib *inBand) PowerReset() error {
+	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
-func (i *inBand) PowerOff() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerUp)
+func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return ib.Ipmi.SetChassisIdentifyLEDState(state)
 }
 
-func (i *inBand) PowerCycle() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlPowerCycle)
+func (ib *inBand) IdentifyLEDOn() error {
+	return ib.Ipmi.SetChassisIdentifyLEDOn()
 }
 
-func (i *inBand) PowerReset() error {
-	return i.i.ExecuteChassisControlFunction(ipmi.ChassisControlHardReset)
+func (ib *inBand) IdentifyLEDOff() error {
+	return ib.Ipmi.SetChassisIdentifyLEDOff()
 }
 
-func (i *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	switch state {
-	case hal.IdentifyLEDStateOn:
-		return i.IdentifyLEDOn()
-	case hal.IdentifyLEDStateOff:
-		return i.IdentifyLEDOff()
-	default:
-		return fmt.Errorf("unknown identify LED state: %s", state)
-	}
+func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
+	return ib.Ipmi.SetBootOrder(bootTarget)
 }
 
-func (i *inBand) IdentifyLEDOn() error {
-	return i.i.SetChassisIdentifyLEDOn()
-}
-
-func (i *inBand) IdentifyLEDOff() error {
-	return i.i.SetChassisIdentifyLEDOff()
-}
-
-func (i *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return i.i.SetBootOrder(bootTarget)
-}
-
-func (i *inBand) Firmware() (hal.FirmwareMode, error) {
-	return i.common.Firmware()
-}
-
-func (i *inBand) SetFirmware(hal.FirmwareMode) error {
+func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
 	return errorNotImplemented //TODO
 }
 
-func (i *inBand) Describe() string {
+func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
-func (i *inBand) BMCPresent() bool {
-	return i.i.DevicePresent()
+func (ib *inBand) BMCPresent() bool {
+	return ib.Ipmi.DevicePresent()
 }
 
-func (i *inBand) BMCCreateUser(username, uid string) (string, error) {
-	var out []string
-	id, err := strconv.Atoi(uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "invalid userID:%s", uid)
-	}
-	userID := uint8(id)
-
-	o, err := i.i.Run(ipmi.RawSetUserName(userID, username)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.i.Run(ipmi.RawDisableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	pw := password.Generate(10)
-	o, err = i.i.Run(ipmi.RawSetUserPassword(userID, pw)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.i.Run(ipmi.RawEnableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	channelNumber := uint8(1)
-	o, err = i.i.Run(ipmi.RawUserAccess(channelNumber, userID, ipmi.AdministratorPrivilege)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.i.Run(ipmi.RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	return strings.Join(out, "\n"), nil
+func (ib *inBand) BMCCreateUser(username, uid string) (string, error) {
+	return ib.Ipmi.CreateUserRaw(username, uid, ipmi.AdministratorPrivilege)
 }
 
 // OutBand
-func (o *outBand) Board() *api.Board {
-	return o.board
-}
-
-func (o *outBand) UUID() (*uuid.UUID, error) {
-	u, err := o.common.MachineUUID()
+func (ob *outBand) UUID() (*uuid.UUID, error) {
+	u, err := ob.Redfish.MachineUUID()
 	if err != nil {
 		return nil, err
 	}
@@ -202,67 +105,38 @@ func (o *outBand) UUID() (*uuid.UUID, error) {
 	return &us, nil
 }
 
-func (o *outBand) PowerState() (hal.PowerState, error) {
-	return o.common.PowerState()
+func (ob *outBand) PowerState() (hal.PowerState, error) {
+	return ob.Redfish.PowerState()
 }
 
-func (o *outBand) PowerOn() error {
-	return o.common.PowerReset() // PowerOn is not supported
+func (ob *outBand) PowerOn() error {
+	return ob.Redfish.PowerReset() // PowerOn is not supported
 }
 
-func (o *outBand) PowerOff() error {
-	client, err := ipmi.OpenClientConnection(o.Connection())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	return client.Control(goipmi.ControlPowerDown)
+func (ob *outBand) PowerReset() error {
+	return ob.Redfish.PowerReset()
 }
 
-func (o *outBand) PowerReset() error {
-	return o.common.PowerReset()
+func (ob *outBand) PowerCycle() error {
+	return ob.Redfish.PowerReset() // PowerCycle is not supported
 }
 
-func (o *outBand) PowerCycle() error {
-	return o.common.PowerReset() // PowerCycle is not supported
+func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return ob.Ipmi.SetChassisIdentifyLEDState(state)
 }
 
-func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	switch state {
-	case hal.IdentifyLEDStateOn:
-		return o.IdentifyLEDOn()
-	case hal.IdentifyLEDStateOff:
-		return o.IdentifyLEDOff()
-	default:
-		return fmt.Errorf("unknown identify LED state: %s", state)
-	}
+func (ob *outBand) IdentifyLEDOn() error {
+	return ob.Ipmi.SetChassisIdentifyLEDOn()
 }
 
-func (o *outBand) IdentifyLEDOn() error {
-	return o.setChassisIdentify(0x01)
+func (ob *outBand) IdentifyLEDOff() error {
+	return ob.Ipmi.SetChassisIdentifyLEDOff()
 }
 
-func (o *outBand) IdentifyLEDOff() error {
-	return o.setChassisIdentify(0x00)
+func (ob *outBand) BootFrom(target hal.BootTarget) error {
+	return ob.Redfish.SetBootOrder(target, api.VendorLenovo)
 }
 
-func (o *outBand) setChassisIdentify(forceOn uint8) error {
-	client, err := ipmi.OpenClientConnection(o.Connection())
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	return ipmi.SetChassisIdentify(client, forceOn)
-}
-
-func (o *outBand) BootFrom(target hal.BootTarget) error {
-	return o.common.SetBootOrder(target, api.VendorLenovo)
-}
-
-func (o *outBand) Describe() string {
+func (ob *outBand) Describe() string {
 	return "OutBand connected to Lenovo"
-}
-
-func (o *outBand) Connection() (string, string, string) {
-	return o.ip, o.user, o.password
 }

@@ -99,8 +99,6 @@ type InBand interface {
 	// current usage in metal-hammer
 	UUID() (*uuid.UUID, error)
 
-	// PowerOff set power state of the server to off
-	PowerOff() error
 	// PowerOff reset the power state of the server
 	PowerReset() error
 	// PowerCycle cycle the power state of the server
@@ -148,8 +146,6 @@ type OutBand interface {
 	// PowerOn set power state of the server to on
 	PowerOn() error
 	// PowerOff set power state of the server to off
-	PowerOff() error
-	// PowerOff reset the power state of the server
 	PowerReset() error
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error

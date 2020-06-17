@@ -11,5 +11,4 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/stmcginnis/gofish v0.4.0
 	github.com/stretchr/testify v1.5.1
-	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
 )
