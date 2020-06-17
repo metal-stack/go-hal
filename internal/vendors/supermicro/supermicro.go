@@ -9,6 +9,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
+	goipmi "github.com/vmware/goipmi"
 )
 
 const (
@@ -130,35 +131,35 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerDown)
+	return ob.SetChassisControl(goipmi.ControlPowerDown)
 }
 
 func (ob *outBand) PowerOn() error {
-	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerUp)
+	return ob.SetChassisControl(goipmi.ControlPowerUp)
 }
 
 func (ob *outBand) PowerReset() error {
-	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlHardReset)
+	return ob.SetChassisControl(goipmi.ControlPowerHardReset)
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
+	return ob.SetChassisControl(goipmi.ControlPowerCycle)
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Ipmi.SetChassisIdentifyLEDState(state)
+	return ob.SetChassisIdentifyLEDState(state)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Ipmi.SetChassisIdentifyLEDOn()
+	return ob.SetChassisIdentifyLEDOn()
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Ipmi.SetChassisIdentifyLEDOff()
+	return ob.SetChassisIdentifyLEDOff()
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ob.Ipmi.SetBootOrder(bootTarget)
+	return ob.SetBootOrder(bootTarget)
 }
 
 func (ob *outBand) Describe() string {

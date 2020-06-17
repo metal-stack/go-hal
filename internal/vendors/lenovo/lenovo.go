@@ -114,7 +114,7 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.Ipmi.SetChassisControl(ipmi.ChassisControlPowerDown)
+	return ob.Redfish.PowerOff()
 }
 
 func (ob *outBand) PowerOn() error {
@@ -130,15 +130,15 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Ipmi.SetChassisIdentifyLEDState(state)
+	return ob.SetChassisIdentifyLEDState(state)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Ipmi.SetChassisIdentifyLEDOn()
+	return ob.SetChassisIdentifyLEDOn()
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Ipmi.SetChassisIdentifyLEDOff()
+	return ob.SetChassisIdentifyLEDOff()
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
