@@ -11,13 +11,12 @@ import (
 )
 
 type InBand struct {
-	Ipmi       ipmi.Ipmi
-	board      *api.Board
-	compliance api.Compliance
+	Ipmi  ipmi.Ipmi
+	board *api.Board
 }
 
-func New(compliance api.Compliance, board *api.Board, inspectBMC bool) (*InBand, error) {
-	i, err := ipmi.New("ipmitool", compliance)
+func New(board *api.Board, inspectBMC bool) (*InBand, error) {
+	i, err := ipmi.New("ipmitool")
 	if err != nil {
 		return nil, err
 	}
@@ -33,9 +32,8 @@ func New(compliance api.Compliance, board *api.Board, inspectBMC bool) (*InBand,
 	}
 
 	return &InBand{
-		Ipmi:       i,
-		board:      board,
-		compliance: compliance,
+		Ipmi:  i,
+		board: board,
 	}, nil
 }
 

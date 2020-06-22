@@ -49,7 +49,7 @@ type Ipmi interface {
 	CreateUser(username, uid string, privilege Privilege) (string, error)
 	CreateUserRaw(username, uid string, privilege Privilege) (string, error)
 	GetLanConfig() (LanConfig, error)
-	SetBootOrder(target hal.BootTarget) error
+	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
 	SetChassisIdentifyLEDState(hal.IdentifyLEDState) error
 	SetChassisIdentifyLEDOn() error
@@ -61,8 +61,7 @@ type Ipmi interface {
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os.
 type Ipmitool struct {
-	command    string
-	compliance api.Compliance
+	command string
 }
 
 // LanConfig contains the config of IPMI.
@@ -128,14 +127,13 @@ type BMCInfo struct {
 }
 
 // New creates a new Ipmitool with the default command
-func New(ipmitoolBin string, compliance api.Compliance) (Ipmi, error) {
+func New(ipmitoolBin string) (Ipmi, error) {
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
 	}
 	return &Ipmitool{
-		command:    ipmitoolBin,
-		compliance: compliance,
+		command: ipmitoolBin,
 	}, nil
 }
 
@@ -336,8 +334,8 @@ func (i *Ipmitool) CreateUserRaw(username, uid string, privilege Privilege) (str
 }
 
 // SetBootOrder persistently sets the boot order to given bootTarget as raw bytes.
-func (i *Ipmitool) SetBootOrder(target hal.BootTarget) error {
-	out, err := i.Run(RawSetSystemBootOptions(target, i.compliance)...)
+func (i *Ipmitool) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
+	out, err := i.Run(RawSetSystemBootOptions(target, vendor)...)
 	if err != nil {
 		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", target, out)
 	}
@@ -420,19 +418,19 @@ func from(target interface{}, input map[string]string) {
 }
 
 const (
-	persistentLegacyQualifier = uint8(0xFF)
-	persistentUEFIQualifier   = uint8(0xE0)
+	nextBootUEFIQualifier   = uint8(0xA0)
+	persistentUEFIQualifier = uint8(0xE0)
 
 	pxeQualifier = uint8(0x04)
 
-	ipmi2HDQualifier       = uint8(0x08)
-	smcipmitoolHDQualifier = uint8(0x24)
+	hdQualifier           = uint8(0x08)
+	supermicroHDQualifier = uint8(0x24)
 
 	biosQualifier = uint8(0x18)
 )
 
 // GetBootOrderQualifiers returns the qualifiers needed to persistently set the the given bootOrder according to the given compliance.
-func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance) (uefiQualifier, bootDevQualifier uint8) {
+func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQualifier, bootDevQualifier uint8) {
 	/*
 	   Set boot order to UEFI PXE persistently:
 	   raw 0x00 0x08 0x05 0xe0 0x04 0x00 0x00 0x00  (conforms to IPMI 2.0 as well as SMCIPMITool)
@@ -441,9 +439,8 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance
 	   raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00  (IPMI 2.0)
 	   raw 0x00 0x08 0x05 0xe0 0x24 0x00 0x00 0x00  (SMCIPMITool)
 
-	   Set boot order to (UEFI) BIOS persistently:
-	   raw 0x00 0x08 0x05 0xe0 0x18 0x00 0x00 0x00  (IPMI 2.0   , UEFI BIOS)
-	   raw 0x00 0x08 0x05 0xff 0x18 0x00 0x00 0x00  (SMCIPMITool, legacy BIOS)
+	   Set boot order to UEFI BIOS on next boot only:
+	   raw 0x00 0x08 0x05 0xa0 0x18 0x00 0x00 0x00  (IPMI 2.0)
 
 	   See https://github.com/metal-stack/metal/issues/73#note_151375
 
@@ -456,19 +453,14 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, compliance api.Compliance
 		bootDevQualifier = pxeQualifier
 	case hal.BootTargetDisk:
 		uefiQualifier = persistentUEFIQualifier
-		switch compliance {
-		case api.IPMI2Compliance:
-			bootDevQualifier = ipmi2HDQualifier
-		case api.SMCIPMIToolCompliance:
-			bootDevQualifier = smcipmitoolHDQualifier
+		switch vendor {
+		case api.VendorSupermicro:
+			bootDevQualifier = supermicroHDQualifier
+		default:
+			bootDevQualifier = hdQualifier
 		}
 	case hal.BootTargetBIOS:
-		switch compliance {
-		case api.IPMI2Compliance:
-			uefiQualifier = persistentUEFIQualifier
-		case api.SMCIPMIToolCompliance:
-			uefiQualifier = persistentLegacyQualifier
-		}
+		uefiQualifier = nextBootUEFIQualifier
 		bootDevQualifier = biosQualifier
 	}
 

@@ -21,12 +21,19 @@ func TestRawCommands(t *testing.T) {
 	require.Equal(t, []string{"raw", "6", "71", "2", "0"}, RawDisableUser(uid))
 	require.Equal(t, []string{"raw", "6", "71", "2", "1"}, RawEnableUser(uid))
 	require.Equal(t, []string{"raw", "6", "71", "130", "2", "115", "101", "99", "114", "101", "116", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}, RawSetUserPassword(uid, userPassword))
-	require.Equal(t, []string{"raw", "0", "8", "5", "224", "4", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetPXE, api.IPMI2Compliance))
-	require.Equal(t, []string{"raw", "0", "8", "5", "224", "8", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetDisk, api.IPMI2Compliance))
-	require.Equal(t, []string{"raw", "0", "8", "5", "224", "24", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetBIOS, api.IPMI2Compliance))
-	require.Equal(t, []string{"raw", "0", "8", "5", "224", "4", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetPXE, api.SMCIPMIToolCompliance))
-	require.Equal(t, []string{"raw", "0", "8", "5", "224", "36", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetDisk, api.SMCIPMIToolCompliance))
-	require.Equal(t, []string{"raw", "0", "8", "5", "255", "24", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetBIOS, api.SMCIPMIToolCompliance))
+
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "4", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetPXE, api.VendorLenovo))
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "8", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetDisk, api.VendorLenovo))
+	require.Equal(t, []string{"raw", "0", "8", "5", "160", "24", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetBIOS, api.VendorLenovo))
+
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "4", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetPXE, api.VendorSupermicro))
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "36", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetDisk, api.VendorSupermicro))
+	require.Equal(t, []string{"raw", "0", "8", "5", "160", "24", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetBIOS, api.VendorSupermicro))
+
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "4", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetPXE, api.VendorVagrant))
+	require.Equal(t, []string{"raw", "0", "8", "5", "224", "8", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetDisk, api.VendorVagrant))
+	require.Equal(t, []string{"raw", "0", "8", "5", "160", "24", "0", "0", "0"}, RawSetSystemBootOptions(hal.BootTargetBIOS, api.VendorVagrant))
+
 	require.Equal(t, []string{"raw", "0", "2", "1"}, RawChassisControl(ChassisControlPowerUp))
 	require.Equal(t, []string{"raw", "0", "2", "3"}, RawChassisControl(ChassisControlHardReset))
 	require.Equal(t, []string{"raw", "0", "2", "2"}, RawChassisControl(ChassisControlPowerCycle))

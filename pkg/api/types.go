@@ -71,13 +71,6 @@ var (
 	}
 )
 
-type Compliance int
-
-const (
-	IPMI2Compliance Compliance = iota
-	SMCIPMIToolCompliance
-)
-
 type (
 	// Vendor identifies different server vendors
 	Vendor int

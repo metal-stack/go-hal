@@ -17,7 +17,7 @@ var (
 )
 
 const (
-	compliance = api.IPMI2Compliance
+	vendor = api.VendorLenovo
 )
 
 type (
@@ -31,7 +31,7 @@ type (
 
 // InBand creates an inband connection to a Lenovo server.
 func InBand(board *api.Board) (hal.InBand, error) {
-	ib, err := inband.New(compliance, board, true)
+	ib, err := inband.New(board, true)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 // OutBand creates an outband connection to a Lenovo server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) (hal.OutBand, error) {
 	return &outBand{
-		OutBand: outband.New(r, board, compliance, ip, user, password),
+		OutBand: outband.New(r, board, ip, user, password),
 	}, nil
 }
 
@@ -73,7 +73,7 @@ func (ib *inBand) IdentifyLEDOff() error {
 }
 
 func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ib.Ipmi.SetBootOrder(bootTarget)
+	return ib.Ipmi.SetBootOrder(bootTarget, vendor)
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
@@ -126,25 +126,25 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDState(state)
 	})
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOn()
 	})
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOff()
 	})
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return ob.Redfish.SetBootOrder(target, api.VendorLenovo)
+	return ob.Redfish.SetBootOrder(target, vendor)
 }
 
 func (ob *outBand) Describe() string {

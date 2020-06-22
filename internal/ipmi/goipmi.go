@@ -8,11 +8,12 @@ import (
 	goipmi "github.com/vmware/goipmi"
 )
 
-type ClientConnection struct {
+type Client struct {
 	*goipmi.Client
+	api.Vendor
 }
 
-func OpenClientConnection(ip, user, password string) (*ClientConnection, error) {
+func OpenClientConnection(ip, user, password string) (*Client, error) {
 	conn := &goipmi.Connection{
 		Hostname:  ip,
 		Port:      623,
@@ -30,12 +31,12 @@ func OpenClientConnection(ip, user, password string) (*ClientConnection, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &ClientConnection{
+	return &Client{
 		Client: client,
 	}, nil
 }
 
-func (cc *ClientConnection) SetSystemBoot(param uint8, data ...uint8) error {
+func (c *Client) SetSystemBoot(param uint8, data ...uint8) error {
 	r := &goipmi.Request{
 		NetworkFunction: goipmi.NetworkFunctionChassis,
 		Command:         goipmi.CommandSetSystemBootOptions,
@@ -44,7 +45,7 @@ func (cc *ClientConnection) SetSystemBoot(param uint8, data ...uint8) error {
 			Data:  data,
 		},
 	}
-	return cc.Send(r, &goipmi.SetSystemBootOptionsResponse{})
+	return c.Send(r, &goipmi.SetSystemBootOptionsResponse{})
 }
 
 // ChassisIdentifyRequest per section 28.5
@@ -58,26 +59,26 @@ type ChassisIdentifyResponse struct {
 	goipmi.CompletionCode
 }
 
-func (cc *ClientConnection) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
+func (c *Client) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
 	switch state {
 	case hal.IdentifyLEDStateOff:
-		return cc.SetChassisIdentifyLEDOff()
+		return c.SetChassisIdentifyLEDOff()
 	case hal.IdentifyLEDStateOn:
-		return cc.SetChassisIdentifyLEDOn()
+		return c.SetChassisIdentifyLEDOn()
 	default:
 		return fmt.Errorf("unknown identify LED state: %s", state)
 	}
 }
 
-func (cc *ClientConnection) SetChassisIdentifyLEDOff() error {
-	return cc.setChassisIdentifyLED(False)
+func (c *Client) SetChassisIdentifyLEDOff() error {
+	return c.setChassisIdentifyLED(False)
 }
 
-func (cc *ClientConnection) SetChassisIdentifyLEDOn() error {
-	return cc.setChassisIdentifyLED(True)
+func (c *Client) SetChassisIdentifyLEDOn() error {
+	return c.setChassisIdentifyLED(True)
 }
 
-func (cc *ClientConnection) setChassisIdentifyLED(forceOn uint8) error {
+func (c *Client) setChassisIdentifyLED(forceOn uint8) error {
 	r := &goipmi.Request{
 		NetworkFunction: goipmi.NetworkFunctionChassis,
 		Command:         goipmi.Command(ChassisIdentify),
@@ -87,7 +88,7 @@ func (cc *ClientConnection) setChassisIdentifyLED(forceOn uint8) error {
 		},
 	}
 	resp := &ChassisIdentifyResponse{}
-	err := cc.Send(r, resp)
+	err := c.Send(r, resp)
 	if err != nil {
 		return err
 	}
@@ -97,35 +98,35 @@ func (cc *ClientConnection) setChassisIdentifyLED(forceOn uint8) error {
 	return nil
 }
 
-func (cc *ClientConnection) SetBootOrder(bootTarget hal.BootTarget, compliance api.Compliance) error {
+func (c *Client) SetBootOrder(bootTarget hal.BootTarget, vendor api.Vendor) error {
 	useProgress := true
 	// set set-in-progress flag
-	err := cc.SetSystemBoot(goipmi.BootParamSetInProgress, 1)
+	err := c.SetSystemBoot(goipmi.BootParamSetInProgress, 1)
 	if err != nil {
 		useProgress = false
 	}
 
-	err = cc.SetSystemBoot(goipmi.BootParamInfoAck, 1, 1)
+	err = c.SetSystemBoot(goipmi.BootParamInfoAck, 1, 1)
 	if err != nil {
 		if useProgress {
 			// set-in-progress = set-complete
-			_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
+			_ = c.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
 		}
 		return err
 	}
 
-	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, compliance)
-	err = cc.SetSystemBoot(goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
+	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, vendor)
+	err = c.SetSystemBoot(goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
 	if err == nil {
 		if useProgress {
 			// set-in-progress = commit-write
-			_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 2)
+			_ = c.SetSystemBoot(goipmi.BootParamSetInProgress, 2)
 		}
 	}
 
 	if useProgress {
 		// set-in-progress = set-complete
-		_ = cc.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
+		_ = c.SetSystemBoot(goipmi.BootParamSetInProgress, 0)
 	}
 
 	return err

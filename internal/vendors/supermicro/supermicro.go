@@ -18,8 +18,8 @@ var (
 )
 
 const (
-	sumBin     = "sum"
-	compliance = api.SMCIPMIToolCompliance
+	vendor = api.VendorSupermicro
+	sumBin = "sum"
 )
 
 type (
@@ -39,7 +39,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 	if err != nil {
 		return nil, err
 	}
-	ib, err := inband.New(compliance, board, true)
+	ib, err := inband.New(board, true)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) 
 		return nil, err
 	}
 	return &outBand{
-		OutBand: outband.New(r, board, compliance, ip, user, password),
+		OutBand: outband.New(r, board, ip, user, password),
 		sum:     rs,
 	}, nil
 }
@@ -87,7 +87,7 @@ func (ib *inBand) IdentifyLEDOff() error {
 }
 
 func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ib.Ipmi.SetBootOrder(bootTarget)
+	return ib.Ipmi.SetBootOrder(bootTarget, vendor)
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
@@ -127,50 +127,50 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerDown)
 	})
 }
 
 func (ob *outBand) PowerOn() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerUp)
 	})
 }
 
 func (ob *outBand) PowerReset() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerHardReset)
 	})
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerCycle)
 	})
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDState(state)
 	})
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOn()
 	})
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
+	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOff()
 	})
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ob.Goipmi(func(client *ipmi.ClientConnection) error {
-		return client.SetBootOrder(bootTarget, ob.Compliance)
+	return ob.Goipmi(func(client *ipmi.Client) error {
+		return client.SetBootOrder(bootTarget, vendor)
 	})
 }
 

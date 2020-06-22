@@ -34,8 +34,8 @@ func RawSetUserPassword(uid uint8, password string) []string {
 	return rawCommand(args...)
 }
 
-func RawSetSystemBootOptions(target hal.BootTarget, compliance api.Compliance) []string {
-	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(target, compliance)
+func RawSetSystemBootOptions(target hal.BootTarget, vendor api.Vendor) []string {
+	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(target, vendor)
 	return rawCommand(ChassisNetworkFunction, SetSystemBootOptions, BootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
 }
 
