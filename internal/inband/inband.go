@@ -11,8 +11,8 @@ import (
 )
 
 type InBand struct {
-	Ipmi  ipmi.Ipmi
-	board *api.Board
+	IpmiTool ipmi.IpmiTool
+	board    *api.Board
 }
 
 func New(board *api.Board, inspectBMC bool) (*InBand, error) {
@@ -32,8 +32,8 @@ func New(board *api.Board, inspectBMC bool) (*InBand, error) {
 	}
 
 	return &InBand{
-		Ipmi:  i,
-		board: board,
+		IpmiTool: i,
+		board:    board,
 	}, nil
 }
 

@@ -1,10 +1,6 @@
 package ipmi
 
-// IPMI Wiki
-// https://www.thomas-krenn.com/de/wiki/IPMI_Konfiguration_unter_Linux_mittels_ipmitool
-//
-// Oder:
-// https://wiki.hetzner.de/index.php/IPMI
+// https://www.intel.com/content/dam/www/public/us/en/documents/product-briefs/ipmi-second-gen-interface-spec-v2-rev1-1.pdf
 
 import (
 	"bufio"
@@ -24,26 +20,26 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Privilege of an ipmitool user
+// Privilege of an IPMI user
 type Privilege = uint8
 
 const (
-	// Callback ipmi privilege
+	// Callback IPMI privilege
 	CallbackPrivilege Privilege = iota + 1
-	// User ipmi privilege
+	// User IPMI privilege
 	UserPrivilege
-	// Operator ipmi privilege
+	// Operator IPMI privilege
 	OperatorPrivilege
-	// Administrator ipmi privilege
+	// Administrator IPMI privilege
 	AdministratorPrivilege
-	// OEM ipmi privilege
+	// OEM IPMI privilege
 	OEMPrivilege
-	// NoAccess ipmi privilege
+	// NoAccess IPMI privilege
 	NoAccessPrivilege
 )
 
-// Ipmi defines methods to interact with ipmi
-type Ipmi interface {
+// IpmiTool defines methods to interact with IPMI
+type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege Privilege) (string, error)
@@ -59,14 +55,14 @@ type Ipmi interface {
 	BMC() (*api.BMC, error)
 }
 
-// Ipmitool is used to query and modify the IPMI based BMC from the host os.
+// Ipmitool is used to query and modify the IPMI based BMC from the host os
 type Ipmitool struct {
 	command string
 }
 
 // LanConfig contains the config of IPMI.
-// tag must contain first column name of ipmitool lan print command output
-// to get the second column value be parsed into the field.
+// Tag must contain first column name of ipmitool lan print command output
+// to get the second column value be parsed into the field
 type LanConfig struct {
 	IP  string `ipmitool:"IP Address"`
 	Mac string `ipmitool:"MAC Address"`
@@ -82,23 +78,8 @@ type Session struct {
 	Privilege string `ipmitool:"privilege level"`
 }
 
-// Fru contains Field Replacable Unit information, retrieved with ipmitool fru
+// Fru contains Field Replaceable Unit information, retrieved with 'ipmitool fru'
 type Fru struct {
-	// 	FRU Device Description : Builtin FRU Device (ID 0)
-	//  Chassis Type          : Other
-	//  Chassis Part Number   : CSE-217BHQ+-R2K22BP2
-	//  Chassis Serial        : C217BAH31AG0535
-	//  Board Mfg Date        : Mon Jan  1 01:00:00 1996
-	//  Board Mfg             : Supermicro
-	//  Board Product         : NONE
-	//  Board Serial          : HM187S003231
-	//  Board Part Number     : X11DPT-B
-	//  Product Manufacturer  : Supermicro
-	//  Product Name          : NONE
-	//  Product Part Number   : SYS-2029BT-HNTR
-	//  Product Version       : NONE
-	//  Product Serial        : A328789X9108135
-
 	ChassisPartNumber   string `ipmitool:"Chassis Part Number"`
 	ChassisPartSerial   string `ipmitool:"Chassis Serial"`
 	BoardMfg            string `ipmitool:"Board Mfg"`
@@ -109,25 +90,13 @@ type Fru struct {
 	ProductSerial       string `ipmitool:"Product Serial"`
 }
 
-// BMCInfo contains the parsed output of ipmitool bmc info
+// BMCInfo contains the parsed output of 'ipmitool bmc info'
 type BMCInfo struct {
-	// # ipmitool bmc info
-	// Device ID                 : 32
-	// Device Revision           : 1
-	// Firmware Revision         : 1.64
-	// IPMI Version              : 2.0
-	// Manufacturer ID           : 10876
-	// Manufacturer Name         : Supermicro
-	// Product ID                : 2402 (0x0962)
-	// Product Name              : Unknown (0x962)
-	// Device Available          : yes
-	// Provides Device SDRs      : no
-	// Additional Device Support :
 	FirmwareRevision string `ipmitool:"Firmware Revision"`
 }
 
-// New creates a new Ipmitool with the default command
-func New(ipmitoolBin string) (Ipmi, error) {
+// New creates a new IpmiTool with the default command
+func New(ipmitoolBin string) (IpmiTool, error) {
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
@@ -167,7 +136,7 @@ func (i *Ipmitool) BMC() (*api.BMC, error) {
 	return bmc, nil
 }
 
-// DevicePresent returns true if the ipmi device is present, which is required to talk to the BMC.
+// DevicePresent returns true if the IPMI device is present, which is required to talk to the BMC
 func (i *Ipmitool) DevicePresent() bool {
 	const ipmiDevicePrefix = "/dev/ipmi*"
 	matches, err := filepath.Glob(ipmiDevicePrefix)
@@ -177,7 +146,7 @@ func (i *Ipmitool) DevicePresent() bool {
 	return len(matches) > 0
 }
 
-// Run execute ipmitool
+// Run executes ipmitool with given arguments
 func (i *Ipmitool) Run(args ...string) (string, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
@@ -191,7 +160,7 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 	return string(output), err
 }
 
-// GetFru returns the Field Replacable Unit information
+// GetFru returns the Field Replaceable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
 	config := &Fru{}
 	cmdOutput, err := i.Run("fru")
@@ -203,7 +172,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 	return *config, nil
 }
 
-// GetBMCInfo returns the bmc info
+// GetBMCInfo returns the BMC info
 func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	bmc := &BMCInfo{}
 	cmdOutput, err := i.Run("bmc", "info")
@@ -215,7 +184,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	return *bmc, nil
 }
 
-// GetLanConfig returns the LanConfig
+// GetLanConfig returns the LAN config
 func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	config := &LanConfig{}
 	cmdOutput, err := i.Run("lan", "print")
@@ -227,7 +196,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	return *config, nil
 }
 
-// GetSession returns the Session info
+// GetSession returns the session
 func (i *Ipmitool) GetSession() (Session, error) {
 	session := &Session{}
 	cmdOutput, err := i.Run("session", "info", "all")
@@ -239,7 +208,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	return *session, nil
 }
 
-// CreateUser create a ipmi user with password and privilege level
+// CreateUser creates an IPMI user with a generated password and given privilege level
 func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string, error) {
 	out, err := i.Run("user", "set", "name", uid, username)
 	if err != nil {
@@ -284,6 +253,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege Privilege) (string
 	return pw, nil
 }
 
+// CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
 func (i *Ipmitool) CreateUserRaw(username, uid string, privilege Privilege) (string, error) {
 	var out []string
 	id, err := strconv.Atoi(uid)
@@ -333,7 +303,7 @@ func (i *Ipmitool) CreateUserRaw(username, uid string, privilege Privilege) (str
 	return strings.Join(out, "\n"), nil
 }
 
-// SetBootOrder persistently sets the boot order to given bootTarget as raw bytes.
+// SetBootOrder persistently sets the boot order to given target
 func (i *Ipmitool) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
 	out, err := i.Run(RawSetSystemBootOptions(target, vendor)...)
 	if err != nil {
@@ -342,7 +312,7 @@ func (i *Ipmitool) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error 
 	return nil
 }
 
-// SetChassisControl executes the given chassis control function.
+// SetChassisControl executes the given chassis control function
 func (i *Ipmitool) SetChassisControl(fn ChassisControlFunction) error {
 	_, err := i.Run(RawChassisControl(fn)...)
 	if err != nil {
@@ -351,7 +321,7 @@ func (i *Ipmitool) SetChassisControl(fn ChassisControlFunction) error {
 	return nil
 }
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED.
+// SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
 	switch state {
 	case hal.IdentifyLEDStateOn:
@@ -363,7 +333,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error 
 	}
 }
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED.
+// SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
 	_, err := i.Run(RawChassisIdentifyOn()...)
 	if err != nil {
@@ -372,7 +342,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
 	return nil
 }
 
-// SetChassisIdentifyLEDOff turns off the chassis identify LED.
+// SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 	_, err := i.Run(RawChassisIdentifyOff()...)
 	if err != nil {
@@ -403,7 +373,7 @@ func output2Map(cmdOutput string) map[string]string {
 	return result
 }
 
-// from uses reflection to fill a struct based on the tags on it.
+// from uses reflection to fill a struct based on the tags on it
 func from(target interface{}, input map[string]string) {
 	log.Printf("from target:%s input:%s", target, input)
 	val := reflect.ValueOf(target).Elem()
@@ -429,24 +399,8 @@ const (
 	biosQualifier = uint8(0x18)
 )
 
-// GetBootOrderQualifiers returns the qualifiers needed to persistently set the the given bootOrder according to the given compliance.
+// GetBootOrderQualifiers returns the qualifiers needed to set the given boot order according to the given vendor
 func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQualifier, bootDevQualifier uint8) {
-	/*
-	   Set boot order to UEFI PXE persistently:
-	   raw 0x00 0x08 0x05 0xe0 0x04 0x00 0x00 0x00  (conforms to IPMI 2.0 as well as SMCIPMITool)
-
-	   Set boot order to UEFI HD persistently:
-	   raw 0x00 0x08 0x05 0xe0 0x08 0x00 0x00 0x00  (IPMI 2.0)
-	   raw 0x00 0x08 0x05 0xe0 0x24 0x00 0x00 0x00  (SMCIPMITool)
-
-	   Set boot order to UEFI BIOS on next boot only:
-	   raw 0x00 0x08 0x05 0xa0 0x18 0x00 0x00 0x00  (IPMI 2.0)
-
-	   See https://github.com/metal-stack/metal/issues/73#note_151375
-
-	   For reference: https://www.intel.com/content/dam/www/public/us/en/documents/product-briefs/ipmi-second-gen-interface-spec-v2-rev1-1.pdf (page 422)
-	*/
-
 	switch bootTarget {
 	case hal.BootTargetPXE:
 		uefiQualifier = persistentUEFIQualifier

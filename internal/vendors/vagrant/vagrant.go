@@ -50,31 +50,31 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip, user, password string) 
 
 // InBand
 func (ib *inBand) PowerOff() error {
-	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerDown)
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
 
 func (ib *inBand) PowerCycle() error {
-	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlPowerCycle)
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
 func (ib *inBand) PowerReset() error {
-	return ib.Ipmi.SetChassisControl(ipmi.ChassisControlHardReset)
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ib.Ipmi.SetChassisIdentifyLEDState(state)
+	return ib.IpmiTool.SetChassisIdentifyLEDState(state)
 }
 
 func (ib *inBand) IdentifyLEDOn() error {
-	return ib.Ipmi.SetChassisIdentifyLEDOn()
+	return ib.IpmiTool.SetChassisIdentifyLEDOn()
 }
 
 func (ib *inBand) IdentifyLEDOff() error {
-	return ib.Ipmi.SetChassisIdentifyLEDOff()
+	return ib.IpmiTool.SetChassisIdentifyLEDOff()
 }
 
 func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ib.Ipmi.SetBootOrder(bootTarget, vendor)
+	return ib.IpmiTool.SetBootOrder(bootTarget, vendor)
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
@@ -86,11 +86,19 @@ func (ib *inBand) Describe() string {
 }
 
 func (ib *inBand) BMCPresent() bool {
-	return ib.Ipmi.DevicePresent()
+	return ib.IpmiTool.DevicePresent()
 }
 
 func (ib *inBand) BMCCreateUser(username, uid string) (string, error) {
-	return ib.Ipmi.CreateUser(username, uid, ipmi.AdministratorPrivilege)
+	return ib.IpmiTool.CreateUser(username, uid, ipmi.AdministratorPrivilege)
+}
+
+func (ib *inBand) ConfigureBIOS() (bool, error) {
+	return false, errorNotImplemented
+}
+
+func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
+	return errorNotImplemented
 }
 
 // OutBand

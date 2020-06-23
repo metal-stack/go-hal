@@ -12,4 +12,5 @@ require (
 	github.com/stmcginnis/gofish v0.4.0
 	github.com/stretchr/testify v1.5.1
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
+	golang.org/x/net v0.0.0-20200506145744-7e3656a0809f
 )

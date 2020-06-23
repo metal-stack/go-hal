@@ -133,6 +133,13 @@ type InBand interface {
 	// Create a user with given username and uid returns generated password
 	// TODO privilege level
 	BMCCreateUser(username, uid string) (string, error)
+
+	// ConfigureBIOS configures the BIOS regarding certain required options.
+	// It returns whether the system needs to be rebooted afterwards
+	ConfigureBIOS() (bool, error)
+
+	// EnsureBootOrder ensures the boot order
+	EnsureBootOrder(bootloaderID string) error
 }
 
 // OutBand get and set settings from the server via the out of band interface.
