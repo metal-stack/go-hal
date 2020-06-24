@@ -8,6 +8,7 @@ import (
 
 // Board raw dmi board information
 type Board struct {
+	VM           bool
 	VendorString string
 	Vendor       Vendor
 	Model        string
@@ -43,6 +44,7 @@ type BIOS struct {
 
 var (
 	VagrantBoard = &Board{
+		VM:           true,
 		VendorString: "vagrant",
 		Vendor:       VendorVagrant,
 		Model:        "vagrant",
