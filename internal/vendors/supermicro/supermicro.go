@@ -6,6 +6,7 @@ import (
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
+	p "github.com/metal-stack/go-hal/internal/ipmi/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -102,8 +103,8 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUser(username, uid string) (string, error) {
-	return ib.IpmiTool.CreateUser(username, uid, ipmi.AdministratorPrivilege)
+func (ib *inBand) BMCCreateUser(username, uid string, privilege p.Privilege) (string, error) {
+	return ib.IpmiTool.CreateUser(username, uid, privilege)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {

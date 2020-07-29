@@ -2,11 +2,12 @@ package ipmi
 
 import (
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/ipmi/ipmi"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"strconv"
 )
 
-func RawUserAccess(channelNumber, uid uint8, privilege Privilege) []string {
+func RawUserAccess(channelNumber, uid uint8, privilege ipmi.Privilege) []string {
 	return rawCommand(AppNetworkFunction, SetUserAccess, channelNumber, uid, privilege)
 }
 

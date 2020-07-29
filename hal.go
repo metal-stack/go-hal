@@ -1,6 +1,7 @@
 package hal
 
 import (
+	"github.com/metal-stack/go-hal/internal/ipmi/ipmi"
 	"strings"
 
 	"github.com/google/uuid"
@@ -130,9 +131,8 @@ type InBand interface {
 
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
 	BMCPresent() bool
-	// Create a user with given username and uid returns generated password
-	// TODO privilege level
-	BMCCreateUser(username, uid string) (string, error)
+	// Create a user with given username, uid and privilege, and returns generated password
+	BMCCreateUser(username, uid string, privilege ipmi.Privilege) (string, error)
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
