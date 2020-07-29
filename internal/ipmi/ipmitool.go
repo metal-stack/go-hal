@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/ipmi/ipmi"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +24,8 @@ import (
 type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
-	CreateUser(username, uid string, privilege ipmi.Privilege) (string, error)
-	CreateUserRaw(username, uid string, privilege ipmi.Privilege) (string, error)
+	CreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error)
+	CreateUserRaw(username, uid string, privilege api.IpmiPrivilege) (string, error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -192,7 +191,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 }
 
 // CreateUser creates an IPMI user with a generated password and given privilege level
-func (i *Ipmitool) CreateUser(username, uid string, privilege ipmi.Privilege) (string, error) {
+func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error) {
 	out, err := i.Run("user", "set", "name", uid, username)
 	if err != nil {
 		return "", errors.Wrapf(err, "unable to create user %s: %v", username, out)
@@ -237,7 +236,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege ipmi.Privilege) (s
 }
 
 // CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
-func (i *Ipmitool) CreateUserRaw(username, uid string, privilege ipmi.Privilege) (string, error) {
+func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivilege) (string, error) {
 	var out []string
 	id, err := strconv.Atoi(uid)
 	if err != nil {

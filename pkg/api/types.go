@@ -6,6 +6,24 @@ import (
 	"strings"
 )
 
+// Privilege of an IPMI user
+type IpmiPrivilege = uint8
+
+const (
+	// Callback IPMI privilege
+	CallbackPrivilege IpmiPrivilege = iota + 1
+	// User IPMI privilege
+	UserPrivilege
+	// Operator IPMI privilege
+	OperatorPrivilege
+	// Administrator IPMI privilege
+	AdministratorPrivilege
+	// OEM IPMI privilege
+	OEMPrivilege
+	// NoAccess IPMI privilege
+	NoAccessPrivilege
+)
+
 // Board raw dmi board information
 type Board struct {
 	VM           bool
