@@ -37,7 +37,7 @@ func ConnectInBand() (hal.InBand, error) {
 }
 
 // ConnectOutBand will detect the board and choose the correct outband hal implementation
-func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
+func ConnectOutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true)
 	if err != nil {
 		return nil, err
@@ -50,11 +50,11 @@ func ConnectOutBand(ip, user, password string) (hal.OutBand, error) {
 
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.OutBand(r, b, ip, user, password)
+		return lenovo.OutBand(r, b, ip, ipmiPort, user, password)
 	case api.VendorSupermicro:
-		return supermicro.OutBand(r, b, ip, user, password)
+		return supermicro.OutBand(r, b, ip, ipmiPort, user, password)
 	case api.VendorVagrant:
-		return vagrant.OutBand(r, b, ip, user, password)
+		return vagrant.OutBand(r, b, ip, ipmiPort, user, password)
 	default:
 		return nil, errorUnknownVendor
 	}

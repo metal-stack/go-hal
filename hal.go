@@ -173,7 +173,7 @@ type OutBand interface {
 	// Describe print a basic information about this connection
 	Describe() string
 
-	Connection() (ip, user, password string)
+	IPMIConnection() (ip string, port int, user, password string)
 
 	// TODO implement console access from bmc-proxy
 }

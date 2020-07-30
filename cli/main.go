@@ -42,7 +42,7 @@ func inband() {
 }
 
 func outband() {
-	outband, err := detect.ConnectOutBand("10.5.2.93", "ADMIN", "ADMIN")
+	outband, err := detect.ConnectOutBand("10.5.2.93", 623, "ADMIN", "ADMIN")
 	if err != nil {
 		panic(err)
 	}

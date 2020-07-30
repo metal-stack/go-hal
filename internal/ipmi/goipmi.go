@@ -13,10 +13,10 @@ type Client struct {
 	api.Vendor
 }
 
-func OpenClientConnection(ip, user, password string) (*Client, error) {
+func OpenClientConnection(ip string, port int, user, password string) (*Client, error) {
 	conn := &goipmi.Connection{
 		Hostname:  ip,
-		Port:      623,
+		Port:      port,
 		Username:  user,
 		Password:  password,
 		Interface: "lanplus",

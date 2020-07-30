@@ -10,15 +10,17 @@ type OutBand struct {
 	Redfish  *redfish.APIClient
 	board    *api.Board
 	ip       string
+	ipmiPort int
 	user     string
 	password string
 }
 
-func New(r *redfish.APIClient, board *api.Board, ip, user, password string) *OutBand {
+func New(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
 	return &OutBand{
 		Redfish:  r,
 		board:    board,
 		ip:       ip,
+		ipmiPort: ipmiPort,
 		user:     user,
 		password: password,
 	}
@@ -28,12 +30,12 @@ func (ob *OutBand) Board() *api.Board {
 	return ob.board
 }
 
-func (ob *OutBand) Connection() (string, string, string) {
-	return ob.ip, ob.user, ob.password
+func (ob *OutBand) IPMIConnection() (string, int, string, string) {
+	return ob.ip, ob.ipmiPort, ob.user, ob.password
 }
 
 func (ob *OutBand) Goipmi(f func(*ipmi.Client) error) error {
-	client, err := ipmi.OpenClientConnection(ob.Connection())
+	client, err := ipmi.OpenClientConnection(ob.IPMIConnection())
 	if err != nil {
 		return err
 	}
