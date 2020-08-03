@@ -98,7 +98,7 @@ func (ib *inBand) ConfigureBIOS() (bool, error) {
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
-	return errorNotImplemented
+	//return errorNotImplemented //FIXME
 }
 
 // OutBand
