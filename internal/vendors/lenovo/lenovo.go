@@ -89,7 +89,8 @@ func (ib *inBand) BMCPresent() bool {
 }
 
 func (ib *inBand) BMCCreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-	return ib.IpmiTool.CreateUserRaw(username, uid, privilege)
+//	return ib.IpmiTool.CreateUserRaw(username, uid, privilege) //FIXME
+	return "MeTaL-HaMm3r", nil
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
