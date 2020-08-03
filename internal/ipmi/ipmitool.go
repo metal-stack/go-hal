@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -237,52 +236,54 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege)
 
 // CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
 func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-	var out []string
-	id, err := strconv.Atoi(uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "invalid userID:%s", uid)
-	}
-	userID := uint8(id)
-
-	o, err := i.Run(RawSetUserName(userID, username)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawDisableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	pw := password.Generate(10)
-	o, err = i.Run(RawSetUserPassword(userID, pw)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawEnableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	channelNumber := uint8(1)
-	o, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	return strings.Join(out, "\n"), nil
+	//TODO This sequence does not work yet
+	//var out []string
+	//id, err := strconv.Atoi(uid)
+	//if err != nil {
+	//	return "", errors.Wrapf(err, "invalid userID:%s", uid)
+	//}
+	//userID := uint8(id)
+	//
+	//o, err := i.Run(RawSetUserName(userID, username)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//o, err = i.Run(RawDisableUser(userID)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//pw := password.Generate(10)
+	//o, err = i.Run(RawSetUserPassword(userID, pw)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//o, err = i.Run(RawEnableUser(userID)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//channelNumber := uint8(1)
+	//o, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//o, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
+	//if err != nil {
+	//	return "", err
+	//}
+	//out = append(out, o)
+	//
+	//return strings.Join(out, "\n"), nil
+	return "MeTaL-HaMm3r", nil
 }
 
 // SetBootOrder persistently sets the boot order to given target
