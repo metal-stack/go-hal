@@ -26,8 +26,6 @@ type IpmiTool interface {
 	Run(arg ...string) (string, error)
 	CreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
 	CreateUserRaw(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
-	CreatePassword(username, uid string, constraints api.PasswordConstraints) (password string, err error)
-	CreatePasswordRaw(username string, uid uint8, constraints api.PasswordConstraints) (password string, err error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -204,7 +202,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege,
 		return "", errors.Wrapf(err, "failed to set username for user %s with id %s: %s", username, uid, out)
 	}
 
-	pw, err := i.CreatePassword(username, uid, pwc)
+	pw, err := i.createPassword(username, uid, pwc)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
 	}
@@ -246,7 +244,7 @@ func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivile
 		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", username, uid, out)
 	}
 
-	pw, err := i.CreatePasswordRaw(username, userID, pwc)
+	pw, err := i.createPasswordRaw(username, userID, pwc)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
 	}
@@ -271,22 +269,22 @@ func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivile
 }
 
 // CreatePassword generates, sets and returns a password with given constraints for given IPMI user
-func (i *Ipmitool) CreatePassword(username, uid string, pwc api.PasswordConstraints) (string, error) {
+func (i *Ipmitool) createPassword(username, uid string, pwc api.PasswordConstraints) (string, error) {
 	s := func(pw string) (string, error) {
 		return i.Run("user", "set", "password", uid, pw)
 	}
-	return i.createPassword(username, uid, pwc, s)
+	return i.createPw(username, uid, pwc, s)
 }
 
 // CreatePasswordRaw generates, sets (via raw bytes) and returns a password with given constraints for given IPMI user
-func (i *Ipmitool) CreatePasswordRaw(username string, uid uint8, pwc api.PasswordConstraints) (string, error) {
+func (i *Ipmitool) createPasswordRaw(username string, uid uint8, pwc api.PasswordConstraints) (string, error) {
 	s := func(pw string) (string, error) {
 		return i.Run(RawSetUserPassword(uid, pw)...)
 	}
-	return i.createPassword(username, strconv.Itoa(int(uid)), pwc, s)
+	return i.createPw(username, strconv.Itoa(int(uid)), pwc, s)
 }
 
-func (i *Ipmitool) createPassword(username, uid string, pwc api.PasswordConstraints, setPassword func(string) (string, error)) (string, error) {
+func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, setPassword func(string) (string, error)) (string, error) {
 	var pw string
 	err := retry.Do(
 		func() error {
