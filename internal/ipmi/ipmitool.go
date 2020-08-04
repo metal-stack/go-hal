@@ -290,17 +290,17 @@ func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, s
 		func() error {
 			p, err := password.Generate(pwc.Length, pwc.NumDigits, pwc.NumSymbols, pwc.NoUpper, pwc.AllowRepeat)
 			if err != nil {
-				log.Printf("password generation failed for user:%s id:%s", username, uid)
+				return errors.Wrapf(err,"password generation failed for user:%s id:%s", username, uid)
 			}
-			pw = p
 			out, err := setPassword(pw)
 			if err != nil {
-				log.Printf("ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
+				return errors.Wrapf(err, "ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
 			}
-			return err
+			pw = p
+			return nil
 		},
 		retry.OnRetry(func(n uint, err error) {
-			log.Printf("retry ipmi password creation for user:%s id:%s retry:%d", username, uid, n)
+			log.Printf("retry ipmi password creation for user:%s id:%s retry:%d cause:%v", username, uid, n, err)
 		}),
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
