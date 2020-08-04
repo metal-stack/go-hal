@@ -131,7 +131,7 @@ type InBand interface {
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
 	BMCPresent() bool
 	// Create a user with given username, uid and privilege, and returns generated password
-	BMCCreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error)
+	BMCCreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards

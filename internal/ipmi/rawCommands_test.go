@@ -15,6 +15,9 @@ func TestRawCommands(t *testing.T) {
 	userPassword := "secret"
 
 	// then
+	require.Equal(t, []byte{116, 101, 115, 116}, []byte(username))
+	require.Equal(t, []byte{115, 101, 99, 114, 101, 116}, []byte(userPassword))
+
 	require.Equal(t, []string{"raw", "6", "67", "1", "2", "4"}, RawUserAccess(channelNumber, uid, api.AdministratorPrivilege))
 	require.Equal(t, []string{"raw", "6", "76", "1", "2", "2", "0", "0", "0"}, RawEnableUserSOLPayloadAccess(channelNumber, uid))
 	require.Equal(t, []string{"raw", "6", "69", "2", "116", "101", "115", "116", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}, RawSetUserName(uid, username))

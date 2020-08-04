@@ -88,13 +88,13 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-//	return ib.IpmiTool.CreateUserRaw(username, uid, privilege) //FIXME
-	return "MeTaL-HaMm3r", nil
+func (ib *inBand) BMCCreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
+	return ib.IpmiTool.CreateUserRaw(username, uid, privilege, constraints)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
-	return false, errorNotImplemented
+	//return false, errorNotImplemented //FIXME
+	return true, nil
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {

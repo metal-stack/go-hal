@@ -6,6 +6,15 @@ import (
 	"strings"
 )
 
+// PasswordConstraints holds the constraints that are ensured for generated passwords
+type PasswordConstraints struct {
+	Length      int
+	NumDigits   int
+	NumSymbols  int
+	NoUpper     bool
+	AllowRepeat bool
+}
+
 // Privilege of an IPMI user
 type IpmiPrivilege = uint8
 

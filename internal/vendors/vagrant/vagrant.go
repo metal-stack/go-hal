@@ -89,8 +89,8 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-	return ib.IpmiTool.CreateUser(username, uid, privilege)
+func (ib *inBand) BMCCreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
+	return ib.IpmiTool.CreateUser(username, uid, privilege, constraints)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {

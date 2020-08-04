@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/metal-stack/go-hal"
+	"github.com/sethvargo/go-password/password"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
-	"github.com/metal-stack/go-hal/internal/password"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
 )
@@ -24,8 +24,10 @@ import (
 type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
-	CreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error)
-	CreateUserRaw(username, uid string, privilege api.IpmiPrivilege) (string, error)
+	CreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
+	CreateUserRaw(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
+	CreatePassword(username, uid string, constraints api.PasswordConstraints) (password string, err error)
+	CreatePasswordRaw(username string, uid uint8, constraints api.PasswordConstraints) (password string, err error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -128,7 +130,7 @@ func (i *Ipmitool) DevicePresent() bool {
 	return len(matches) > 0
 }
 
-// Run executes ipmitool with given arguments
+// Run executes ipmitool with given arguments and returns the outcome
 func (i *Ipmitool) Run(args ...string) (string, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
@@ -191,20 +193,111 @@ func (i *Ipmitool) GetSession() (Session, error) {
 }
 
 // CreateUser creates an IPMI user with a generated password and given privilege level
-func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-	out, err := i.Run("user", "set", "name", uid, username)
+func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
+	out, err := i.Run("user", "disable", uid)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to create user %s: %v", username, out)
+		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", uid, out)
 	}
-	// This happens from time to time for unknown reason
-	// retry password creation max 30 times with 1 second delay
-	pw := ""
-	err = retry.Do(
+
+	out, err = i.Run("user", "set", "name", uid, username)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set username for user %s with id %s: %s", username, uid, out)
+	}
+
+	pw, err := i.CreatePassword(username, uid, pwc)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
+	}
+
+	channelnumber := "1"
+	out, err = i.Run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", privilege, username, uid, out)
+	}
+
+	out, err = i.Run("sol", "payload", "enable", channelnumber, uid)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", username, uid, out)
+	}
+
+	out, err = i.Run("user", "enable", uid)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", username, uid, out)
+	}
+
+	return pw, nil
+}
+
+// CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
+func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
+	id, err := strconv.Atoi(uid)
+	if err != nil {
+		return "", errors.Wrapf(err, "invalid uid of user %s: %s", username, uid)
+	}
+	userID := uint8(id)
+
+	out, err := i.Run(RawDisableUser(userID)...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", uid, out)
+	}
+
+	out, err = i.Run(RawSetUserName(userID, username)...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", username, uid, out)
+	}
+
+	pw, err := i.CreatePasswordRaw(username, userID, pwc)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
+	}
+
+	channelNumber := uint8(1)
+	out, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", privilege, username, uid, out)
+	}
+
+	out, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", username, uid, out)
+	}
+
+	out, err = i.Run(RawEnableUser(userID)...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", username, uid, out)
+	}
+
+	return pw, nil
+}
+
+// CreatePassword generates, sets and returns a password with given constraints for given IPMI user
+func (i *Ipmitool) CreatePassword(username, uid string, pwc api.PasswordConstraints) (string, error) {
+	s := func(pw string) (string, error) {
+		return i.Run("user", "set", "password", uid, pw)
+	}
+	return i.createPassword(username, uid, pwc, s)
+}
+
+// CreatePasswordRaw generates, sets (via raw bytes) and returns a password with given constraints for given IPMI user
+func (i *Ipmitool) CreatePasswordRaw(username string, uid uint8, pwc api.PasswordConstraints) (string, error) {
+	s := func(pw string) (string, error) {
+		return i.Run(RawSetUserPassword(uid, pw)...)
+	}
+	return i.createPassword(username, strconv.Itoa(int(uid)), pwc, s)
+}
+
+func (i *Ipmitool) createPassword(username, uid string, pwc api.PasswordConstraints, setPassword func(string) (string, error)) (string, error) {
+	var pw string
+	err := retry.Do(
 		func() error {
-			pw = password.Generate(10)
-			out, err = i.Run("user", "set", "password", uid, pw)
+			p, err := password.Generate(pwc.Length, pwc.NumDigits, pwc.NumSymbols, pwc.NoUpper, pwc.AllowRepeat)
 			if err != nil {
-				log.Printf("ipmi password creation failed for user:%s output:%v", username, out)
+				log.Printf("password generation failed for user:%s id:%s", username, uid)
+			}
+			pw = p
+			out, err := setPassword(pw)
+			if err != nil {
+				log.Printf("ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
 			}
 			return err
 		},
@@ -214,75 +307,7 @@ func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege)
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
 	)
-	if err != nil {
-		return pw, errors.Wrapf(err, "unable to set password for user %s: %v", username, out)
-	}
-
-	channelnumber := "1"
-	out, err = i.Run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
-	if err != nil {
-		return pw, errors.Wrapf(err, "unable to set privilege for user %s: %v", username, out)
-	}
-	out, err = i.Run("user", "enable", uid)
-	if err != nil {
-		return pw, errors.Wrapf(err, "unable to enable user %s: %v", username, out)
-	}
-	out, err = i.Run("sol", "payload", "enable", channelnumber, uid)
-	if err != nil {
-		return pw, errors.Wrapf(err, "unable to enable user %s for sol access: %v", username, out)
-	}
-
-	return pw, nil
-}
-
-// CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
-func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivilege) (string, error) {
-	var out []string
-	id, err := strconv.Atoi(uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "invalid userID:%s", uid)
-	}
-	userID := uint8(id)
-
-	o, err := i.Run(RawSetUserName(userID, username)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawDisableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	pw := password.Generate(10)
-	o, err = i.Run(RawSetUserPassword(userID, pw)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawEnableUser(userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	channelNumber := uint8(1)
-	o, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	o, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
-	if err != nil {
-		return "", err
-	}
-	out = append(out, o)
-
-	return strings.Join(out, "\n"), nil
+	return pw, err
 }
 
 // SetBootOrder persistently sets the boot order to given target
