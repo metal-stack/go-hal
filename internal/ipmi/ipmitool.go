@@ -24,8 +24,8 @@ import (
 type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
-	CreateUser(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
-	CreateUserRaw(username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
+	CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
+	CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -190,79 +190,90 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	return *session, nil
 }
 
+type createUserRequest struct {
+	username                   string
+	uid                        string
+	privilege                  api.IpmiPrivilege
+	disableUserArgs            []string
+	enableUserArgs             []string
+	setUsernameArgs            []string
+	setUserPrivilegeArgs       []string
+	enableSOLPayloadAccessArgs []string
+	setPasswordFunc            func() (string, error)
+}
+
 // CreateUser creates an IPMI user with a generated password and given privilege level
-func (i *Ipmitool) CreateUser(username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
-	out, err := i.Run("user", "disable", uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", uid, out)
-	}
-
-	out, err = i.Run("user", "set", "name", uid, username)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set username for user %s with id %s: %s", username, uid, out)
-	}
-
-	pw, err := i.createPassword(username, uid, pwc)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
-	}
-
-	channelnumber := "1"
-	out, err = i.Run("channel", "setaccess", channelnumber, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", int(privilege)))
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", privilege, username, uid, out)
-	}
-
-	out, err = i.Run("sol", "payload", "enable", channelnumber, uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", username, uid, out)
-	}
-
-	out, err = i.Run("user", "enable", uid)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", username, uid, out)
-	}
-
-	return pw, nil
+func (i *Ipmitool) CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
+	cn := strconv.Itoa(channelNumber)
+	return i.createUser(createUserRequest{
+		username:                   username,
+		uid:                        uid,
+		privilege:                  privilege,
+		disableUserArgs:            []string{"user", "disable", uid},
+		enableUserArgs:             []string{"user", "enable", uid},
+		setUsernameArgs:            []string{"user", "set", "name", uid, username},
+		setUserPrivilegeArgs:       []string{"channel", "setaccess", cn, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", privilege)},
+		enableSOLPayloadAccessArgs: []string{"sol", "payload", "enable", cn, uid},
+		setPasswordFunc: func() (string, error) {
+			return i.createPassword(username, uid, pwc)
+		},
+	})
 }
 
 // CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
-func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
+func (i *Ipmitool) CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
 	id, err := strconv.Atoi(uid)
 	if err != nil {
 		return "", errors.Wrapf(err, "invalid uid of user %s: %s", username, uid)
 	}
 	userID := uint8(id)
+	cn := uint8(channelNumber)
 
-	out, err := i.Run(RawDisableUser(userID)...)
+	return i.createUser(createUserRequest{
+		username:                   username,
+		uid:                        uid,
+		privilege:                  privilege,
+		disableUserArgs:            RawDisableUser(userID),
+		enableUserArgs:             RawEnableUser(userID),
+		setUsernameArgs:            RawSetUserName(userID, username),
+		setUserPrivilegeArgs:       RawUserAccess(cn, userID, privilege),
+		enableSOLPayloadAccessArgs: RawEnableUserSOLPayloadAccess(cn, userID),
+		setPasswordFunc: func() (string, error) {
+			return i.createPasswordRaw(username, userID, pwc)
+		},
+	})
+}
+
+func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
+
+	out, err := i.Run(args.disableUserArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", uid, out)
+		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", args.uid, out)
 	}
 
-	out, err = i.Run(RawSetUserName(userID, username)...)
+	out, err = i.Run(args.setUsernameArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", username, uid, out)
+		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", args.username, args.uid, out)
 	}
 
-	pw, err := i.createPasswordRaw(username, userID, pwc)
+	pw, err := args.setPasswordFunc()
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, username, uid, out)
+		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, args.username, args.uid, out)
 	}
 
-	channelNumber := uint8(1)
-	out, err = i.Run(RawUserAccess(channelNumber, userID, privilege)...)
+	out, err = i.Run(args.setUserPrivilegeArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", privilege, username, uid, out)
+		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", args.privilege, args.username, args.uid, out)
 	}
 
-	out, err = i.Run(RawEnableUserSOLPayloadAccess(channelNumber, userID)...)
+	out, err = i.Run(args.enableSOLPayloadAccessArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", username, uid, out)
+		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", args.username, args.uid, out)
 	}
 
-	out, err = i.Run(RawEnableUser(userID)...)
+	out, err = i.Run(args.enableUserArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", username, uid, out)
+		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", args.username, args.uid, out)
 	}
 
 	return pw, nil
@@ -270,21 +281,21 @@ func (i *Ipmitool) CreateUserRaw(username, uid string, privilege api.IpmiPrivile
 
 // CreatePassword generates, sets and returns a password with given constraints for given IPMI user
 func (i *Ipmitool) createPassword(username, uid string, pwc api.PasswordConstraints) (string, error) {
-	s := func(pw string) (string, error) {
-		return i.Run("user", "set", "password", uid, pw)
+	s := func(pw string) []string {
+		return []string{"user", "set", "password", uid, pw}
 	}
 	return i.createPw(username, uid, pwc, s)
 }
 
 // CreatePasswordRaw generates, sets (via raw bytes) and returns a password with given constraints for given IPMI user
 func (i *Ipmitool) createPasswordRaw(username string, uid uint8, pwc api.PasswordConstraints) (string, error) {
-	s := func(pw string) (string, error) {
-		return i.Run(RawSetUserPassword(uid, pw)...)
+	s := func(pw string) []string {
+		return RawSetUserPassword(uid, pw)
 	}
 	return i.createPw(username, strconv.Itoa(int(uid)), pwc, s)
 }
 
-func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, setPassword func(string) (string, error)) (string, error) {
+func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, setPasswordArgs func(string) []string) (string, error) {
 	var pw string
 	err := retry.Do(
 		func() error {
@@ -292,7 +303,7 @@ func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, s
 			if err != nil {
 				return errors.Wrapf(err, "password generation failed for user:%s id:%s", username, uid)
 			}
-			out, err := setPassword(pw)
+			out, err := i.Run(setPasswordArgs(pw)...)
 			if err != nil {
 				return errors.Wrapf(err, "ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
 			}
