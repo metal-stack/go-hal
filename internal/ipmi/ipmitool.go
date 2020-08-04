@@ -290,7 +290,7 @@ func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, s
 		func() error {
 			p, err := password.Generate(pwc.Length, pwc.NumDigits, pwc.NumSymbols, pwc.NoUpper, pwc.AllowRepeat)
 			if err != nil {
-				return errors.Wrapf(err,"password generation failed for user:%s id:%s", username, uid)
+				return errors.Wrapf(err, "password generation failed for user:%s id:%s", username, uid)
 			}
 			out, err := setPassword(pw)
 			if err != nil {
