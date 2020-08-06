@@ -11,16 +11,16 @@ func TestRawCommands(t *testing.T) {
 	// given
 	channelNumber := uint8(1)
 	uid := uint8(2)
-	username := "test"
+	username := "metal"
 	userPassword := "secret"
 
 	// then
-	require.Equal(t, []byte{116, 101, 115, 116}, []byte(username))
+	require.Equal(t, []byte{109, 101, 116, 97, 108}, []byte(username))
 	require.Equal(t, []byte{115, 101, 99, 114, 101, 116}, []byte(userPassword))
 
 	require.Equal(t, []string{"raw", "6", "67", "1", "2", "4"}, RawUserAccess(channelNumber, uid, api.AdministratorPrivilege))
 	require.Equal(t, []string{"raw", "6", "76", "1", "2", "2", "0", "0", "0"}, RawEnableUserSOLPayloadAccess(channelNumber, uid))
-	require.Equal(t, []string{"raw", "6", "69", "2", "116", "101", "115", "116", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}, RawSetUserName(uid, username))
+	require.Equal(t, []string{"raw", "6", "69", "2", "109", "101", "116", "97", "108", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}, RawSetUserName(uid, username))
 	require.Equal(t, []string{"raw", "6", "71", "2", "0"}, RawDisableUser(uid))
 	require.Equal(t, []string{"raw", "6", "71", "2", "1"}, RawEnableUser(uid))
 	require.Equal(t, []string{"raw", "6", "71", "130", "2", "115", "101", "99", "114", "101", "116", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"}, RawSetUserPassword(uid, userPassword))

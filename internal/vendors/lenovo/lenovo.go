@@ -87,7 +87,7 @@ func (ib *inBand) Describe() string {
 func (ib *inBand) BMCUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "metal",
-		Uid:           "2",
+		Uid:           "3",
 		ChannelNumber: 1,
 	}
 }
