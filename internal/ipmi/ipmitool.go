@@ -245,19 +245,24 @@ func (i *Ipmitool) CreateUserRaw(channelNumber int, username, uid string, privil
 }
 
 func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
-	out, err := i.Run(args.disableUserArgs...)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", args.uid, out)
-	}
-
-	out, err = i.Run(args.setUsernameArgs...)
+	out, err := i.Run(args.setUsernameArgs...)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", args.username, args.uid, out)
+	}
+
+	out, err = i.Run(args.disableUserArgs...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", args.uid, out)
 	}
 
 	pw, err := args.setPasswordFunc()
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, args.username, args.uid, out)
+	}
+
+	out, err = i.Run(args.enableUserArgs...)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", args.username, args.uid, out)
 	}
 
 	out, err = i.Run(args.setUserPrivilegeArgs...)
@@ -268,11 +273,6 @@ func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
 	out, err = i.Run(args.enableSOLPayloadAccessArgs...)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", args.username, args.uid, out)
-	}
-
-	out, err = i.Run(args.enableUserArgs...)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", args.username, args.uid, out)
 	}
 
 	return pw, nil
