@@ -98,6 +98,14 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Supermicro"
 }
 
+func (ib *inBand) BMCUser() hal.BMCUser {
+	return hal.BMCUser{
+		Name:          "metal",
+		Uid:           "10",
+		ChannelNumber: 1,
+	}
+}
+
 func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }

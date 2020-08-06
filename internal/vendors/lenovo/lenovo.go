@@ -84,6 +84,14 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
+func (ib *inBand) BMCUser() hal.BMCUser {
+	return hal.BMCUser{
+		Name:          "metal",
+		Uid:           "2",
+		ChannelNumber: 1,
+	}
+}
+
 func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }

@@ -245,7 +245,6 @@ func (i *Ipmitool) CreateUserRaw(channelNumber int, username, uid string, privil
 }
 
 func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
-
 	out, err := i.Run(args.disableUserArgs...)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", args.uid, out)
