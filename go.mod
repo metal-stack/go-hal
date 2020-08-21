@@ -10,8 +10,10 @@ require (
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stmcginnis/gofish v0.5.0
 	github.com/stretchr/testify v1.6.1
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
+	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
 )
