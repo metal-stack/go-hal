@@ -17,17 +17,19 @@ const (
 
 // Bios read bios information
 func Bios() (*api.BIOS, error) {
-	version, err := read(biosVersion)
-	if err != nil {
-		return nil, err
-	}
+	// vendor is required to detect the machine
 	vendor, err := read(biosVendor)
 	if err != nil {
 		return nil, err
 	}
+	// version and date might be unknown
+	version, err := read(biosVersion)
+	if err != nil {
+		version = "UNKNOWN"
+	}
 	date, err := read(biosDate)
 	if err != nil {
-		return nil, err
+		date = "UNKNOWN"
 	}
 	return &api.BIOS{
 		Version: version,
