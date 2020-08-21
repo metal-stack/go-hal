@@ -27,7 +27,10 @@ func New(board *api.Board, inspectBMC bool) (*InBand, error) {
 			return nil, err
 		}
 		board.BMC = bmc
-		board.BIOS = bios.Bios()
+		board.BIOS, err = bios.Bios()
+		if err != nil {
+			return nil, err
+		}
 		board.Firmware = kernel.Firmware()
 	}
 

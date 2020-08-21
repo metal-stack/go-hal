@@ -1,11 +1,11 @@
 package bios
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	log "github.com/inconshreveable/log15"
 	"github.com/metal-stack/go-hal/pkg/api"
 )
 
@@ -15,23 +15,34 @@ const (
 	biosDate    = "/sys/class/dmi/id/bios_date"
 )
 
-// Bios read bios informations
-func Bios() *api.BIOS {
-	return &api.BIOS{
-		Version: read(biosVersion),
-		Vendor:  read(biosVendor),
-		Date:    read(biosDate),
+// Bios read bios information
+func Bios() (*api.BIOS, error) {
+	version, err := read(biosVersion)
+	if err != nil {
+		return nil, err
 	}
+	vendor, err := read(biosVendor)
+	if err != nil {
+		return nil, err
+	}
+	date, err := read(biosDate)
+	if err != nil {
+		return nil, err
+	}
+	return &api.BIOS{
+		Version: version,
+		Vendor:  vendor,
+		Date:    date,
+	}, nil
 }
 
-func read(file string) string {
+func read(file string) (string, error) {
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
 		content, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.Error("error reading", "file", file, "error", err)
-			return ""
+			return "", err
 		}
-		return strings.TrimSpace(string(content))
+		return strings.TrimSpace(string(content)), nil
 	}
-	return ""
+	return "", fmt.Errorf("%s does not exist", file)
 }

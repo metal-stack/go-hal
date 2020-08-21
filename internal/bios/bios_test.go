@@ -9,7 +9,8 @@ import (
 
 func TestBios(t *testing.T) {
 
-	bios := Bios()
+	bios, err := Bios()
+	assert.NoError(t, err)
 	assert.NotNil(t, bios)
 	assert.NotEqual(t, bios.Version, "")
 	assert.NotEqual(t, bios.Vendor, "")
