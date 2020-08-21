@@ -55,6 +55,8 @@ type Configuration struct {
 	ConsoleLevel      string
 }
 
+// FIXME caller should bring a already configured instance of his logger
+
 // NewLogger returns an instance of logger
 func NewLogger(config Configuration, loggerInstance int) error {
 	switch loggerInstance {
