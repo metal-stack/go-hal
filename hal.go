@@ -131,8 +131,10 @@ type InBand interface {
 	BMCUser() BMCUser
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
 	BMCPresent() bool
-	// Create a user for given channel with given username, uid and privilege, and returns generated password
-	BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	// Creates the given BMC user and returns generated password
+	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	// Creates the given BMC user with the given password
+	BMCCreateUser(user BMCUser, privilege api.IpmiPrivilege, password string) error
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
@@ -144,7 +146,7 @@ type InBand interface {
 
 type BMCUser struct {
 	Name          string
-	Uid           string
+	Id            string
 	ChannelNumber int
 }
 

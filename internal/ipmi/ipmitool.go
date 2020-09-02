@@ -24,8 +24,8 @@ import (
 type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
-	CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
-	CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
+	CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints) (pwd string, err error)
+	CreateUserRaw(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints) (pwd string, err error)
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -202,44 +202,44 @@ type createUserRequest struct {
 	setPasswordFunc            func() (string, error)
 }
 
-// CreateUser creates an IPMI user with a generated password and given privilege level
-func (i *Ipmitool) CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
-	cn := strconv.Itoa(channelNumber)
+// CreateUserRaw creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
+func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints) (string, error) {
+	cn := strconv.Itoa(user.ChannelNumber)
 	return i.createUser(createUserRequest{
-		username:                   username,
-		uid:                        uid,
+		username:                   user.Name,
+		uid:                        user.Id,
 		privilege:                  privilege,
-		disableUserArgs:            []string{"user", "disable", uid},
-		enableUserArgs:             []string{"user", "enable", uid},
-		setUsernameArgs:            []string{"user", "set", "name", uid, username},
-		setUserPrivilegeArgs:       []string{"channel", "setaccess", cn, uid, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", privilege)},
-		enableSOLPayloadAccessArgs: []string{"sol", "payload", "enable", cn, uid},
+		disableUserArgs:            []string{"user", "disable", user.Id},
+		enableUserArgs:             []string{"user", "enable", user.Id},
+		setUsernameArgs:            []string{"user", "set", "name", user.Id, user.Name},
+		setUserPrivilegeArgs:       []string{"channel", "setaccess", cn, user.Id, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", privilege)},
+		enableSOLPayloadAccessArgs: []string{"sol", "payload", "enable", cn, user.Id},
 		setPasswordFunc: func() (string, error) {
-			return i.createPassword(username, uid, pwc)
+			return i.createPassword(user.Name, user.Id, password, pc)
 		},
 	})
 }
 
-// CreateUserRaw creates an IPMI user with a generated password and given privilege level through raw commands
-func (i *Ipmitool) CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, pwc api.PasswordConstraints) (string, error) {
-	id, err := strconv.Atoi(uid)
+// CreateUserRaw creates an IPMI user (via raw commands) with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
+func (i *Ipmitool) CreateUserRaw(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints) (string, error) {
+	id, err := strconv.Atoi(user.Id)
 	if err != nil {
-		return "", errors.Wrapf(err, "invalid uid of user %s: %s", username, uid)
+		return "", errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
 	}
 	userID := uint8(id)
-	cn := uint8(channelNumber)
+	cn := uint8(user.ChannelNumber)
 
 	return i.createUser(createUserRequest{
-		username:                   username,
-		uid:                        uid,
+		username:                   user.Name,
+		uid:                        user.Id,
 		privilege:                  privilege,
 		disableUserArgs:            RawDisableUser(userID),
 		enableUserArgs:             RawEnableUser(userID),
-		setUsernameArgs:            RawSetUserName(userID, username),
+		setUsernameArgs:            RawSetUserName(userID, user.Name),
 		setUserPrivilegeArgs:       RawUserAccess(cn, userID, privilege),
 		enableSOLPayloadAccessArgs: RawEnableUserSOLPayloadAccess(cn, userID),
 		setPasswordFunc: func() (string, error) {
-			return i.createPasswordRaw(username, userID, pwc)
+			return i.createPasswordRaw(user.Name, userID, password, pc)
 		},
 	})
 }
@@ -278,35 +278,36 @@ func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
 	return pw, nil
 }
 
-// CreatePassword generates, sets and returns a password with given constraints for given IPMI user
-func (i *Ipmitool) createPassword(username, uid string, pwc api.PasswordConstraints) (string, error) {
+func (i *Ipmitool) createPassword(username, uid string, passwd string, pc *api.PasswordConstraints) (string, error) {
 	s := func(pw string) []string {
 		return []string{"user", "set", "password", uid, pw}
 	}
-	return i.createPw(username, uid, pwc, s)
+	return i.createPw(username, uid, passwd, pc, s)
 }
 
-// CreatePasswordRaw generates, sets (via raw bytes) and returns a password with given constraints for given IPMI user
-func (i *Ipmitool) createPasswordRaw(username string, uid uint8, pwc api.PasswordConstraints) (string, error) {
+func (i *Ipmitool) createPasswordRaw(username string, uid uint8, passwd string, pc *api.PasswordConstraints) (string, error) {
 	s := func(pw string) []string {
 		return RawSetUserPassword(uid, pw)
 	}
-	return i.createPw(username, strconv.Itoa(int(uid)), pwc, s)
+	return i.createPw(username, strconv.Itoa(int(uid)), passwd, pc, s)
 }
 
-func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, setPasswordArgs func(string) []string) (string, error) {
-	var pw string
+func (i *Ipmitool) createPw(username, uid, passwd string, pc *api.PasswordConstraints, setPasswordArgs func(string) []string) (string, error) {
 	err := retry.Do(
 		func() error {
-			p, err := password.Generate(pwc.Length, pwc.NumDigits, pwc.NumSymbols, pwc.NoUpper, pwc.AllowRepeat)
-			if err != nil {
-				return errors.Wrapf(err, "password generation failed for user:%s id:%s", username, uid)
+			pwd := passwd
+			if pwd == "" && pc != nil {
+				gen, err := password.Generate(pc.Length, pc.NumDigits, pc.NumSymbols, pc.NoUpper, pc.AllowRepeat)
+				if err != nil {
+					return errors.Wrapf(err, "password generation failed for user:%s id:%s", username, uid)
+				}
+				pwd = gen
 			}
-			out, err := i.Run(setPasswordArgs(p)...)
+			out, err := i.Run(setPasswordArgs(pwd)...)
 			if err != nil {
 				return errors.Wrapf(err, "ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
 			}
-			pw = p
+			passwd = pwd
 			return nil
 		},
 		retry.OnRetry(func(n uint, err error) {
@@ -315,7 +316,7 @@ func (i *Ipmitool) createPw(username, uid string, pwc api.PasswordConstraints, s
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
 	)
-	return pw, err
+	return passwd, err
 }
 
 // SetBootOrder persistently sets the boot order to given target

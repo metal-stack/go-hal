@@ -87,7 +87,7 @@ func (ib *inBand) Describe() string {
 func (ib *inBand) BMCUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "metal",
-		Uid:           "3",
+		Id:            "3",
 		ChannelNumber: 1,
 	}
 }
@@ -96,8 +96,13 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUserRaw(channelNumber, username, uid, privilege, constraints)
+func (ib *inBand) BMCCreateUserAndPassword(user hal.BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
+	return ib.IpmiTool.CreateUserRaw(user, privilege, "", &constraints)
+}
+
+func (ib *inBand) BMCCreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := ib.IpmiTool.CreateUserRaw(user, privilege, password, nil)
+	return err
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
