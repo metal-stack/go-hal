@@ -1,6 +1,7 @@
 package hal
 
 import (
+	"github.com/gliderlabs/ssh"
 	"strings"
 
 	"github.com/google/uuid"
@@ -182,5 +183,5 @@ type OutBand interface {
 
 	IPMIConnection() (ip string, port int, user, password string)
 
-	// TODO implement console access from bmc-proxy
+	Console(ssh.Session) error
 }

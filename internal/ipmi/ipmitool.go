@@ -23,6 +23,7 @@ import (
 // IpmiTool defines methods to interact with IPMI
 type IpmiTool interface {
 	DevicePresent() bool
+	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
 	CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
@@ -78,7 +79,8 @@ type BMCInfo struct {
 }
 
 // New creates a new IpmiTool with the default command
-func New(ipmitoolBin string) (IpmiTool, error) {
+func New() (IpmiTool, error) {
+	ipmitoolBin := "ipmitool"
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
@@ -128,13 +130,21 @@ func (i *Ipmitool) DevicePresent() bool {
 	return len(matches) > 0
 }
 
-// Run executes ipmitool with given arguments and returns the outcome
-func (i *Ipmitool) Run(args ...string) (string, error) {
+// NewCommand returns a new ipmitool command with the given arguments
+func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to locate program:%s in path", i.command)
+		return nil, errors.Wrapf(err, "unable to locate program:%s in path", i.command)
 	}
-	cmd := exec.Command(path, args...)
+	return exec.Command(path, args...), nil
+}
+
+// Run executes ipmitool with given arguments and returns the outcome
+func (i *Ipmitool) Run(args ...string) (string, error) {
+	cmd, err := i.NewCommand(args...)
+	if err != nil {
+		return "", err
+	}
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("run ipmitool with args: %v output:%v error:%v", args, string(output), err)

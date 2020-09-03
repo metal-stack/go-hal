@@ -3,7 +3,10 @@ module github.com/metal-stack/go-hal
 go 1.14
 
 require (
+	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/avast/retry-go v2.6.0+incompatible
+	github.com/creack/pty v1.1.11
+	github.com/gliderlabs/ssh v0.3.0
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/inconshreveable/log15 v0.0.0-20200109203555-b30bc20e4fd1

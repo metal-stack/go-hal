@@ -16,7 +16,7 @@ type InBand struct {
 }
 
 func New(board *api.Board, inspectBMC bool) (*InBand, error) {
-	i, err := ipmi.New("ipmitool")
+	i, err := ipmi.New()
 	if err != nil {
 		return nil, err
 	}
