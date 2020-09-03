@@ -20,12 +20,20 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ApiType int
+
+const (
+	HighLevel ApiType = iota // use ipmitool commands
+	LowLevel                 // use raw commands
+)
+
 // IpmiTool defines methods to interact with IPMI
 type IpmiTool interface {
 	DevicePresent() bool
 	Run(arg ...string) (string, error)
-	CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints) (pwd string, err error)
-	CreateUserRaw(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints) (pwd string, err error)
+	CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
+	ChangePassword(user hal.BMCUser, newPassword string, apiType ApiType) error
+	SetUserEnabled(user hal.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -190,7 +198,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	return *session, nil
 }
 
-type createUserRequest struct {
+type bmcRequest struct {
 	username                   string
 	uid                        string
 	privilege                  api.IpmiPrivilege
@@ -203,79 +211,160 @@ type createUserRequest struct {
 }
 
 // CreateUserRaw creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
-func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints) (string, error) {
-	cn := strconv.Itoa(user.ChannelNumber)
-	return i.createUser(createUserRequest{
-		username:                   user.Name,
-		uid:                        user.Id,
-		privilege:                  privilege,
-		disableUserArgs:            []string{"user", "disable", user.Id},
-		enableUserArgs:             []string{"user", "enable", user.Id},
-		setUsernameArgs:            []string{"user", "set", "name", user.Id, user.Name},
-		setUserPrivilegeArgs:       []string{"channel", "setaccess", cn, user.Id, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", privilege)},
-		enableSOLPayloadAccessArgs: []string{"sol", "payload", "enable", cn, user.Id},
-		setPasswordFunc: func() (string, error) {
-			return i.createPassword(user.Name, user.Id, password, pc)
-		},
-	})
+func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints, apiType ApiType) (string, error) {
+	switch apiType {
+	case LowLevel:
+		id, err := strconv.Atoi(user.Id)
+		if err != nil {
+			return "", errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+		}
+		userID := uint8(id)
+		cn := uint8(user.ChannelNumber)
+		return i.createUser(bmcRequest{
+			username:                   user.Name,
+			uid:                        user.Id,
+			privilege:                  privilege,
+			disableUserArgs:            RawDisableUser(userID),
+			enableUserArgs:             RawEnableUser(userID),
+			setUsernameArgs:            RawSetUserName(userID, user.Name),
+			setUserPrivilegeArgs:       RawUserAccess(cn, userID, privilege),
+			enableSOLPayloadAccessArgs: RawEnableUserSOLPayloadAccess(cn, userID),
+			setPasswordFunc: func() (string, error) {
+				return i.createPasswordRaw(user.Name, userID, password, pc)
+			},
+		})
+	default:
+		cn := strconv.Itoa(user.ChannelNumber)
+		return i.createUser(bmcRequest{
+			username:                   user.Name,
+			uid:                        user.Id,
+			privilege:                  privilege,
+			disableUserArgs:            []string{"user", "disable", user.Id},
+			enableUserArgs:             []string{"user", "enable", user.Id},
+			setUsernameArgs:            []string{"user", "set", "name", user.Id, user.Name},
+			setUserPrivilegeArgs:       []string{"channel", "setaccess", cn, user.Id, "link=on", "ipmi=on", "callin=on", fmt.Sprintf("privilege=%d", privilege)},
+			enableSOLPayloadAccessArgs: []string{"sol", "payload", "enable", cn, user.Id},
+			setPasswordFunc: func() (string, error) {
+				return i.createPassword(user.Name, user.Id, password, pc)
+			},
+		})
+	}
 }
 
-// CreateUserRaw creates an IPMI user (via raw commands) with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
-func (i *Ipmitool) CreateUserRaw(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints) (string, error) {
-	id, err := strconv.Atoi(user.Id)
-	if err != nil {
-		return "", errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+func (i *Ipmitool) ChangePassword(user hal.BMCUser, newPassword string, apiType ApiType) error {
+	switch apiType {
+	case LowLevel:
+		id, err := strconv.Atoi(user.Id)
+		if err != nil {
+			return errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+		}
+		userID := uint8(id)
+		_, err = i.changePassword(bmcRequest{
+			username:        user.Name,
+			uid:             user.Id,
+			disableUserArgs: RawDisableUser(userID),
+			enableUserArgs:  RawEnableUser(userID),
+			setPasswordFunc: func() (string, error) {
+				return newPassword, nil
+			},
+		})
+		return err
+	default:
+		_, err := i.changePassword(bmcRequest{
+			username:        user.Name,
+			uid:             user.Id,
+			disableUserArgs: []string{"user", "disable", user.Id},
+			enableUserArgs:  []string{"user", "enable", user.Id},
+			setPasswordFunc: func() (string, error) {
+				return newPassword, nil
+			},
+		})
+		return err
 	}
-	userID := uint8(id)
-	cn := uint8(user.ChannelNumber)
-
-	return i.createUser(createUserRequest{
-		username:                   user.Name,
-		uid:                        user.Id,
-		privilege:                  privilege,
-		disableUserArgs:            RawDisableUser(userID),
-		enableUserArgs:             RawEnableUser(userID),
-		setUsernameArgs:            RawSetUserName(userID, user.Name),
-		setUserPrivilegeArgs:       RawUserAccess(cn, userID, privilege),
-		enableSOLPayloadAccessArgs: RawEnableUserSOLPayloadAccess(cn, userID),
-		setPasswordFunc: func() (string, error) {
-			return i.createPasswordRaw(user.Name, userID, password, pc)
-		},
-	})
 }
 
-func (i *Ipmitool) createUser(args createUserRequest) (string, error) {
-	out, err := i.Run(args.setUsernameArgs...)
+func (i *Ipmitool) SetUserEnabled(user hal.BMCUser, enabled bool, apiType ApiType) error {
+	switch apiType {
+	case LowLevel:
+		id, err := strconv.Atoi(user.Id)
+		if err != nil {
+			return errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+		}
+		userID := uint8(id)
+		return i.setUserEnabled(bmcRequest{
+			username:        user.Name,
+			uid:             user.Id,
+			disableUserArgs: RawDisableUser(userID),
+			enableUserArgs:  RawEnableUser(userID),
+		}, enabled)
+	default:
+		return i.setUserEnabled(bmcRequest{
+			username:        user.Name,
+			uid:             user.Id,
+			disableUserArgs: []string{"user", "disable", user.Id},
+			enableUserArgs:  []string{"user", "enable", user.Id},
+		}, enabled)
+	}
+}
+
+func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
+	out, err := i.Run(req.setUsernameArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", args.username, args.uid, out)
+		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", req.username, req.uid, out)
 	}
 
-	out, err = i.Run(args.disableUserArgs...)
+	pw, err := i.changePassword(req)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to disable user with id %s: %s", args.uid, out)
+		return "", err
 	}
 
-	pw, err := args.setPasswordFunc()
+	out, err = i.Run(req.setUserPrivilegeArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s: %s", pw, args.username, args.uid, out)
+		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", req.privilege, req.username, req.uid, out)
 	}
 
-	out, err = i.Run(args.enableUserArgs...)
+	out, err = i.Run(req.enableSOLPayloadAccessArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to enable user %s with id %s: %s", args.username, args.uid, out)
-	}
-
-	out, err = i.Run(args.setUserPrivilegeArgs...)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", args.privilege, args.username, args.uid, out)
-	}
-
-	out, err = i.Run(args.enableSOLPayloadAccessArgs...)
-	if err != nil {
-		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", args.username, args.uid, out)
+		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", req.username, req.uid, out)
 	}
 
 	return pw, nil
+}
+
+func (i *Ipmitool) changePassword(req bmcRequest) (string, error) {
+	err := i.setUserEnabled(req, false)
+	if err != nil {
+		return "", err
+	}
+
+	pw, err := req.setPasswordFunc()
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s", pw, req.username, req.uid)
+	}
+
+	err = i.setUserEnabled(req, true)
+	if err != nil {
+		return "", err
+	}
+
+	return pw, nil
+}
+
+func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
+	if enabled {
+		out, err := i.Run(req.enableUserArgs...)
+		if err != nil {
+			return errors.Wrapf(err, "failed to enable user %s with id %s: %s", req.username, req.uid, out)
+		}
+		return nil
+	}
+
+	out, err := i.Run(req.disableUserArgs...)
+	if err != nil {
+		return errors.Wrapf(err, "failed to disable user %s with id %s: %s", req.username, req.uid, out)
+	}
+
+	return nil
 }
 
 func (i *Ipmitool) createPassword(username, uid string, passwd string, pc *api.PasswordConstraints) (string, error) {

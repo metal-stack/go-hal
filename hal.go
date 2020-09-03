@@ -135,6 +135,10 @@ type InBand interface {
 	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
 	// Creates the given BMC user with the given password
 	BMCCreateUser(user BMCUser, privilege api.IpmiPrivilege, password string) error
+	// Changes the password of the given BMC user
+	BMCChangePassword(user BMCUser, newPassword string) error
+	// Enables/Disables the given BMC user
+	BMCSetUserEnabled(user BMCUser, enabled bool) error
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
