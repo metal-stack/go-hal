@@ -168,3 +168,8 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Lenovo"
 }
+
+func (ob *outBand) DmiInfo() ([]string, error) {
+	//return nil, errorNotImplemented //FIXME
+	return nil, nil
+}

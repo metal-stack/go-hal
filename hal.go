@@ -182,5 +182,7 @@ type OutBand interface {
 
 	IPMIConnection() (ip string, port int, user, password string)
 
+	DmiInfo() ([]string, error)
+
 	// TODO implement console access from bmc-proxy
 }

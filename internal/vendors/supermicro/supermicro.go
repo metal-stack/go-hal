@@ -1,6 +1,7 @@
 package supermicro
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -192,4 +193,21 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Supermicro"
+}
+
+func (ob *outBand) DmiInfo() ([]string, error) {
+	ip, _, user, password := ob.IPMIConnection()
+	args := []string{"--no_banner", "--no_progress", "--journal_level", "0", "-i", ip, "-u", user, "-p", password, "-c", "GetDmiInfo"}
+	out, err := ob.sum.executeAsync(args...)
+	if err != nil {
+		return nil, fmt.Errorf("could not initiate sum command to get dmi data from ip:%s, err: %v", ip, err)
+	}
+
+	var info []string
+	s := bufio.NewScanner(out)
+	for s.Scan() {
+		info = append(info, s.Text())
+	}
+
+	return info, nil
 }

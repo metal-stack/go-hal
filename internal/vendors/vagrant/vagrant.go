@@ -177,3 +177,8 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Vagrant"
 }
+
+func (ob *outBand) DmiInfo() ([]string, error) {
+	//return nil, errorNotImplemented //FIXME
+	return nil, nil
+}
