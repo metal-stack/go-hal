@@ -5,6 +5,7 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
@@ -194,5 +195,5 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	ip, port, _, _ := ob.IPMIConnection()
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	cmd := exec.Command("virsh", "console", addr, "--force")
-	return outband.OpenConsole(s, cmd)
+	return console.Open(s, cmd)
 }

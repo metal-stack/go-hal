@@ -2,6 +2,7 @@ package supermicro
 
 import (
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
@@ -196,4 +197,8 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Supermicro"
+}
+
+func (ob *outBand) Console(s ssh.Session) error {
+	return ob.IpmiTool.OpenConsole(s)
 }

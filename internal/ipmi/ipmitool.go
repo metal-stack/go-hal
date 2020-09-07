@@ -6,7 +6,9 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/sethvargo/go-password/password"
+	"io"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
 )
@@ -36,6 +39,7 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
+	OpenConsole(s ssh.Session) error
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
@@ -374,6 +378,18 @@ func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 		return errors.Wrapf(err, "unable to turn off the chassis identify LED")
 	}
 	return nil
+}
+
+func (i *Ipmitool) OpenConsole(s ssh.Session) error {
+	_, err := io.WriteString(s, "Exit with '~.'\n")
+	if err != nil {
+		return errors.Wrap(err, "failed to write to console")
+	}
+	cmd, err := i.NewCommand("sol", "activate")
+	if err != nil {
+		return err
+	}
+	return console.Open(s, cmd)
 }
 
 func output2Map(cmdOutput string) map[string]string {

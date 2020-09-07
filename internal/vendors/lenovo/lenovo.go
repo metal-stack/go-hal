@@ -2,6 +2,7 @@ package lenovo
 
 import (
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
@@ -171,4 +172,8 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Lenovo"
+}
+
+func (ob *outBand) Console(s ssh.Session) error {
+	return errorNotImplemented
 }
