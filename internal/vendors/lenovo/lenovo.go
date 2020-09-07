@@ -172,6 +172,5 @@ func (ob *outBand) Console(s ssh.Session) error {
 }
 
 func (ob *outBand) DmiInfo() ([]string, error) {
-	//return nil, errorNotImplemented //FIXME
-	return nil, nil
+	return ob.Redfish.DmiInfo()
 }

@@ -230,3 +230,7 @@ func (c *APIClient) setNextBootBIOS() error {
 	}
 	return err
 }
+
+func (c *APIClient) DmiInfo() ([]string, error) {
+	return nil, nil //TODO
+}
