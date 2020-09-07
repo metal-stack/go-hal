@@ -16,14 +16,10 @@ type OutBand struct {
 	password string
 }
 
-func ViaRedfish(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
+func ViaRedfish(r *redfish.APIClient, board *api.Board) *OutBand {
 	return &OutBand{
-		Redfish:  r,
-		board:    board,
-		ip:       ip,
-		ipmiPort: ipmiPort,
-		user:     user,
-		password: password,
+		Redfish: r,
+		board:   board,
 	}
 }
 

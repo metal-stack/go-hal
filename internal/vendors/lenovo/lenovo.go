@@ -42,9 +42,9 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a Lenovo server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
+func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	return &outBand{
-		OutBand: outband.ViaRedfish(r, board, ip, ipmiPort, user, password),
+		OutBand: outband.ViaRedfish(r, board),
 	}
 }
 
