@@ -9,7 +9,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
-	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
@@ -47,14 +46,10 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a vagrant VM.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
-	ob, err := outband.New(r, board, ip, ipmiPort, user, password)
-	if err != nil {
-		return nil, err
-	}
+func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
 	return &outBand{
-		OutBand: ob,
-	}, nil
+		OutBand: outband.ViaGoipmi(board, ip, ipmiPort, user, password),
+	}
 }
 
 // InBand

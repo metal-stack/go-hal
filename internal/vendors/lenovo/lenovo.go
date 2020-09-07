@@ -42,14 +42,10 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a Lenovo server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
-	ob, err := outband.New(r, board, ip, ipmiPort, user, password)
-	if err != nil {
-		return nil, err
-	}
+func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
 	return &outBand{
-		OutBand: ob,
-	}, nil
+		OutBand: outband.ViaRedfish(r, board, ip, ipmiPort, user, password),
+	}
 }
 
 // InBand
@@ -149,21 +145,18 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDState(state)
-	})
+	//return errorNotImplemented //TODO
+	return nil
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDOn()
-	})
+	//return errorNotImplemented //TODO
+	return nil
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDOff()
-	})
+	//return errorNotImplemented //TODO
+	return nil
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {

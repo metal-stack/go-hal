@@ -50,11 +50,11 @@ func OutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error
 
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.OutBand(r, b, ip, ipmiPort, user, password)
+		return lenovo.OutBand(r, b, ip, ipmiPort, user, password), nil
 	case api.VendorSupermicro:
-		return supermicro.OutBand(r, b, ip, ipmiPort, user, password)
+		return supermicro.OutBand(b, ip, ipmiPort, user, password)
 	case api.VendorVagrant:
-		return vagrant.OutBand(r, b, ip, ipmiPort, user, password)
+		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	default:
 		return nil, errorUnknownVendor
 	}
