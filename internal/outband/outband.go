@@ -24,8 +24,8 @@ func ViaRedfish(r *redfish.APIClient, board *api.Board) *OutBand {
 	}
 }
 
-// ViaIpmi returns an out-band connection that uses the given ipmitool as well as a goipmi client
-func ViaIpmi(ipmiTool ipmi.IpmiTool, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
+// New returns an out-band connection that uses the given redfish client and ipmitool as well as a goipmi client
+func New(r *redfish.APIClient, ipmiTool ipmi.IpmiTool, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
 	return &OutBand{
 		IpmiTool: ipmiTool,
 		board:    board,

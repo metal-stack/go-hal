@@ -8,6 +8,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
+	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
 	goipmi "github.com/vmware/goipmi"
 )
@@ -50,7 +51,7 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a supermicro server.
-func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
 	rs, err := newRemoteSum(sumBin, ip, user, password)
 	if err != nil {
 		return nil, err
@@ -60,7 +61,7 @@ func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) (
 		return nil, err
 	}
 	return &outBand{
-		OutBand: outband.ViaIpmi(i, board, ip, ipmiPort, user, password),
+		OutBand: outband.New(r, i, board, ip, ipmiPort, user, password),
 		sum:     rs,
 	}, nil
 }
