@@ -16,6 +16,7 @@ type OutBand struct {
 	password string
 }
 
+// ViaRedfish returns an out-band connection that uses the given redfish client
 func ViaRedfish(r *redfish.APIClient, board *api.Board) *OutBand {
 	return &OutBand{
 		Redfish: r,
@@ -23,7 +24,8 @@ func ViaRedfish(r *redfish.APIClient, board *api.Board) *OutBand {
 	}
 }
 
-func ViaIpmitool(ipmiTool ipmi.IpmiTool, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
+// ViaIpmi returns an out-band connection that uses the given ipmitool as well as a goipmi client
+func ViaIpmi(ipmiTool ipmi.IpmiTool, board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
 	return &OutBand{
 		IpmiTool: ipmiTool,
 		board:    board,
@@ -34,6 +36,7 @@ func ViaIpmitool(ipmiTool ipmi.IpmiTool, board *api.Board, ip string, ipmiPort i
 	}
 }
 
+// ViaGoipmi returns an out-band connection that uses a goipmi client
 func ViaGoipmi(board *api.Board, ip string, ipmiPort int, user, password string) *OutBand {
 	return &OutBand{
 		board:    board,

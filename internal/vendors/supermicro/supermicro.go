@@ -60,7 +60,7 @@ func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) (
 		return nil, err
 	}
 	return &outBand{
-		OutBand: outband.ViaIpmitool(i, board, ip, ipmiPort, user, password),
+		OutBand: outband.ViaIpmi(i, board, ip, ipmiPort, user, password),
 		sum:     rs,
 	}, nil
 }
