@@ -1,4 +1,4 @@
-package detect
+package connect
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ var (
 	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
-// ConnectInBand will detect the board and choose the correct inband hal implementation
-func ConnectInBand() (hal.InBand, error) {
+// InBand will detect the board and choose the correct inband hal implementation
+func InBand() (hal.InBand, error) {
 	b, err := dmi.BoardInfo()
 	if err != nil {
 		b = api.VagrantBoard
@@ -36,8 +36,8 @@ func ConnectInBand() (hal.InBand, error) {
 	}
 }
 
-// ConnectOutBand will detect the board and choose the correct outband hal implementation
-func ConnectOutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+// OutBand will detect the board and choose the correct outband hal implementation
+func OutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true)
 	if err != nil {
 		return nil, err
