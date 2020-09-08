@@ -170,7 +170,3 @@ func (ob *outBand) Describe() string {
 func (ob *outBand) Console(s ssh.Session) error {
 	return errorNotImplemented
 }
-
-func (ob *outBand) DmiInfo() ([]string, error) {
-	return ob.Redfish.DmiInfo()
-}

@@ -192,8 +192,3 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	cmd := exec.Command("virsh", "console", addr, "--force")
 	return console.Open(s, cmd)
 }
-
-func (ob *outBand) DmiInfo() ([]string, error) {
-	//return nil, errorNotImplemented //FIXME
-	return nil, nil
-}

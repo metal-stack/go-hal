@@ -184,6 +184,4 @@ type OutBand interface {
 	IPMIConnection() (ip string, port int, user, password string)
 
 	Console(ssh.Session) error
-
-	DmiInfo() ([]string, error)
 }

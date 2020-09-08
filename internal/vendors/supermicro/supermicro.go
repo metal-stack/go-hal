@@ -202,7 +202,3 @@ func (ob *outBand) Describe() string {
 func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
 }
-
-func (ob *outBand) DmiInfo() ([]string, error) {
-	return ob.Redfish.DmiInfo()
-}

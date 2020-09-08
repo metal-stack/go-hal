@@ -17,8 +17,6 @@ import (
 	"github.com/stmcginnis/gofish/redfish"
 )
 
-const defaultUUID = "00000000-0000-0000-0000-000000000000"
-
 type APIClient struct {
 	*gofish.APIClient
 	*http.Client
@@ -75,7 +73,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return defaultUUID, err
+		return "", err
 	}
 	for _, system := range systems {
 		log.Printf("system:%v\n", system)
@@ -83,7 +81,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 			return system.UUID, nil
 		}
 	}
-	return defaultUUID, err
+	return "", err
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
@@ -229,8 +227,4 @@ func (c *APIClient) setNextBootBIOS() error {
 		}
 	}
 	return err
-}
-
-func (c *APIClient) DmiInfo() ([]string, error) {
-	return nil, nil //TODO
 }
