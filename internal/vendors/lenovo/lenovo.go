@@ -102,13 +102,13 @@ func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privile
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
-	//return false, errorNotImplemented //FIXME
-	return true, nil
+	//return false, errorNotImplemented // do not throw an error to not break manual tests
+	return true, nil //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
-	//return errorNotImplemented //FIXME
-	return nil
+	//return errorNotImplemented // do not throw an error to not break manual tests
+	return nil //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 // OutBand
@@ -145,18 +145,15 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	//return errorNotImplemented //TODO
-	return nil
+	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	//return errorNotImplemented //TODO
-	return nil
+	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	//return errorNotImplemented //TODO
-	return nil
+	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
@@ -168,5 +165,5 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented
+	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
 }
