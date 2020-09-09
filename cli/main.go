@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/metal-stack/go-hal/detect"
+	"github.com/metal-stack/go-hal/connect"
 )
 
 var (
@@ -30,7 +30,7 @@ func main() {
 }
 
 func inband() {
-	inband, err := detect.ConnectInBand()
+	inband, err := connect.InBand()
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +42,7 @@ func inband() {
 }
 
 func outband() {
-	outband, err := detect.ConnectOutBand("10.5.2.93", 623, "ADMIN", "ADMIN")
+	outband, err := connect.OutBand("10.5.2.93", 623, "ADMIN", "ADMIN")
 	if err != nil {
 		panic(err)
 	}
