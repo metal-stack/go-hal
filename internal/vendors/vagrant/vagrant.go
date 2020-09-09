@@ -89,12 +89,12 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Vagrant"
 }
 
+func (ib *inBand) BMCSuperUser() (hal.BMCUser, string) {
+	return hal.BMCUser{}, ""
+}
+
 func (ib *inBand) BMCUser() hal.BMCUser {
-	return hal.BMCUser{
-		Name:          "metal",
-		Id:            "10",
-		ChannelNumber: 1,
-	}
+	return hal.BMCUser{}
 }
 
 func (ib *inBand) BMCPresent() bool {

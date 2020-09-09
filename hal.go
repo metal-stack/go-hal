@@ -128,6 +128,8 @@ type InBand interface {
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
 
 	// BMC related calls
+	// BMCSuperUser returns the details of the already present bmc superuser as well as the default password
+	BMCSuperUser() (BMCUser, string)
 	// BMCUser returns the details of the preset metal bmc user
 	BMCUser() BMCUser
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
