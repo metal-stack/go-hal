@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -49,15 +48,14 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 		}
 	}()
 
-	wg := new(sync.WaitGroup)
-	wg.Add(2)
+	done := make(chan bool)
 
 	go func() {
 		_, err = io.Copy(f, s) // stdin
 		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
 			stdinErr = errors.Wrap(err, "failed to copy remote stdin to local")
 		}
-		wg.Done()
+		done <- true
 	}()
 
 	go func() {
@@ -65,11 +63,11 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
 			stdoutErr = errors.Wrap(err, "failed to copy local stdout to remote")
 		}
-		wg.Done()
+		done <- true
 	}()
 
 	// wait till connection is closed
-	wg.Wait()
+	<-done
 
 	if winSizeErr != nil {
 		err = errors.Wrapf(winSizeErr, "exit ssh session:%s", s.Exit(1))
