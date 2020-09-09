@@ -2,6 +2,7 @@ package supermicro
 
 import (
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
@@ -55,8 +56,12 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, us
 	if err != nil {
 		return nil, err
 	}
+	i, err := ipmi.New()
+	if err != nil {
+		return nil, err
+	}
 	return &outBand{
-		OutBand: outband.New(r, board, ip, ipmiPort, user, password),
+		OutBand: outband.New(r, i, board, ip, ipmiPort, user, password),
 		sum:     rs,
 	}, nil
 }
@@ -192,4 +197,9 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Supermicro"
+}
+
+func (ob *outBand) Console(s ssh.Session) error {
+	ip, port, user, password := ob.IPMIConnection()
+	return ob.IpmiTool.OpenConsole(s, ip, port, user, password)
 }

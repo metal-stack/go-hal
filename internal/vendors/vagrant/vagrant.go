@@ -2,14 +2,18 @@ package vagrant
 
 import (
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
-	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
+	"io"
+	"os/exec"
 )
 
 var (
@@ -42,10 +46,10 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a vagrant VM.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
 	return &outBand{
-		OutBand: outband.New(r, board, ip, ipmiPort, user, password),
-	}, nil
+		OutBand: outband.ViaGoipmi(board, ip, ipmiPort, user, password),
+	}
 }
 
 // InBand
@@ -176,4 +180,15 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Vagrant"
+}
+
+func (ob *outBand) Console(s ssh.Session) error { //Virsh console
+	_, err := io.WriteString(s, "Exit with '<Ctrl> 5'\n")
+	if err != nil {
+		return errors.Wrap(err, "failed to write to console")
+	}
+	ip, port, _, _ := ob.IPMIConnection()
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	cmd := exec.Command("virsh", "console", addr, "--force")
+	return console.Open(s, cmd)
 }

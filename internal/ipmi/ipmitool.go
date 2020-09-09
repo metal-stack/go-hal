@@ -6,7 +6,9 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/sethvargo/go-password/password"
+	"io"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +18,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/pkg/errors"
 )
@@ -23,6 +26,7 @@ import (
 // IpmiTool defines methods to interact with IPMI
 type IpmiTool interface {
 	DevicePresent() bool
+	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
 	CreateUserRaw(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (password string, err error)
@@ -35,6 +39,7 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
+	OpenConsole(s ssh.Session, ip string, port int, user, password string) error
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
@@ -78,7 +83,8 @@ type BMCInfo struct {
 }
 
 // New creates a new IpmiTool with the default command
-func New(ipmitoolBin string) (IpmiTool, error) {
+func New() (IpmiTool, error) {
+	ipmitoolBin := "ipmitool"
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
 		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
@@ -128,13 +134,21 @@ func (i *Ipmitool) DevicePresent() bool {
 	return len(matches) > 0
 }
 
-// Run executes ipmitool with given arguments and returns the outcome
-func (i *Ipmitool) Run(args ...string) (string, error) {
+// NewCommand returns a new ipmitool command with the given arguments
+func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
-		return "", errors.Wrapf(err, "unable to locate program:%s in path", i.command)
+		return nil, errors.Wrapf(err, "unable to locate program:%s in path", i.command)
 	}
-	cmd := exec.Command(path, args...)
+	return exec.Command(path, args...), nil
+}
+
+// Run executes ipmitool with given arguments and returns the outcome
+func (i *Ipmitool) Run(args ...string) (string, error) {
+	cmd, err := i.NewCommand(args...)
+	if err != nil {
+		return "", err
+	}
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("run ipmitool with args: %v output:%v error:%v", args, string(output), err)
@@ -364,6 +378,18 @@ func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 		return errors.Wrapf(err, "unable to turn off the chassis identify LED")
 	}
 	return nil
+}
+
+func (i *Ipmitool) OpenConsole(s ssh.Session, ip string, port int, user, password string) error {
+	_, err := io.WriteString(s, "Exit with ~.\n")
+	if err != nil {
+		return errors.Wrap(err, "failed to write to console")
+	}
+	cmd, err := i.NewCommand("-I", "lanplus", "-H", ip, "-p", strconv.Itoa(port), "-U", user, "-P", password, "sol", "activate")
+	if err != nil {
+		return err
+	}
+	return console.Open(s, cmd)
 }
 
 func output2Map(cmdOutput string) map[string]string {
