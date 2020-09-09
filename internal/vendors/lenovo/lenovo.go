@@ -85,12 +85,12 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
-func (ib *inBand) BMCSuperUser() (hal.BMCUser, string) {
+func (ib *inBand) BMCSuperUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "USERID",
 		Id:            "2",
 		ChannelNumber: 1,
-	}, "TBD" // TODO
+	}
 }
 
 func (ib *inBand) BMCUser() hal.BMCUser {

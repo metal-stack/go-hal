@@ -103,12 +103,12 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Supermicro"
 }
 
-func (ib *inBand) BMCSuperUser() (hal.BMCUser, string) {
+func (ib *inBand) BMCSuperUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "ADMIN",
 		Id:            "1",
 		ChannelNumber: 1,
-	}, "ADMIN"
+	}
 }
 
 func (ib *inBand) BMCUser() hal.BMCUser {
