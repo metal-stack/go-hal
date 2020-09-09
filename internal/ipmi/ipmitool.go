@@ -39,7 +39,7 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
-	OpenConsole(s ssh.Session) error
+	OpenConsole(s ssh.Session, ip string, port int, user, password string) error
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
@@ -380,12 +380,12 @@ func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 	return nil
 }
 
-func (i *Ipmitool) OpenConsole(s ssh.Session) error {
-	_, err := io.WriteString(s, "Exit with '~.'\n")
+func (i *Ipmitool) OpenConsole(s ssh.Session, ip string, port int, user, password string) error {
+	_, err := io.WriteString(s, "Exit with ~.\n")
 	if err != nil {
 		return errors.Wrap(err, "failed to write to console")
 	}
-	cmd, err := i.NewCommand("sol", "activate")
+	cmd, err := i.NewCommand("-I", "lanplus", "-H", ip, "-p", strconv.Itoa(port), "-U", user, "-P", password, "sol", "activate")
 	if err != nil {
 		return err
 	}

@@ -200,5 +200,6 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return ob.IpmiTool.OpenConsole(s)
+	ip, port, user, password := ob.IPMIConnection()
+	return ob.IpmiTool.OpenConsole(s, ip, port, user, password)
 }
