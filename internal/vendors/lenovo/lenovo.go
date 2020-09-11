@@ -85,10 +85,26 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
+func (ib *inBand) BMCPresentSuperUser() hal.BMCUser {
+	return hal.BMCUser{
+		Name:          "USERID",
+		Id:            "2",
+		ChannelNumber: 1,
+	}
+}
+
+func (ib *inBand) BMCSuperUser() hal.BMCUser {
+	return hal.BMCUser{
+		Name:          "supermetal",
+		Id:            "4",
+		ChannelNumber: 1,
+	}
+}
+
 func (ib *inBand) BMCUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "metal",
-		Uid:           "3",
+		Id:            "3",
 		ChannelNumber: 1,
 	}
 }
@@ -97,8 +113,21 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUserRaw(channelNumber, username, uid, privilege, constraints)
+func (ib *inBand) BMCCreateUserAndPassword(user hal.BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
+	return ib.IpmiTool.CreateUser(user, privilege, "", &constraints, ipmi.LowLevel)
+}
+
+func (ib *inBand) BMCCreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := ib.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.LowLevel)
+	return err
+}
+
+func (ib *inBand) BMCChangePassword(user hal.BMCUser, newPassword string) error {
+	return ib.IpmiTool.ChangePassword(user, newPassword, ipmi.LowLevel)
+}
+
+func (ib *inBand) BMCSetUserEnabled(user hal.BMCUser, enabled bool) error {
+	return ib.IpmiTool.SetUserEnabled(user, enabled, ipmi.LowLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {

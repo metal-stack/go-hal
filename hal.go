@@ -128,12 +128,22 @@ type InBand interface {
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
 
 	// BMC related calls
+	// BMCPresentSuperUser returns the details of the already present bmc superuser
+	BMCPresentSuperUser() BMCUser
+	// BMCSuperUser returns the details of the preset metal bmc superuser
+	BMCSuperUser() BMCUser
 	// BMCUser returns the details of the preset metal bmc user
 	BMCUser() BMCUser
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
 	BMCPresent() bool
-	// Create a user for given channel with given username, uid and privilege, and returns generated password
-	BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	// Creates the given BMC user and returns generated password
+	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	// Creates the given BMC user with the given password
+	BMCCreateUser(user BMCUser, privilege api.IpmiPrivilege, password string) error
+	// Changes the password of the given BMC user
+	BMCChangePassword(user BMCUser, newPassword string) error
+	// Enables/Disables the given BMC user
+	BMCSetUserEnabled(user BMCUser, enabled bool) error
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
@@ -145,7 +155,7 @@ type InBand interface {
 
 type BMCUser struct {
 	Name          string
-	Uid           string
+	Id            string
 	ChannelNumber int
 }
 
