@@ -85,6 +85,10 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
+func (ib *inBand) BMC() (*api.BMC, error) {
+	return ib.IpmiTool.BMC()
+}
+
 func (ib *inBand) BMCPresentSuperUser() hal.BMCUser {
 	return hal.BMCUser{
 		Name:          "USERID",

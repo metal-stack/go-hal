@@ -128,6 +128,8 @@ type InBand interface {
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
 
 	// BMC related calls
+	// Returns the BMC struct
+	BMC() (*api.BMC, error)
 	// BMCPresentSuperUser returns the details of the already present bmc superuser
 	BMCPresentSuperUser() BMCUser
 	// BMCSuperUser returns the details of the preset metal bmc superuser
