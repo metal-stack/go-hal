@@ -200,3 +200,7 @@ func (ob *outBand) Describe() string {
 func (ob *outBand) Console(s ssh.Session) error {
 	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
 }
+
+func (ob *outBand) BMC() (*api.BMC, error) {
+	return ob.Redfish.BMC()
+}

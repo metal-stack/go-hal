@@ -236,3 +236,7 @@ func (ob *outBand) Console(s ssh.Session) error {
 	ip, port, user, password := ob.IPMIConnection()
 	return ob.IpmiTool.OpenConsole(s, ip, port, user, password)
 }
+
+func (ob *outBand) BMC() (*api.BMC, error) {
+	return ob.IpmiTool.BMC()
+}

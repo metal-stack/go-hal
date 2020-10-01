@@ -196,4 +196,7 @@ type OutBand interface {
 	IPMIConnection() (ip string, port int, user, password string)
 
 	Console(ssh.Session) error
+
+	// Returns the BMC struct
+	BMC() (*api.BMC, error)
 }

@@ -230,3 +230,34 @@ func (c *APIClient) setNextBootBIOS() error {
 	}
 	return err
 }
+
+func (c *APIClient) BMC() (*api.BMC, error) {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return nil, err
+	}
+
+	chassis, err := c.Service.Chassis()
+	if err != nil {
+		return nil, err
+	}
+
+	bmc := &api.BMC{}
+
+	for _, system := range systems {
+		bmc.ProductManufacturer = system.Manufacturer
+		bmc.ProductPartNumber = system.PartNumber
+		bmc.ProductSerial = system.SerialNumber
+	}
+
+	for _, chass := range chassis {
+		bmc.ChassisPartNumber = chass.PartNumber
+		bmc.ChassisPartSerial = chass.SerialNumber
+
+		bmc.BoardMfg = chass.Manufacturer
+	}
+
+	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
+
+	return bmc, err
+}
