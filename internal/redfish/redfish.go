@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/metal-stack/go-hal"
 	"log"
@@ -51,6 +52,9 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
+	if c.Service == nil {
+		return nil, errors.New("gofish service root is not available most likely due to missing username")
+	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
 		return nil, err
