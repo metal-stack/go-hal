@@ -251,6 +251,10 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	}
 
 	for _, chass := range chassis {
+		if chass.ChassisType != redfish.RackMountChassisType {
+			continue
+		}
+
 		bmc.ChassisPartNumber = chass.PartNumber
 		bmc.ChassisPartSerial = chass.SerialNumber
 
