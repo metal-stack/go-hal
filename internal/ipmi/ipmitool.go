@@ -224,7 +224,7 @@ type bmcRequest struct {
 	setPasswordFunc            func() (string, error)
 }
 
-// CreateUserRaw creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
+// CreateUser creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
 func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints, apiType ApiType) (string, error) {
 	switch apiType {
 	case LowLevel:
@@ -440,7 +440,7 @@ func (i *Ipmitool) SetChassisControl(fn ChassisControlFunction) error {
 	return nil
 }
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED
+// SetChassisIdentifyLEDState sets the chassis identify LED to given state
 func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
 	switch state {
 	case hal.IdentifyLEDStateOn:
