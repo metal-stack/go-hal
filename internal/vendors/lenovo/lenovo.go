@@ -117,8 +117,8 @@ func (ib *inBand) BMCPresent() bool {
 	return ib.IpmiTool.DevicePresent()
 }
 
-func (ib *inBand) BMCCreateUserAndPassword(user hal.BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUser(user, privilege, "", &constraints, ipmi.LowLevel)
+func (ib *inBand) BMCCreateUserAndPassword(user hal.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	return ib.IpmiTool.CreateUser(user, privilege, "", ib.Board().Vendor.PasswordConstraints(), ipmi.LowLevel)
 }
 
 func (ib *inBand) BMCCreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string) error {

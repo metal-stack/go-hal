@@ -105,6 +105,19 @@ type (
 	Vendor int
 )
 
+func (v Vendor) PasswordConstraints() *PasswordConstraints {
+	switch v {
+	default:
+		return &PasswordConstraints{
+			Length:      10,
+			NumDigits:   3,
+			NumSymbols:  0,
+			NoUpper:     false,
+			AllowRepeat: false,
+		}
+	}
+}
+
 const (
 	// VendorUnknown is a unknown Vendor
 	VendorUnknown Vendor = iota

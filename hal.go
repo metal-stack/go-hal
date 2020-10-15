@@ -139,7 +139,7 @@ type InBand interface {
 	// BMCPresent returns true if the InBand Connection found a usable BMC device
 	BMCPresent() bool
 	// Creates the given BMC user and returns generated password
-	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege) (string, error)
 	// Creates the given BMC user with the given password
 	BMCCreateUser(user BMCUser, privilege api.IpmiPrivilege, password string) error
 	// Changes the password of the given BMC user
