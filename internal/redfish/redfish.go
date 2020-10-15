@@ -129,12 +129,12 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return err
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
+func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
 	if target == hal.BootTargetBIOS {
 		return c.setNextBootBIOS()
 	}
 
-	currentBootOrder, err := c.retrieveBootOrder(vendor)
+	currentBootOrder, err := c.getBootOrder()
 	if err != nil {
 		return err
 	}
@@ -146,11 +146,7 @@ func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	}
 }
 
-func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //TODO move out
-	if vendor != api.VendorLenovo { // TODO implement also for Supermicro
-		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
-	}
-
+func (c *APIClient) getBootOrder() ([]string, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
 	if err != nil {
 		return nil, err

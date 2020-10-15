@@ -157,7 +157,7 @@ func (ob *outBand) IdentifyLEDOff() error {
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return ob.Redfish.SetBootOrder(target, vendor)
+	return ob.Redfish.SetBootOrder(target)
 }
 
 func (ob *outBand) Describe() string {
