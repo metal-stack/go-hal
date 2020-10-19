@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/metal-stack/go-hal"
+	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"sort"
@@ -57,7 +57,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "unable to query chassis")
 	}
 
 	for _, chass := range chassis {
@@ -72,7 +72,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("no board detected")
+	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
 }
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
