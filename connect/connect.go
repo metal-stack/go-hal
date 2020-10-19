@@ -45,7 +45,7 @@ func OutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error
 	}
 	b, err := r.BoardInfo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s", ip, user)
+		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s password:%s", ip, user, password)
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
 
