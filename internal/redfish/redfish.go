@@ -57,7 +57,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to query chassis")
+		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	for _, chass := range chassis {
@@ -79,7 +79,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return defaultUUID, err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		log.Printf("system:%v\n", system)
@@ -93,7 +93,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return hal.PowerUnknownState, err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
@@ -122,7 +122,7 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		err = system.Reset(resetType)
@@ -130,7 +130,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrapf(err, "failed to set power to %s", resetType)
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
@@ -222,7 +222,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 func (c *APIClient) setNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		boot := system.Boot
@@ -233,5 +233,5 @@ func (c *APIClient) setNextBootBIOS() error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrap(err, "failed to set next boot BIOS")
 }
