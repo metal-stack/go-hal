@@ -3,6 +3,7 @@ package connect
 import (
 	"fmt"
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
+	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
@@ -40,11 +41,11 @@ func InBand() (hal.InBand, error) {
 func OutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Unable to establish redfish connection for ip:%s user:%s", ip, user)
 	}
 	b, err := r.BoardInfo()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s", ip, user)
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
 
