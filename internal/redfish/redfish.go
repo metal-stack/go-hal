@@ -53,7 +53,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, err
+		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	for _, chass := range chassis {
@@ -234,12 +234,12 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return nil, err
+		log.Printf("ignore service query err:%s\n", err.Error())
 	}
 
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, err
+		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	bmc := &api.BMC{}
@@ -263,5 +263,5 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
 
-	return bmc, err
+	return bmc, nil
 }
