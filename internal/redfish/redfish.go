@@ -2,7 +2,6 @@ package redfish
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -24,7 +23,9 @@ type APIClient struct {
 	*gofish.APIClient
 	*http.Client
 	urlPrefix string
-	auth      string
+	user      string
+	password  string
+	basicAuth string
 }
 
 func New(url, user, password string, insecure bool) (*APIClient, error) {
@@ -39,13 +40,12 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	return &APIClient{
 		APIClient: c,
-		Client:    &http.Client{Transport: tr},
-		auth:      base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		Client:    c.HTTPClient,
+		user:      user,
+		password:  password,
+		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
 	}, nil
 }
@@ -159,7 +159,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -208,14 +208,15 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	_, err = c.Do(req)
 	return err
 }
 
-func (c *APIClient) addHeaders(req *http.Request) {
+func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.auth)
+	req.Header.Add("Authorization", "Basic "+c.basicAuth)
+	req.SetBasicAuth(c.user, c.password)
 }
 
 func (c *APIClient) setNextBootBIOS() error {
