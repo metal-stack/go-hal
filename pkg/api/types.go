@@ -54,7 +54,7 @@ type BMCUser struct {
 	ChannelNumber int
 }
 
-// BMCConnection offers methods to add/update BMC users
+// BMCConnection offers methods to add/update BMC users and retrieve BMC details
 type BMCConnection interface {
 	// BMC returns the actual BMC details
 	BMC() (*BMC, error)
@@ -74,6 +74,12 @@ type BMCConnection interface {
 	ChangePassword(user BMCUser, newPassword string) error
 	// Enables/Disables the given BMC user
 	SetUserEnabled(user BMCUser, enabled bool) error
+}
+
+// OutBandBMCConnection offers a method to retrieve BMC details
+type OutBandBMCConnection interface {
+	// BMC returns the actual BMC details
+	BMC() (*BMC, error)
 }
 
 // BMC Base Management Controller details

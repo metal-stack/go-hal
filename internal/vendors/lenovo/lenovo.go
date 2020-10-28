@@ -31,6 +31,9 @@ type (
 	bmcConnection struct {
 		*inBand
 	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
 )
 
 // InBand creates an inband connection to a Lenovo server.
@@ -210,6 +213,12 @@ func (ob *outBand) Console(s ssh.Session) error {
 	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
 }
 
-func (ob *outBand) BMC() (*api.BMC, error) {
-	return ob.Redfish.BMC()
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.Redfish.BMC()
 }

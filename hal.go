@@ -174,6 +174,6 @@ type OutBand interface {
 
 	Console(ssh.Session) error
 
-	// Returns the BMC struct
-	BMC() (*api.BMC, error)
+	// Returns a connection to the BMC
+	BMCConnection() api.OutBandBMCConnection
 }

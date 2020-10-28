@@ -35,6 +35,9 @@ type (
 	bmcConnection struct {
 		*inBand
 	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
 )
 
 // InBand creates an inband connection to a vagrant VM.
@@ -223,6 +226,12 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	return console.Open(s, cmd)
 }
 
-func (ob *outBand) BMC() (*api.BMC, error) {
-	return ob.IpmiTool.BMC()
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }
