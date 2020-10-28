@@ -28,6 +28,12 @@ type (
 	outBand struct {
 		*outband.OutBand
 	}
+	bmcConnection struct {
+		*inBand
+	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
 )
 
 // InBand creates an inband connection to a Lenovo server.
@@ -85,20 +91,59 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
 }
 
-func (ib *inBand) BMCUser() hal.BMCUser {
-	return hal.BMCUser{
-		Name:          "metal",
-		Uid:           "3",
+func (ib *inBand) BMCConnection() api.BMCConnection {
+	return &bmcConnection{
+		inBand: ib,
+	}
+}
+
+func (c *bmcConnection) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
+}
+
+func (c *bmcConnection) PresentSuperUser() api.BMCUser {
+	return api.BMCUser{
+		Name:          "USERID",
+		Id:            "2",
 		ChannelNumber: 1,
 	}
 }
 
-func (ib *inBand) BMCPresent() bool {
-	return ib.IpmiTool.DevicePresent()
+func (c *bmcConnection) SuperUser() api.BMCUser {
+	return api.BMCUser{
+		Name:          "supermetal",
+		Id:            "4",
+		ChannelNumber: 1,
+	}
 }
 
-func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUserRaw(channelNumber, username, uid, privilege, constraints)
+func (c *bmcConnection) User() api.BMCUser {
+	return api.BMCUser{
+		Name:          "metal",
+		Id:            "3",
+		ChannelNumber: 1,
+	}
+}
+
+func (c *bmcConnection) Present() bool {
+	return c.IpmiTool.DevicePresent()
+}
+
+func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.LowLevel)
+}
+
+func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.LowLevel)
+	return err
+}
+
+func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.LowLevel)
+}
+
+func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.LowLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -166,4 +211,14 @@ func (ob *outBand) Describe() string {
 
 func (ob *outBand) Console(s ssh.Session) error {
 	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
+}
+
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.Redfish.BMC()
 }
