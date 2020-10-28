@@ -47,6 +47,35 @@ type Board struct {
 	Firmware     kernel.FirmwareMode
 }
 
+// BMCUser holds BMC user details
+type BMCUser struct {
+	Name          string
+	Id            string
+	ChannelNumber int
+}
+
+// BMCConnection offers methods to add/update BMC users
+type BMCConnection interface {
+	// BMC returns the actual BMC details
+	BMC() (*BMC, error)
+	// PresentSuperUser returns the details of the already present bmc superuser
+	PresentSuperUser() BMCUser
+	// SuperUser returns the details of the preset metal bmc superuser
+	SuperUser() BMCUser
+	// User returns the details of the preset metal bmc user
+	User() BMCUser
+	// Present returns true if the InBand Connection found a usable BMC device
+	Present() bool
+	// Creates the given BMC user and returns generated password
+	CreateUserAndPassword(user BMCUser, privilege IpmiPrivilege) (string, error)
+	// Creates the given BMC user with the given password
+	CreateUser(user BMCUser, privilege IpmiPrivilege, password string) error
+	// Changes the password of the given BMC user
+	ChangePassword(user BMCUser, newPassword string) error
+	// Enables/Disables the given BMC user
+	SetUserEnabled(user BMCUser, enabled bool) error
+}
+
 // BMC Base Management Controller details
 type BMC struct {
 	IP                  string

@@ -35,9 +35,9 @@ type IpmiTool interface {
 	DevicePresent() bool
 	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
-	CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
-	ChangePassword(user hal.BMCUser, newPassword string, apiType ApiType) error
-	SetUserEnabled(user hal.BMCUser, enabled bool, apiType ApiType) error
+	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
+	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
+	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 	SetChassisControl(ChassisControlFunction) error
@@ -225,7 +225,7 @@ type bmcRequest struct {
 }
 
 // CreateUser creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
-func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints, apiType ApiType) (string, error) {
+func (i *Ipmitool) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, pc *api.PasswordConstraints, apiType ApiType) (string, error) {
 	switch apiType {
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
@@ -265,7 +265,7 @@ func (i *Ipmitool) CreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, pas
 	}
 }
 
-func (i *Ipmitool) ChangePassword(user hal.BMCUser, newPassword string, apiType ApiType) error {
+func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error {
 	switch apiType {
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
@@ -297,7 +297,7 @@ func (i *Ipmitool) ChangePassword(user hal.BMCUser, newPassword string, apiType 
 	}
 }
 
-func (i *Ipmitool) SetUserEnabled(user hal.BMCUser, enabled bool, apiType ApiType) error {
+func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error {
 	switch apiType {
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
