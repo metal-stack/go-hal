@@ -32,6 +32,12 @@ type (
 	outBand struct {
 		*outband.OutBand
 	}
+	bmcConnection struct {
+		*inBand
+	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
 )
 
 // InBand creates an inband connection to a vagrant VM.
@@ -89,37 +95,47 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Vagrant"
 }
 
-func (ib *inBand) BMCPresentSuperUser() hal.BMCUser {
-	return hal.BMCUser{}
+func (ib *inBand) BMCConnection() api.BMCConnection {
+	return &bmcConnection{
+		inBand: ib,
+	}
 }
 
-func (ib *inBand) BMCSuperUser() hal.BMCUser {
-	return hal.BMCUser{}
+func (c *bmcConnection) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }
 
-func (ib *inBand) BMCUser() hal.BMCUser {
-	return hal.BMCUser{}
+func (c *bmcConnection) PresentSuperUser() api.BMCUser {
+	return api.BMCUser{}
 }
 
-func (ib *inBand) BMCPresent() bool {
-	return ib.IpmiTool.DevicePresent()
+func (c *bmcConnection) SuperUser() api.BMCUser {
+	return api.BMCUser{}
 }
 
-func (ib *inBand) BMCCreateUserAndPassword(user hal.BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUser(user, privilege, "", &constraints, ipmi.HighLevel)
+func (c *bmcConnection) User() api.BMCUser {
+	return api.BMCUser{}
 }
 
-func (ib *inBand) BMCCreateUser(user hal.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	_, err := ib.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
+func (c *bmcConnection) Present() bool {
+	return c.IpmiTool.DevicePresent()
+}
+
+func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+}
+
+func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
 	return err
 }
 
-func (ib *inBand) BMCChangePassword(user hal.BMCUser, newPassword string) error {
-	return ib.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
 }
 
-func (ib *inBand) BMCSetUserEnabled(user hal.BMCUser, enabled bool) error {
-	return ib.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -208,4 +224,14 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	addr := fmt.Sprintf("%s:%d", ip, port)
 	cmd := exec.Command("virsh", "console", addr, "--force")
 	return console.Open(s, cmd)
+}
+
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }

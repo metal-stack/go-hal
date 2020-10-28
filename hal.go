@@ -127,23 +127,8 @@ type InBand interface {
 
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
 
-	// BMC related calls
-	// BMCPresentSuperUser returns the details of the already present bmc superuser
-	BMCPresentSuperUser() BMCUser
-	// BMCSuperUser returns the details of the preset metal bmc superuser
-	BMCSuperUser() BMCUser
-	// BMCUser returns the details of the preset metal bmc user
-	BMCUser() BMCUser
-	// BMCPresent returns true if the InBand Connection found a usable BMC device
-	BMCPresent() bool
-	// Creates the given BMC user and returns generated password
-	BMCCreateUserAndPassword(user BMCUser, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
-	// Creates the given BMC user with the given password
-	BMCCreateUser(user BMCUser, privilege api.IpmiPrivilege, password string) error
-	// Changes the password of the given BMC user
-	BMCChangePassword(user BMCUser, newPassword string) error
-	// Enables/Disables the given BMC user
-	BMCSetUserEnabled(user BMCUser, enabled bool) error
+	// BMCConnection returns a connection to the BMC
+	BMCConnection() api.BMCConnection
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
@@ -151,12 +136,6 @@ type InBand interface {
 
 	// EnsureBootOrder ensures the boot order
 	EnsureBootOrder(bootloaderID string) error
-}
-
-type BMCUser struct {
-	Name          string
-	Id            string
-	ChannelNumber int
 }
 
 // OutBand get and set settings from the server via the out of band interface.
@@ -194,4 +173,7 @@ type OutBand interface {
 	IPMIConnection() (ip string, port int, user, password string)
 
 	Console(ssh.Session) error
+
+	// Returns a connection to the BMC
+	BMCConnection() api.OutBandBMCConnection
 }

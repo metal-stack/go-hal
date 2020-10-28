@@ -51,7 +51,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, err
+		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	for _, chass := range chassis {
@@ -227,4 +227,39 @@ func (c *APIClient) setNextBootBIOS() error {
 		}
 	}
 	return err
+}
+
+func (c *APIClient) BMC() (*api.BMC, error) {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		log.Printf("ignore service query err:%s\n", err.Error())
+	}
+
+	chassis, err := c.Service.Chassis()
+	if err != nil {
+		log.Printf("ignore chassis query err:%s\n", err.Error())
+	}
+
+	bmc := &api.BMC{}
+
+	for _, system := range systems {
+		bmc.ProductManufacturer = system.Manufacturer
+		bmc.ProductPartNumber = system.PartNumber
+		bmc.ProductSerial = system.SerialNumber
+	}
+
+	for _, chass := range chassis {
+		if chass.ChassisType != redfish.RackMountChassisType {
+			continue
+		}
+
+		bmc.ChassisPartNumber = chass.PartNumber
+		bmc.ChassisPartSerial = chass.SerialNumber
+
+		bmc.BoardMfg = chass.Manufacturer
+	}
+
+	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
+
+	return bmc, nil
 }
