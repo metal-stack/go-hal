@@ -5,12 +5,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/metal-stack/go-hal"
-	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/metal-stack/go-hal"
+	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
@@ -60,7 +61,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 
 	for _, chass := range chassis {
 		log.Printf("cass:%v\n", chass)
-		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " Version:" + chass.Version + " SKU:" + chass.SKU + "\n")
+		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
 		if chass.ChassisType == redfish.RackMountChassisType {
 			return &api.Board{
 				VendorString: chass.Manufacturer,

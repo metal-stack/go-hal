@@ -13,15 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2.3.3
     - name: Lint
       uses: actions-contrib/golangci-lint@master
       with:
         args: run
-    - name: Set up Go 1.13
-      uses: actions/setup-go@v1.1.2
+    - name: Set up Go 1.15
+      uses: actions/setup-go@v2.1.3
       with:
-        go-version: '1.13.x'
+        go-version: '1.15.x'
     - name: Test
       run: |
         make
