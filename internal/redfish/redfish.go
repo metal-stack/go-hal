@@ -2,11 +2,11 @@ package redfish
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/metal-stack/go-hal"
+	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"sort"
@@ -21,7 +21,9 @@ type APIClient struct {
 	*gofish.APIClient
 	*http.Client
 	urlPrefix string
-	auth      string
+	user      string
+	password  string
+	basicAuth string
 }
 
 func New(url, user, password string, insecure bool) (*APIClient, error) {
@@ -36,19 +38,21 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	return &APIClient{
 		APIClient: c,
-		Client:    &http.Client{Transport: tr},
-		auth:      base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		Client:    c.HTTPClient,
+		user:      user,
+		password:  password,
+		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
 	}, nil
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
+	if c.Service == nil {
+		return nil, errors.New("gofish service root is not available most likely due to missing username")
+	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
 		log.Printf("ignore chassis query err:%s\n", err.Error())
@@ -66,13 +70,14 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("no board detected")
+	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
 }
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
+		log.Printf("ignored system query err:%s\n", err.Error())
 		return "", err
 	}
 	for _, system := range systems {
@@ -87,7 +92,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return hal.PowerUnknownState, err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
@@ -116,7 +121,7 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		err = system.Reset(resetType)
@@ -124,7 +129,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrapf(err, "failed to set power to %s", resetType)
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
@@ -153,7 +158,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -202,20 +207,21 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	_, err = c.Do(req)
 	return err
 }
 
-func (c *APIClient) addHeaders(req *http.Request) {
+func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.auth)
+	req.Header.Add("Authorization", "Basic "+c.basicAuth)
+	req.SetBasicAuth(c.user, c.password)
 }
 
 func (c *APIClient) setNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		boot := system.Boot
@@ -226,7 +232,7 @@ func (c *APIClient) setNextBootBIOS() error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrap(err, "failed to set next boot BIOS")
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
