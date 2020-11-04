@@ -60,7 +60,6 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 
 	for _, chass := range chassis {
-		log.Printf("cass:%v\n", chass)
 		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
 		if chass.ChassisType == redfish.RackMountChassisType {
 			return &api.Board{
