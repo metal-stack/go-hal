@@ -5,9 +5,6 @@ package ipmi
 import (
 	"bufio"
 	"fmt"
-	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/console"
-	"github.com/sethvargo/go-password/password"
 	"io"
 	"log"
 	"os/exec"
@@ -16,6 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
+	"github.com/sethvargo/go-password/password"
 
 	"github.com/avast/retry-go"
 	"github.com/gliderlabs/ssh"
@@ -196,6 +197,23 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", cmdOutput)
 	}
 	lanConfigMap := output2Map(cmdOutput)
+	from(config, lanConfigMap)
+	return *config, nil
+}
+
+// GetLanConfigOutbound from a outbound connection
+func (i *Ipmitool) GetLanConfigOutbound(ip string, port int, user, password string) (LanConfig, error) {
+	config := &LanConfig{}
+	cmd, err := i.NewCommand("-I", "lanplus", "-H", ip, "-p", strconv.Itoa(port), "-U", user, "-P", password, "lan", "print")
+	if err != nil {
+		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", err)
+	}
+	cmdOutput, err := cmd.Output()
+	if err != nil {
+		return *config, errors.Wrapf(err, "unable to parse ipmitool output of 'lan print':%v", err)
+	}
+
+	lanConfigMap := output2Map(string(cmdOutput))
 	from(config, lanConfigMap)
 	return *config, nil
 }
