@@ -5,9 +5,6 @@ package ipmi
 import (
 	"bufio"
 	"fmt"
-	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/console"
-	"github.com/sethvargo/go-password/password"
 	"io"
 	"log"
 	"os/exec"
@@ -16,6 +13,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
+	"github.com/sethvargo/go-password/password"
 
 	"github.com/avast/retry-go"
 	"github.com/gliderlabs/ssh"
@@ -47,12 +48,17 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
-	OpenConsole(s ssh.Session, ip string, port int, user, password string) error
+	OpenConsole(s ssh.Session) error
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
 type Ipmitool struct {
-	command string
+	command  string
+	ip       string
+	port     int
+	user     string
+	password string
+	outband  bool
 }
 
 // LanConfig contains the config of IPMI.
@@ -99,6 +105,23 @@ func New() (IpmiTool, error) {
 	}
 	return &Ipmitool{
 		command: ipmitoolBin,
+	}, nil
+}
+
+// New creates a new IpmiTool with the default command
+func NewOutBand(ip string, port int, user, password string) (IpmiTool, error) {
+	ipmitoolBin := "ipmitool"
+	_, err := exec.LookPath(ipmitoolBin)
+	if err != nil {
+		return nil, fmt.Errorf("ipmitool binary not present at:%s err:%w", ipmitoolBin, err)
+	}
+	return &Ipmitool{
+		command:  ipmitoolBin,
+		ip:       ip,
+		port:     port,
+		user:     user,
+		password: password,
+		outband:  true,
 	}, nil
 }
 
@@ -153,6 +176,9 @@ func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 
 // Run executes ipmitool with given arguments and returns the outcome
 func (i *Ipmitool) Run(args ...string) (string, error) {
+	if i.outband {
+		args = append(args, "-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password)
+	}
 	cmd, err := i.NewCommand(args...)
 	if err != nil {
 		return "", err
@@ -265,6 +291,7 @@ func (i *Ipmitool) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, pas
 	}
 }
 
+// ChangePassword of the given user
 func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error {
 	switch apiType {
 	case LowLevel:
@@ -297,6 +324,7 @@ func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType 
 	}
 }
 
+// SetUserEnabled enable the given user
 func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error {
 	switch apiType {
 	case LowLevel:
@@ -470,12 +498,13 @@ func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 	return nil
 }
 
-func (i *Ipmitool) OpenConsole(s ssh.Session, ip string, port int, user, password string) error {
+// OpenConsole connect to the serian console and put the in/out into a ssh stream
+func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	_, err := io.WriteString(s, "Exit with ~.\n")
 	if err != nil {
 		return errors.Wrap(err, "failed to write to console")
 	}
-	cmd, err := i.NewCommand("-I", "lanplus", "-H", ip, "-p", strconv.Itoa(port), "-U", user, "-P", password, "sol", "activate")
+	cmd, err := i.NewCommand("-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password, "sol", "activate")
 	if err != nil {
 		return err
 	}
