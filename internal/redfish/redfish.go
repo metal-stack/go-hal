@@ -81,7 +81,6 @@ func (c *APIClient) MachineUUID() (string, error) {
 		return "", err
 	}
 	for _, system := range systems {
-		log.Printf("system:%v\n", system)
 		if system.UUID != "" {
 			return system.UUID, nil
 		}

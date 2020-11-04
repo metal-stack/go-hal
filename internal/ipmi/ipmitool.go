@@ -535,7 +535,6 @@ func output2Map(cmdOutput string) map[string]string {
 
 // from uses reflection to fill a struct based on the tags on it
 func from(target interface{}, input map[string]string) {
-	log.Printf("from target:%s input:%s", target, input)
 	val := reflect.ValueOf(target).Elem()
 	for i := 0; i < val.NumField(); i++ {
 		valueField := val.Field(i)
