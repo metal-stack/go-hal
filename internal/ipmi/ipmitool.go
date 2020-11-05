@@ -177,7 +177,7 @@ func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 // Run executes ipmitool with given arguments and returns the outcome
 func (i *Ipmitool) Run(args ...string) (string, error) {
 	if i.outband {
-		args = append(args, "-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password)
+		args = append([]string{"-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password}, args...)
 	}
 	cmd, err := i.NewCommand(args...)
 	if err != nil {
