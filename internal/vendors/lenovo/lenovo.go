@@ -148,7 +148,7 @@ func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
 	//return false, errorNotImplemented // do not throw an error to not break manual tests
-	return true, nil //TODO https://github.com/metal-stack/go-hal/issues/11
+	return false, nil //TODO https://github.com/metal-stack/go-hal/issues/11
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
