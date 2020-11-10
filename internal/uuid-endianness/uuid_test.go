@@ -66,6 +66,11 @@ func TestFromString(t *testing.T) {
 			input:   "11ecd471-2771-e911-8333-efbeaddeefbe",
 			wantErr: false,
 		},
+		{
+			name:    "creates uuid",
+			input:   "11ecd471-2771-e911-8333-0000addeefbe",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
