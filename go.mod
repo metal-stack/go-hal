@@ -14,10 +14,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sethvargo/go-password v0.2.0
 	github.com/sirupsen/logrus v1.7.0
-	github.com/stmcginnis/gofish v0.5.0
 	github.com/stmcginnis/gofish v0.6.0
 	github.com/stretchr/testify v1.6.1
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
 	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20201027133719-8eef5233e2a1
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
 )
