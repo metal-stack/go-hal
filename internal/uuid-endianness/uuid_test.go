@@ -2,6 +2,7 @@ package uuid
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -46,5 +47,69 @@ func TestUuid(t *testing.T) {
 		if !bytes.Equal(got, test.expect) {
 			t.Fatalf("Got %+v, expect %+v", got, test.expect)
 		}
+	}
+}
+
+func TestFromString(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:    "creates uuid",
+			input:   "00ecd471-0771-e911-8000-efbeaddeefbe",
+			wantErr: false,
+		},
+		{
+			name:    "creates uuid",
+			input:   "11ecd471-2771-e911-8333-efbeaddeefbe",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := FromString(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("FromString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got.String(), tt.input) {
+				t.Errorf("FromString() = %v, want %v", got.String(), tt.input)
+			}
+		})
+	}
+}
+
+func TestUuid_ToMiddleEndian(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "convert to mixed endian",
+			input:   "00ecd471-0771-e911-8000-efbeaddeefbe",
+			want:    "71d4ec00-7107-11e9-8000-efbeaddeefbe",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := FromString(tt.input)
+			if err != nil {
+				t.Errorf("Uuid.FormatString() error = %v", err)
+				return
+			}
+			got, err := u.ToMiddleEndian()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Uuid.ToMiddleEndian() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got.String(), tt.want) {
+				t.Errorf("Uuid.ToMiddleEndian() = %v, want %v", got.String(), tt.want)
+			}
+		})
 	}
 }
