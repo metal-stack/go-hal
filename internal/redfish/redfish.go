@@ -2,7 +2,6 @@ package redfish
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -12,19 +11,20 @@ import (
 	"strings"
 
 	"github.com/metal-stack/go-hal"
+	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
 	"github.com/stmcginnis/gofish/redfish"
 )
 
-const defaultUUID = "00000000-0000-0000-0000-000000000000"
-
 type APIClient struct {
 	*gofish.APIClient
 	*http.Client
 	urlPrefix string
-	auth      string
+	user      string
+	password  string
+	basicAuth string
 }
 
 func New(url, user, password string, insecure bool) (*APIClient, error) {
@@ -39,26 +39,27 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
 	return &APIClient{
 		APIClient: c,
-		Client:    &http.Client{Transport: tr},
-		auth:      base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		Client:    c.HTTPClient,
+		user:      user,
+		password:  password,
+		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
 	}, nil
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
+	if c.Service == nil {
+		return nil, errors.New("gofish service root is not available most likely due to missing username")
+	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		return nil, err
+		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	for _, chass := range chassis {
-		log.Printf("cass:%v\n", chass)
 		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
 		if chass.ChassisType == redfish.RackMountChassisType {
 			return &api.Board{
@@ -69,28 +70,28 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("no board detected")
+	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
 }
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return defaultUUID, err
+		log.Printf("ignored system query err:%s\n", err.Error())
+		return "", err
 	}
 	for _, system := range systems {
-		log.Printf("system:%v\n", system)
 		if system.UUID != "" {
 			return system.UUID, nil
 		}
 	}
-	return defaultUUID, err
+	return "", errors.New("failed to detect machine UUID")
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return hal.PowerUnknownState, err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
@@ -119,7 +120,7 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		err = system.Reset(resetType)
@@ -127,7 +128,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrapf(err, "failed to set power to %s", resetType)
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
@@ -156,7 +157,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -205,20 +206,21 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	c.addHeaders(req)
+	c.addHeadersAndAuth(req)
 	_, err = c.Do(req)
 	return err
 }
 
-func (c *APIClient) addHeaders(req *http.Request) {
+func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.auth)
+	req.Header.Add("Authorization", "Basic "+c.basicAuth)
+	req.SetBasicAuth(c.user, c.password)
 }
 
 func (c *APIClient) setNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		return err
+		log.Printf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		boot := system.Boot
@@ -229,5 +231,40 @@ func (c *APIClient) setNextBootBIOS() error {
 			return nil
 		}
 	}
-	return err
+	return errors.Wrap(err, "failed to set next boot BIOS")
+}
+
+func (c *APIClient) BMC() (*api.BMC, error) {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		log.Printf("ignore service query err:%s\n", err.Error())
+	}
+
+	chassis, err := c.Service.Chassis()
+	if err != nil {
+		log.Printf("ignore chassis query err:%s\n", err.Error())
+	}
+
+	bmc := &api.BMC{}
+
+	for _, system := range systems {
+		bmc.ProductManufacturer = system.Manufacturer
+		bmc.ProductPartNumber = system.PartNumber
+		bmc.ProductSerial = system.SerialNumber
+	}
+
+	for _, chass := range chassis {
+		if chass.ChassisType != redfish.RackMountChassisType {
+			continue
+		}
+
+		bmc.ChassisPartNumber = chass.PartNumber
+		bmc.ChassisPartSerial = chass.SerialNumber
+
+		bmc.BoardMfg = chass.Manufacturer
+	}
+
+	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
+
+	return bmc, nil
 }

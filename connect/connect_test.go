@@ -1,4 +1,4 @@
-package detect
+package connect
 
 // func _TestDetectInBand(t *testing.T) {
 // 	tests := []struct {

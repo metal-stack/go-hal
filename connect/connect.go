@@ -1,8 +1,9 @@
-package detect
+package connect
 
 import (
 	"fmt"
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
+	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
@@ -16,8 +17,8 @@ var (
 	errorUnknownVendor = fmt.Errorf("vendor unknown")
 )
 
-// ConnectInBand will detect the board and choose the correct inband hal implementation
-func ConnectInBand() (hal.InBand, error) {
+// InBand will detect the board and choose the correct inband hal implementation
+func InBand() (hal.InBand, error) {
 	b, err := dmi.BoardInfo()
 	if err != nil {
 		b = api.VagrantBoard
@@ -36,25 +37,25 @@ func ConnectInBand() (hal.InBand, error) {
 	}
 }
 
-// ConnectOutBand will detect the board and choose the correct outband hal implementation
-func ConnectOutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+// OutBand will detect the board and choose the correct outband hal implementation
+func OutBand(ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Unable to establish redfish connection for ip:%s user:%s", ip, user)
 	}
 	b, err := r.BoardInfo()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s", ip, user)
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
 
 	switch b.Vendor {
 	case api.VendorLenovo:
-		return lenovo.OutBand(r, b, ip, ipmiPort, user, password)
+		return lenovo.OutBand(r, b), nil
 	case api.VendorSupermicro:
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password)
 	case api.VendorVagrant:
-		return vagrant.OutBand(r, b, ip, ipmiPort, user, password)
+		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	default:
 		return nil, errorUnknownVendor
 	}

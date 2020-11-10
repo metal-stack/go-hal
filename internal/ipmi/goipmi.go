@@ -1,10 +1,10 @@
 package ipmi
 
 import (
-	"errors"
 	"fmt"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
 )
 

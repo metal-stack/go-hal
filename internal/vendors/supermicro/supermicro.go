@@ -2,12 +2,15 @@ package supermicro
 
 import (
 	"fmt"
+
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	goipmi "github.com/vmware/goipmi"
 )
@@ -30,6 +33,12 @@ type (
 	outBand struct {
 		*outband.OutBand
 		sum *sum
+	}
+	bmcConnection struct {
+		*inBand
+	}
+	bmcConnectionOutBand struct {
+		*outBand
 	}
 )
 
@@ -55,8 +64,12 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, us
 	if err != nil {
 		return nil, err
 	}
+	i, err := ipmi.NewOutBand(ip, ipmiPort, user, password)
+	if err != nil {
+		return nil, err
+	}
 	return &outBand{
-		OutBand: outband.New(r, board, ip, ipmiPort, user, password),
+		OutBand: outband.New(r, i, board, ip, ipmiPort, user, password),
 		sum:     rs,
 	}, nil
 }
@@ -98,20 +111,59 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Supermicro"
 }
 
-func (ib *inBand) BMCUser() hal.BMCUser {
-	return hal.BMCUser{
-		Name:          "metal",
-		Uid:           "10",
+func (ib *inBand) BMCConnection() api.BMCConnection {
+	return &bmcConnection{
+		inBand: ib,
+	}
+}
+
+func (c *bmcConnection) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
+}
+
+func (c *bmcConnection) PresentSuperUser() api.BMCUser {
+	return api.BMCUser{
+		Name:          "ADMIN",
+		Id:            "1",
 		ChannelNumber: 1,
 	}
 }
 
-func (ib *inBand) BMCPresent() bool {
-	return ib.IpmiTool.DevicePresent()
+func (c *bmcConnection) SuperUser() api.BMCUser {
+	return api.BMCUser{
+		Name:          "root",
+		Id:            "4",
+		ChannelNumber: 1,
+	}
 }
 
-func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUser(channelNumber, username, uid, privilege, constraints)
+func (c *bmcConnection) User() api.BMCUser {
+	return api.BMCUser{
+		Name:          "metal",
+		Id:            "10",
+		ChannelNumber: 1,
+	}
+}
+
+func (c *bmcConnection) Present() bool {
+	return c.IpmiTool.DevicePresent()
+}
+
+func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+}
+
+func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
+	return err
+}
+
+func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+}
+
+func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -130,8 +182,28 @@ func (ob *outBand) UUID() (*uuid.UUID, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		us, err := uuid.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+		return &us, nil
 	}
-	us, err := uuid.Parse(u)
+
+	// Redfish returns the UUID in the wrong byte order
+	// we need to convert it to mixed endian
+	// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
+	raw, err := uuidendian.FromString(u)
+	if err != nil {
+		return nil, err
+	}
+
+	mixed, err := raw.ToMiddleEndian()
+	if err != nil {
+		return nil, err
+	}
+
+	us, err := uuid.Parse(mixed.String())
 	if err != nil {
 		return nil, err
 	}
@@ -192,4 +264,18 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Supermicro"
+}
+
+func (ob *outBand) Console(s ssh.Session) error {
+	return ob.IpmiTool.OpenConsole(s)
+}
+
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }

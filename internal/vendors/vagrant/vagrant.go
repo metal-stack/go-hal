@@ -2,14 +2,18 @@ package vagrant
 
 import (
 	"fmt"
+	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
-	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
+	"io"
+	"os/exec"
 )
 
 var (
@@ -28,6 +32,12 @@ type (
 	outBand struct {
 		*outband.OutBand
 	}
+	bmcConnection struct {
+		*inBand
+	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
 )
 
 // InBand creates an inband connection to a vagrant VM.
@@ -42,10 +52,10 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a vagrant VM.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
 	return &outBand{
-		OutBand: outband.New(r, board, ip, ipmiPort, user, password),
-	}, nil
+		OutBand: outband.ViaGoipmi(board, ip, ipmiPort, user, password),
+	}
 }
 
 // InBand
@@ -85,20 +95,47 @@ func (ib *inBand) Describe() string {
 	return "InBand connected to Vagrant"
 }
 
-func (ib *inBand) BMCUser() hal.BMCUser {
-	return hal.BMCUser{
-		Name:          "metal",
-		Uid:           "10",
-		ChannelNumber: 1,
+func (ib *inBand) BMCConnection() api.BMCConnection {
+	return &bmcConnection{
+		inBand: ib,
 	}
 }
 
-func (ib *inBand) BMCPresent() bool {
-	return ib.IpmiTool.DevicePresent()
+func (c *bmcConnection) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }
 
-func (ib *inBand) BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error) {
-	return ib.IpmiTool.CreateUser(channelNumber, username, uid, privilege, constraints)
+func (c *bmcConnection) PresentSuperUser() api.BMCUser {
+	return api.BMCUser{}
+}
+
+func (c *bmcConnection) SuperUser() api.BMCUser {
+	return api.BMCUser{}
+}
+
+func (c *bmcConnection) User() api.BMCUser {
+	return api.BMCUser{}
+}
+
+func (c *bmcConnection) Present() bool {
+	return c.IpmiTool.DevicePresent()
+}
+
+func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+}
+
+func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
+	return err
+}
+
+func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+}
+
+func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -176,4 +213,25 @@ func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Vagrant"
+}
+
+func (ob *outBand) Console(s ssh.Session) error { //Virsh console
+	_, err := io.WriteString(s, "Exit with '<Ctrl> 5'\n")
+	if err != nil {
+		return errors.Wrap(err, "failed to write to console")
+	}
+	ip, port, _, _ := ob.IPMIConnection()
+	addr := fmt.Sprintf("%s:%d", ip, port)
+	cmd := exec.Command("virsh", "console", addr, "--force")
+	return console.Open(s, cmd)
+}
+
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.IpmiTool.BMC()
 }

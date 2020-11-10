@@ -1,6 +1,7 @@
 package hal
 
 import (
+	"github.com/gliderlabs/ssh"
 	"strings"
 
 	"github.com/google/uuid"
@@ -126,13 +127,8 @@ type InBand interface {
 
 	// TODO add MachineFRU, BiosVersion, BMCVersion, BMC{IP, MAC, Interface}
 
-	// BMC related calls
-	// BMCUser returns the details of the preset metal bmc user
-	BMCUser() BMCUser
-	// BMCPresent returns true if the InBand Connection found a usable BMC device
-	BMCPresent() bool
-	// Create a user for given channel with given username, uid and privilege, and returns generated password
-	BMCCreateUser(channelNumber int, username, uid string, privilege api.IpmiPrivilege, constraints api.PasswordConstraints) (string, error)
+	// BMCConnection returns a connection to the BMC
+	BMCConnection() api.BMCConnection
 
 	// ConfigureBIOS configures the BIOS regarding certain required options.
 	// It returns whether the system needs to be rebooted afterwards
@@ -140,12 +136,6 @@ type InBand interface {
 
 	// EnsureBootOrder ensures the boot order
 	EnsureBootOrder(bootloaderID string) error
-}
-
-type BMCUser struct {
-	Name          string
-	Uid           string
-	ChannelNumber int
 }
 
 // OutBand get and set settings from the server via the out of band interface.
@@ -182,5 +172,8 @@ type OutBand interface {
 
 	IPMIConnection() (ip string, port int, user, password string)
 
-	// TODO implement console access from bmc-proxy
+	Console(ssh.Session) error
+
+	// Returns a connection to the BMC
+	BMCConnection() api.OutBandBMCConnection
 }
