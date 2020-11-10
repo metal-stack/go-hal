@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
+	guuid "github.com/google/uuid"
 )
 
 // UuidSize is the size in bytes of a UUID object
@@ -22,6 +24,19 @@ type Uuid struct {
 // String implements the fmt.Stringer interface
 func (u Uuid) String() string {
 	return fmt.Sprintf("%x-%x-%x-%x%x-%x", u.TimeLow, u.TimeMid, u.TimeHiAndVersion, u.ClockSeqHiAndRes, u.ClockSeqLow, u.Node)
+}
+
+func FromString(s string) (Uuid, error) {
+	var uid Uuid
+	u, err := guuid.Parse(s)
+	if err != nil {
+		return uid, err
+	}
+	b, err := u.MarshalBinary()
+	if err != nil {
+		return uid, err
+	}
+	return FromBytes(b)
 }
 
 // ToMiddleEndian encodes the UUID into a middle-endian UUID.
