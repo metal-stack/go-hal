@@ -1,7 +1,5 @@
 package logger
 
-import "errors"
-
 // A global variable so that log functions can be directly accessed
 var log Logger
 
@@ -25,10 +23,6 @@ const (
 	ZapLogger int = iota
 	LogrusLogger
 	Log15Logger
-)
-
-var (
-	errInvalidLoggerInstance = errors.New("Invalid logger instance")
 )
 
 //Logger is our contract for the logger
