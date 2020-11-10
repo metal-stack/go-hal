@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-
 	guuid "github.com/google/uuid"
 )
 
@@ -23,7 +22,7 @@ type Uuid struct {
 
 // String implements the fmt.Stringer interface
 func (u Uuid) String() string {
-	return fmt.Sprintf("%x-%x-%x-%x%x-%x", u.TimeLow, u.TimeMid, u.TimeHiAndVersion, u.ClockSeqHiAndRes, u.ClockSeqLow, u.Node)
+	return fmt.Sprintf("%08x-%04x-%04x-%02x%02x-%x", u.TimeLow, u.TimeMid, u.TimeHiAndVersion, u.ClockSeqHiAndRes, u.ClockSeqLow, u.Node)
 }
 
 func FromString(s string) (Uuid, error) {
