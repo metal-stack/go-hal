@@ -10,6 +10,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	goipmi "github.com/vmware/goipmi"
 )
@@ -181,8 +182,28 @@ func (ob *outBand) UUID() (*uuid.UUID, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		us, err := uuid.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+		return &us, nil
 	}
-	us, err := uuid.Parse(u)
+
+	// Redfish returns the UUID in the wrong byte order
+	// we need to convert it to mixed endian
+	// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
+	raw, err := uuidendian.FromBytes([]byte(u))
+	if err != nil {
+		return nil, err
+	}
+
+	mixed, err := raw.ToMiddleEndian()
+	if err != nil {
+		return nil, err
+	}
+
+	us, err := uuid.Parse(mixed.String())
 	if err != nil {
 		return nil, err
 	}
