@@ -3,6 +3,7 @@ module github.com/metal-stack/go-hal
 go 1.15
 
 require (
+	cloud.google.com/go/logging v1.1.2
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/creack/pty v1.1.11

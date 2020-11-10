@@ -7,6 +7,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/internal/logger"
 	"github.com/metal-stack/go-hal/pkg/api"
 )
 
@@ -15,8 +16,8 @@ type InBand struct {
 	board    *api.Board
 }
 
-func New(board *api.Board, inspectBMC bool) (*InBand, error) {
-	i, err := ipmi.New()
+func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) {
+	i, err := ipmi.New(log)
 	if err != nil {
 		return nil, err
 	}

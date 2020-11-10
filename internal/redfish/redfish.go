@@ -5,12 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"strings"
 
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/logger"
 	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -25,9 +25,10 @@ type APIClient struct {
 	user      string
 	password  string
 	basicAuth string
+	log       logger.Logger
 }
 
-func New(url, user, password string, insecure bool) (*APIClient, error) {
+func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
 		Endpoint: url,
@@ -46,6 +47,7 @@ func New(url, user, password string, insecure bool) (*APIClient, error) {
 		password:  password,
 		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
+		log:       log,
 	}, nil
 }
 
@@ -56,11 +58,11 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		log.Printf("ignore chassis query err:%s\n", err.Error())
+		c.log.Warnf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	for _, chass := range chassis {
-		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
+		c.log.Debugf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
 		if chass.ChassisType == redfish.RackMountChassisType {
 			return &api.Board{
 				VendorString: chass.Manufacturer,
@@ -77,7 +79,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		log.Printf("ignored system query err:%s\n", err.Error())
+		c.log.Errorf("ignored system query err:%s\n", err.Error())
 		return "", err
 	}
 	for _, system := range systems {
@@ -91,7 +93,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		log.Printf("ignored system query err:%s\n", err.Error())
+		c.log.Warnf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
@@ -120,7 +122,7 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		log.Printf("ignored system query err:%s\n", err.Error())
+		c.log.Warnf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		err = system.Reset(resetType)
@@ -220,7 +222,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 func (c *APIClient) setNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		log.Printf("ignored system query err:%s\n", err.Error())
+		c.log.Warnf("ignored system query err:%s\n", err.Error())
 	}
 	for _, system := range systems {
 		boot := system.Boot
@@ -237,12 +239,12 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		log.Printf("ignore service query err:%s\n", err.Error())
+		c.log.Warnf("ignore service query err:%s\n", err.Error())
 	}
 
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		log.Printf("ignore chassis query err:%s\n", err.Error())
+		c.log.Warnf("ignore chassis query err:%s\n", err.Error())
 	}
 
 	bmc := &api.BMC{}

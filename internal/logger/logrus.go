@@ -25,11 +25,11 @@ func getFormatter(isJSON bool) logrus.Formatter {
 	}
 }
 
-func newLogrusLogger(config Configuration) (Logger, error) {
+func newLogrusLogger(config Configuration) Logger {
 	logLevel := config.ConsoleLevel
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	stdOutHandler := os.Stdout
@@ -44,7 +44,7 @@ func newLogrusLogger(config Configuration) (Logger, error) {
 
 	return &logrusLogger{
 		logger: lLogger,
-	}, nil
+	}
 }
 
 func (l *logrusLogger) Debugf(format string, args ...interface{}) {

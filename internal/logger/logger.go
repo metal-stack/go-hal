@@ -22,9 +22,9 @@ const (
 )
 
 const (
-	InstanceZapLogger int = iota
-	InstanceLogrusLogger
-	InstanceLog15Logger
+	ZapLogger int = iota
+	LogrusLogger
+	Log15Logger
 )
 
 var (
@@ -58,33 +58,16 @@ type Configuration struct {
 // FIXME caller should bring a already configured instance of his logger
 
 // NewLogger returns an instance of logger
-func NewLogger(config Configuration, loggerInstance int) error {
+func NewLogger(config Configuration, loggerInstance int) Logger {
 	switch loggerInstance {
-	case InstanceZapLogger:
-		logger, err := newZapLogger(config)
-		if err != nil {
-			return err
-		}
-		log = logger
-		return nil
-
-	case InstanceLogrusLogger:
-		logger, err := newLogrusLogger(config)
-		if err != nil {
-			return err
-		}
-		log = logger
-		return nil
-	case InstanceLog15Logger:
-		logger, err := newLog15Logger(config)
-		if err != nil {
-			return err
-		}
-		log = logger
-		return nil
-
+	case ZapLogger:
+		return newZapLogger(config)
+	case LogrusLogger:
+		return newLogrusLogger(config)
+	case Log15Logger:
+		return newLog15Logger(config)
 	default:
-		return errInvalidLoggerInstance
+		return nil
 	}
 }
 

@@ -11,10 +11,10 @@ type log15Logger struct {
 	logger log15.Logger
 }
 
-func newLog15Logger(config Configuration) (Logger, error) {
+func newLog15Logger(config Configuration) Logger {
 	return &log15Logger{
 		logger: log15.New("", ""),
-	}, nil
+	}
 }
 
 func (l *log15Logger) Debugf(format string, args ...interface{}) {
