@@ -10,7 +10,12 @@ import (
 )
 
 var (
-	band    = flag.String("bandtype", "inband", "inband/outband")
+	band     = flag.String("bandtype", "inband", "inband/outband")
+	user     = flag.String("user", "ADMIN", "bmc username")
+	password = flag.String("password", "ADMIN", "bmc password")
+	host     = flag.String("host", "localhost", "bmc host")
+	port     = flag.Int("port", 623, "bmc port")
+
 	errHelp = errors.New("usage: -bandtype inband|outband")
 )
 
@@ -42,7 +47,7 @@ func inband() {
 }
 
 func outband() {
-	outband, err := connect.OutBand("10.5.2.93", 623, "ADMIN", "ADMIN")
+	outband, err := connect.OutBand(*host, *port, *user, *password)
 	if err != nil {
 		panic(err)
 	}
@@ -56,4 +61,10 @@ func outband() {
 		panic(err)
 	}
 	fmt.Printf("Powerstate:%s\n", ps)
+
+	bmc, err := outband.BMCConnection().BMC()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("BMC:%s\n", bmc)
 }
