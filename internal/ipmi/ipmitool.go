@@ -15,7 +15,7 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/console"
-	"github.com/metal-stack/go-hal/internal/logger"
+	"github.com/metal-stack/go-hal/pkg/logger"
 
 	"github.com/sethvargo/go-password/password"
 

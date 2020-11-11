@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/metal-stack/go-hal/internal/logger"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 // Output of root@ipmitest:~# ipmitool lan print

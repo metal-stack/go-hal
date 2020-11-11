@@ -3,8 +3,8 @@ package connect
 import (
 	"fmt"
 
-	"github.com/metal-stack/go-hal/internal/logger"
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal"

@@ -2,8 +2,8 @@ package logger
 
 import (
 	reallog15 "github.com/inconshreveable/log15"
-	"github.com/metal-stack/go-hal/internal/logger/log15"
-	"github.com/metal-stack/go-hal/internal/logger/zap"
+	"github.com/metal-stack/go-hal/pkg/logger/log15"
+	"github.com/metal-stack/go-hal/pkg/logger/zap"
 	uberzap "go.uber.org/zap"
 )
 

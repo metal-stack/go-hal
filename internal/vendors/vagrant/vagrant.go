@@ -11,9 +11,9 @@ import (
 	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
-	"github.com/metal-stack/go-hal/internal/logger"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
 )

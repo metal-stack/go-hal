@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/metal-stack/go-hal/connect"
-	"github.com/metal-stack/go-hal/internal/logger"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 var (
