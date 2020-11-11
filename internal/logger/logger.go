@@ -1,29 +1,16 @@
 package logger
 
+import (
+	reallog15 "github.com/inconshreveable/log15"
+	"github.com/metal-stack/go-hal/internal/logger/log15"
+	"github.com/metal-stack/go-hal/internal/logger/logrus"
+	"github.com/metal-stack/go-hal/internal/logger/zap"
+	reallogrus "github.com/sirupsen/logrus"
+	uberzap "go.uber.org/zap"
+)
+
 // A global variable so that log functions can be directly accessed
 var log Logger
-
-// Fields Type to pass when we want to call WithFields for structured logging
-type Fields map[string]interface{}
-
-const (
-	//Debug has verbose message
-	Debug = "debug"
-	//Info is default log level
-	Info = "info"
-	//Warn is for logging messages about possible issues
-	Warn = "warn"
-	//Error is for logging errors
-	Error = "error"
-	//Fatal is for logging fatal messages. The sytem shutsdown after logging the message.
-	Fatal = "fatal"
-)
-
-const (
-	ZapLogger int = iota
-	LogrusLogger
-	Log15Logger
-)
 
 // Logger is our contract for the logger
 type Logger interface {
@@ -33,30 +20,26 @@ type Logger interface {
 	Errorf(format string, args ...interface{})
 	Fatalf(format string, args ...interface{})
 	Panicf(format string, args ...interface{})
-	WithFields(keyValues Fields) Logger
 }
 
-// Configuration stores the config for the logger
-// For some loggers there can only be one level across writers, for such the level of Console is picked by default
-type Configuration struct {
-	ConsoleJSONFormat bool
-	ConsoleLevel      string
+// New returns an simple instance of logger
+func New() Logger {
+	return log15.New(reallog15.New())
 }
 
-// FIXME caller should bring a already configured instance of his logger
+// NewZap returns an zap instance of logger
+func NewZap(logger *uberzap.SugaredLogger) Logger {
+	return zap.New(logger)
+}
 
-// NewLogger returns an instance of logger
-func NewLogger(config Configuration, loggerInstance int) Logger {
-	switch loggerInstance {
-	case ZapLogger:
-		return newZapLogger(config)
-	case LogrusLogger:
-		return newLogrusLogger(config)
-	case Log15Logger:
-		return newLog15Logger(config)
-	default:
-		return nil
-	}
+// NewLog15 returns an log15 instance of logger
+func NewLog15(logger reallog15.Logger) Logger {
+	return log15.New(logger)
+}
+
+// NewLogrus returns an logrus instance of logger
+func NewLogrus(logger *reallogrus.Logger) Logger {
+	return logrus.New(logger)
 }
 
 func Debugf(format string, args ...interface{}) {
@@ -81,8 +64,4 @@ func Fatalf(format string, args ...interface{}) {
 
 func Panicf(format string, args ...interface{}) {
 	log.Panicf(format, args...)
-}
-
-func WithFields(keyValues Fields) Logger {
-	return log.WithFields(keyValues)
 }

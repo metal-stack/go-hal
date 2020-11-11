@@ -68,7 +68,7 @@ func Test_getLanConfig(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		i := Ipmitool{log: logger.NewLogger(logger.Configuration{ConsoleLevel: "DEBUG"}, logger.ZapLogger)}
+		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
 			got := i.output2Map(tt.cmdOutput)
 			for key, value := range tt.want {
@@ -103,7 +103,7 @@ func TestGetLanConfig(t *testing.T) {
 }
 
 func TestLanConfig_From(t *testing.T) {
-	i := Ipmitool{log: logger.NewLogger(logger.Configuration{ConsoleLevel: "DEBUG"}, logger.ZapLogger)}
+	i := Ipmitool{log: logger.New()}
 
 	type fields struct {
 		IP  string

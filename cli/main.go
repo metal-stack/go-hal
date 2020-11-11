@@ -23,7 +23,7 @@ var (
 func main() {
 	flag.Parse()
 
-	log := logger.NewLogger(logger.Configuration{ConsoleLevel: "DEBUG"}, logger.Log15Logger)
+	log := logger.New()
 	switch *band {
 	case "inband":
 		inband(log)
