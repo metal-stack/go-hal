@@ -2,6 +2,7 @@ package lenovo
 
 import (
 	"fmt"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -10,6 +11,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 var (
@@ -37,8 +39,8 @@ type (
 )
 
 // InBand creates an inband connection to a Lenovo server.
-func InBand(board *api.Board) (hal.InBand, error) {
-	ib, err := inband.New(board, true)
+func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
+	ib, err := inband.New(board, true, log)
 	if err != nil {
 		return nil, err
 	}

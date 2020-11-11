@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -16,6 +15,8 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/console"
+	"github.com/metal-stack/go-hal/pkg/logger"
+
 	"github.com/sethvargo/go-password/password"
 
 	"github.com/avast/retry-go"
@@ -59,6 +60,7 @@ type Ipmitool struct {
 	user     string
 	password string
 	outband  bool
+	log      logger.Logger
 }
 
 // LanConfig contains the config of IPMI.
@@ -97,7 +99,7 @@ type BMCInfo struct {
 }
 
 // New creates a new IpmiTool with the default command
-func New() (IpmiTool, error) {
+func New(log logger.Logger) (IpmiTool, error) {
 	ipmitoolBin := "ipmitool"
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
@@ -105,11 +107,12 @@ func New() (IpmiTool, error) {
 	}
 	return &Ipmitool{
 		command: ipmitoolBin,
+		log:     log,
 	}, nil
 }
 
-// New creates a new IpmiTool with the default command
-func NewOutBand(ip string, port int, user, password string) (IpmiTool, error) {
+// NewOutBand creates a new IpmiTool with the default command
+func NewOutBand(ip string, port int, user, password string, log logger.Logger) (IpmiTool, error) {
 	ipmitoolBin := "ipmitool"
 	_, err := exec.LookPath(ipmitoolBin)
 	if err != nil {
@@ -122,6 +125,7 @@ func NewOutBand(ip string, port int, user, password string) (IpmiTool, error) {
 		user:     user,
 		password: password,
 		outband:  true,
+		log:      log,
 	}, nil
 }
 
@@ -185,7 +189,7 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 	}
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("run ipmitool with args: %v output:%v error:%v", args, string(output), err)
+		i.log.Infow("run ipmitool", "args", args, "output", string(output), "error", err)
 	}
 	return string(output), err
 }
@@ -197,7 +201,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'fru':%v", cmdOutput)
 	}
-	fruMap := output2Map(cmdOutput)
+	fruMap := i.output2Map(cmdOutput)
 	from(config, fruMap)
 	return *config, nil
 }
@@ -209,7 +213,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	if err != nil {
 		return *bmc, errors.Wrapf(err, "unable to execute ipmitool 'bmc info':%v", cmdOutput)
 	}
-	bmcMap := output2Map(cmdOutput)
+	bmcMap := i.output2Map(cmdOutput)
 	from(bmc, bmcMap)
 	return *bmc, nil
 }
@@ -221,7 +225,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	if err != nil {
 		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", cmdOutput)
 	}
-	lanConfigMap := output2Map(cmdOutput)
+	lanConfigMap := i.output2Map(cmdOutput)
 	from(config, lanConfigMap)
 	return *config, nil
 }
@@ -233,7 +237,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	if err != nil {
 		return *session, errors.Wrapf(err, "unable to execute ipmitool 'session info all':%v", cmdOutput)
 	}
-	sessionMap := output2Map(cmdOutput)
+	sessionMap := i.output2Map(cmdOutput)
 	from(session, sessionMap)
 	return *session, nil
 }
@@ -442,7 +446,7 @@ func (i *Ipmitool) createPw(username, uid, passwd string, pc *api.PasswordConstr
 			return nil
 		},
 		retry.OnRetry(func(n uint, err error) {
-			log.Printf("retry ipmi password creation for user:%s id:%s retry:%d cause:%v", username, uid, n, err)
+			i.log.Infow("retry ipmi password creation", "user", username, "id", uid, "retry", n, "cause", err)
 		}),
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
@@ -511,7 +515,7 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	return console.Open(s, cmd)
 }
 
-func output2Map(cmdOutput string) map[string]string {
+func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
 	result := make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(cmdOutput))
 	for scanner.Scan() {
@@ -528,7 +532,7 @@ func output2Map(cmdOutput string) map[string]string {
 		result[key] = value
 	}
 	for k, v := range result {
-		log.Printf("output key:%s value:%s", k, v)
+		i.log.Debugw("output", "key", k, "value", v)
 	}
 	return result
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/redfish"
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 	goipmi "github.com/vmware/goipmi"
 )
 
@@ -43,12 +44,12 @@ type (
 )
 
 // InBand creates an inband connection to a supermicro server.
-func InBand(board *api.Board) (hal.InBand, error) {
+func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	s, err := newSum(sumBin)
 	if err != nil {
 		return nil, err
 	}
-	ib, err := inband.New(board, true)
+	ib, err := inband.New(board, true, log)
 	if err != nil {
 		return nil, err
 	}
@@ -59,12 +60,12 @@ func InBand(board *api.Board) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a supermicro server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string) (hal.OutBand, error) {
+func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
 	rs, err := newRemoteSum(sumBin, ip, user, password)
 	if err != nil {
 		return nil, err
 	}
-	i, err := ipmi.NewOutBand(ip, ipmiPort, user, password)
+	i, err := ipmi.NewOutBand(ip, ipmiPort, user, password, log)
 	if err != nil {
 		return nil, err
 	}

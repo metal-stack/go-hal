@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/metal-stack/go-hal/connect"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 var (
@@ -21,21 +22,21 @@ var (
 
 func main() {
 	flag.Parse()
+
+	log := logger.New()
 	switch *band {
 	case "inband":
-		fmt.Printf("inband test\n")
-		inband()
+		inband(log)
 	case "outband":
-		fmt.Printf("outband test\n")
-		outband()
+		outband(log)
 	default:
 		fmt.Printf("%s\n", errHelp)
 		os.Exit(1)
 	}
 }
 
-func inband() {
-	inband, err := connect.InBand()
+func inband(log logger.Logger) {
+	inband, err := connect.InBand(log)
 	if err != nil {
 		panic(err)
 	}
@@ -46,8 +47,8 @@ func inband() {
 	fmt.Printf("UUID:%s\n", uuid)
 }
 
-func outband() {
-	outband, err := connect.OutBand(*host, *port, *user, *password)
+func outband(log logger.Logger) {
+	outband, err := connect.OutBand(*host, *port, *user, *password, log)
 	if err != nil {
 		panic(err)
 	}

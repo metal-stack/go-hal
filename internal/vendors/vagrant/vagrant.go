@@ -2,6 +2,9 @@ package vagrant
 
 import (
 	"fmt"
+	"io"
+	"os/exec"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -10,10 +13,9 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
-	"io"
-	"os/exec"
 )
 
 var (
@@ -41,8 +43,8 @@ type (
 )
 
 // InBand creates an inband connection to a vagrant VM.
-func InBand(board *api.Board) (hal.InBand, error) {
-	ib, err := inband.New(board, false)
+func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
+	ib, err := inband.New(board, false, log)
 	if err != nil {
 		return nil, err
 	}
