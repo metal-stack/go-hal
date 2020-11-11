@@ -2,20 +2,10 @@ package zap
 
 import (
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 type ZapLogger struct {
 	sugaredLogger *zap.SugaredLogger
-}
-
-func getEncoder(isJSON bool) zapcore.Encoder {
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	if isJSON {
-		return zapcore.NewJSONEncoder(encoderConfig)
-	}
-	return zapcore.NewConsoleEncoder(encoderConfig)
 }
 
 func New(logger *zap.SugaredLogger) *ZapLogger {
