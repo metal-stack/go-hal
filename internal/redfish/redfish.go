@@ -94,7 +94,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Errorw("ignore system query", "error", err.Error())
+		c.log.Errorw("ignore system query, unable to detect uuid", "error", err.Error())
 		return "", err
 	}
 	for _, system := range systems {
