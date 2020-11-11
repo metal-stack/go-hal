@@ -54,19 +54,32 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	if c.Service == nil {
 		return nil, errors.New("gofish service root is not available most likely due to missing username")
 	}
+
+	biosVersion := ""
+	systems, err := c.Service.Systems()
+	if err != nil {
+		log.Printf("ignore system query err:%s\n", err.Error())
+	}
+	for _, system := range systems {
+		if system.BIOSVersion != "" {
+			biosVersion = system.BIOSVersion
+			break
+		}
+	}
+
 	chassis, err := c.Service.Chassis()
 	if err != nil {
 		log.Printf("ignore chassis query err:%s\n", err.Error())
 	}
-
 	for _, chass := range chassis {
-		log.Printf("Model:" + chass.Model + " Name:" + chass.Name + " Part:" + chass.PartNumber + " Serial:" + chass.SerialNumber + " SKU:" + chass.SKU + "\n")
 		if chass.ChassisType == redfish.RackMountChassisType {
+			log.Printf("Manufacturer:%s Model:%s Name:%s PartNumber:%s SerialNumber:%s SKU:%s BiosVersion:%s", chass.Manufacturer, chass.Model, chass.Name, chass.PartNumber, chass.SerialNumber, chass.SKU, biosVersion)
 			return &api.Board{
 				VendorString: chass.Manufacturer,
 				Model:        chass.Model,
 				PartNumber:   chass.PartNumber,
 				SerialNumber: chass.SerialNumber,
+				BiosVersion:  biosVersion,
 			}, nil
 		}
 	}
