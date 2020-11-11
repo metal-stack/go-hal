@@ -14,26 +14,26 @@ func New(logger log15.Logger) *Log15Logger {
 	}
 }
 
-func (l *Log15Logger) Debugf(format string, args ...interface{}) {
+func (l *Log15Logger) Debugw(format string, args ...interface{}) {
 	l.logger.Debug(format, args...)
 }
 
-func (l *Log15Logger) Infof(format string, args ...interface{}) {
+func (l *Log15Logger) Infow(format string, args ...interface{}) {
 	l.logger.Info(format, args...)
 }
 
-func (l *Log15Logger) Warnf(format string, args ...interface{}) {
+func (l *Log15Logger) Warnw(format string, args ...interface{}) {
 	l.logger.Warn(format, args...)
 }
 
-func (l *Log15Logger) Errorf(format string, args ...interface{}) {
+func (l *Log15Logger) Errorw(format string, args ...interface{}) {
 	l.logger.Error(format, args...)
 }
 
-func (l *Log15Logger) Fatalf(format string, args ...interface{}) {
+func (l *Log15Logger) Fatalw(format string, args ...interface{}) {
 	l.logger.Error(format, args...)
 }
 
-func (l *Log15Logger) Panicf(format string, args ...interface{}) {
+func (l *Log15Logger) Panicw(format string, args ...interface{}) {
 	l.logger.Error(format, args...)
 }

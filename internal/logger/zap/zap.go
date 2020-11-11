@@ -24,26 +24,26 @@ func New(logger *zap.SugaredLogger) *ZapLogger {
 	}
 }
 
-func (l *ZapLogger) Debugf(format string, args ...interface{}) {
-	l.sugaredLogger.Debugf(format, args...)
+func (l *ZapLogger) Debugw(format string, args ...interface{}) {
+	l.sugaredLogger.Debugw(format, args...)
 }
 
-func (l *ZapLogger) Infof(format string, args ...interface{}) {
-	l.sugaredLogger.Infof(format, args...)
+func (l *ZapLogger) Infow(format string, args ...interface{}) {
+	l.sugaredLogger.Infow(format, args...)
 }
 
-func (l *ZapLogger) Warnf(format string, args ...interface{}) {
-	l.sugaredLogger.Warnf(format, args...)
+func (l *ZapLogger) Warnw(format string, args ...interface{}) {
+	l.sugaredLogger.Warnw(format, args...)
 }
 
-func (l *ZapLogger) Errorf(format string, args ...interface{}) {
-	l.sugaredLogger.Errorf(format, args...)
+func (l *ZapLogger) Errorw(format string, args ...interface{}) {
+	l.sugaredLogger.Errorw(format, args...)
 }
 
-func (l *ZapLogger) Fatalf(format string, args ...interface{}) {
-	l.sugaredLogger.Fatalf(format, args...)
+func (l *ZapLogger) Fatalw(format string, args ...interface{}) {
+	l.sugaredLogger.Fatalw(format, args...)
 }
 
-func (l *ZapLogger) Panicf(format string, args ...interface{}) {
-	l.sugaredLogger.Fatalf(format, args...)
+func (l *ZapLogger) Panicw(format string, args ...interface{}) {
+	l.sugaredLogger.Fatalw(format, args...)
 }

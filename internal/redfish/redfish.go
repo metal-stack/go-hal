@@ -60,7 +60,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	biosVersion := ""
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Warnf("ignore system query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
 		if system.BIOSVersion != "" {
@@ -71,11 +71,13 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		c.log.Warnf("ignore chassis query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, chass := range chassis {
 		if chass.ChassisType == redfish.RackMountChassisType {
-			c.log.Debugf("Manufacturer:%s Model:%s Name:%s PartNumber:%s SerialNumber:%s SKU:%s BiosVersion:%s", chass.Manufacturer, chass.Model, chass.Name, chass.PartNumber, chass.SerialNumber, chass.SKU, biosVersion)
+			c.log.Debugw("got chassis",
+				"Manufacturer", chass.Manufacturer, "Model", chass.Model, "Name", chass.Name,
+				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber, "SKU", chass.SKU, "BiosVersion", biosVersion)
 			return &api.Board{
 				VendorString: chass.Manufacturer,
 				Model:        chass.Model,
@@ -92,7 +94,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 func (c *APIClient) MachineUUID() (string, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Errorf("ignored system query err:%s\n", err.Error())
+		c.log.Errorw("ignore system query", "error", err.Error())
 		return "", err
 	}
 	for _, system := range systems {
@@ -106,7 +108,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Warnf("ignored system query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
 		if system.PowerState != "" {
@@ -135,7 +137,7 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Warnf("ignored system query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
 		err = system.Reset(resetType)
@@ -235,7 +237,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 func (c *APIClient) setNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Warnf("ignored system query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
 		boot := system.Boot
@@ -252,12 +254,12 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	systems, err := c.Service.Systems()
 	if err != nil {
-		c.log.Warnf("ignore service query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 
 	chassis, err := c.Service.Chassis()
 	if err != nil {
-		c.log.Warnf("ignore chassis query err:%s\n", err.Error())
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 
 	bmc := &api.BMC{}

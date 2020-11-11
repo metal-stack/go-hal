@@ -189,7 +189,7 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 	}
 	output, err := cmd.Output()
 	if err != nil {
-		i.log.Infof("run ipmitool with args: %v output:%v error:%v", args, string(output), err)
+		i.log.Infow("run ipmitool", "args", args, "output", string(output), "error", err)
 	}
 	return string(output), err
 }
@@ -446,7 +446,7 @@ func (i *Ipmitool) createPw(username, uid, passwd string, pc *api.PasswordConstr
 			return nil
 		},
 		retry.OnRetry(func(n uint, err error) {
-			i.log.Infof("retry ipmi password creation for user:%s id:%s retry:%d cause:%v", username, uid, n, err)
+			i.log.Infow("retry ipmi password creation", "user", username, "id", uid, "retry", n, "cause", err)
 		}),
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
@@ -532,7 +532,7 @@ func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
 		result[key] = value
 	}
 	for k, v := range result {
-		i.log.Debugf("output key:%s value:%s", k, v)
+		i.log.Debugw("output", "key", k, "value", v)
 	}
 	return result
 }

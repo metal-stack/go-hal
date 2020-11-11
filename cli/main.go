@@ -30,7 +30,7 @@ func main() {
 	case "outband":
 		outband(log)
 	default:
-		log.Infof("%s\n", errHelp)
+		fmt.Printf("%s\n", errHelp)
 		os.Exit(1)
 	}
 }
