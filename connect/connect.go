@@ -26,7 +26,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		b = api.VagrantBoard
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
-
+	log.Debugw("connect", "vendor", b)
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.InBand(b, log)
@@ -35,6 +35,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	case api.VendorVagrant:
 		return vagrant.InBand(b, log)
 	default:
+		log.Errorw("connect", "unknown vendor", b.Vendor)
 		return nil, errorUnknownVendor
 	}
 }
@@ -50,7 +51,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s", ip, user)
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
-
+	log.Debugw("connect", "board", b)
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b), nil
@@ -59,6 +60,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	default:
+		log.Errorw("connect", "unknown vendor", b.Vendor)
 		return nil, errorUnknownVendor
 	}
 }
