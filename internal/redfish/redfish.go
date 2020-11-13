@@ -58,6 +58,8 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 
 	biosVersion := ""
+	manufacturer := ""
+	model := ""
 	systems, err := c.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -65,6 +67,18 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	for _, system := range systems {
 		if system.BIOSVersion != "" {
 			biosVersion = system.BIOSVersion
+			break
+		}
+	}
+	for _, system := range systems {
+		if system.Manufacturer != "" {
+			manufacturer = system.Manufacturer
+			break
+		}
+	}
+	for _, system := range systems {
+		if system.Model != "" {
+			model = system.Model
 			break
 		}
 	}
@@ -76,11 +90,11 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	for _, chass := range chassis {
 		if chass.ChassisType == redfish.RackMountChassisType {
 			c.log.Debugw("got chassis",
-				"Manufacturer", chass.Manufacturer, "Model", chass.Model, "Name", chass.Name,
-				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber, "SKU", chass.SKU, "BiosVersion", biosVersion)
+				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
+				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber, "BiosVersion", biosVersion)
 			return &api.Board{
-				VendorString: chass.Manufacturer,
-				Model:        chass.Model,
+				VendorString: manufacturer,
+				Model:        model,
 				PartNumber:   chass.PartNumber,
 				SerialNumber: chass.SerialNumber,
 				BiosVersion:  biosVersion,
