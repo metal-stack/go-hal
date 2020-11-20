@@ -2,7 +2,10 @@ package ipmi
 
 import (
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 // Output of root@ipmitest:~# ipmitool lan print
@@ -65,8 +68,9 @@ func Test_getLanConfig(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
-			got := output2Map(tt.cmdOutput)
+			got := i.output2Map(tt.cmdOutput)
 			for key, value := range tt.want {
 				if got[key] != value {
 					t.Errorf("getLanConfig() = %v, want %v", got[key], value)
@@ -99,6 +103,8 @@ func TestGetLanConfig(t *testing.T) {
 }
 
 func TestLanConfig_From(t *testing.T) {
+	i := Ipmitool{log: logger.New()}
+
 	type fields struct {
 		IP  string
 		Mac string
@@ -114,7 +120,7 @@ func TestLanConfig_From(t *testing.T) {
 				IP:  "192.168.2.53",
 				Mac: "ac:1f:6b:73:c9:f0",
 			},
-			input: output2Map(lanPrint2),
+			input: i.output2Map(lanPrint2),
 		},
 	}
 	for _, tt := range tests {
@@ -126,6 +132,73 @@ func TestLanConfig_From(t *testing.T) {
 			}
 			if c.Mac != tt.fields.Mac {
 				t.Errorf("Mac is not as expected")
+			}
+		})
+	}
+}
+
+func TestIpmitool_Run(t *testing.T) {
+	type fields struct {
+		command  string
+		ip       string
+		port     int
+		user     string
+		password string
+		outband  bool
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    []string
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "verify outband args are added before user args",
+			fields: fields{
+				command:  "echo",
+				ip:       "1.2.3.4",
+				port:     623,
+				user:     "user",
+				password: "password",
+				outband:  true,
+			},
+			args:    []string{"lan", "print"},
+			want:    "-I lanplus -H 1.2.3.4 -p 623 -U user -P password lan print",
+			wantErr: false,
+		},
+		{
+			name: "verify inband has no outband args",
+			fields: fields{
+				command:  "echo",
+				ip:       "1.2.3.4",
+				port:     623,
+				user:     "user",
+				password: "password",
+				outband:  false,
+			},
+			args:    []string{"lan", "print"},
+			want:    "lan print",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			i := &Ipmitool{
+				command:  tt.fields.command,
+				ip:       tt.fields.ip,
+				port:     tt.fields.port,
+				user:     tt.fields.user,
+				password: tt.fields.password,
+				outband:  tt.fields.outband,
+			}
+			got, err := i.Run(tt.args...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Ipmitool.Run() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if strings.TrimSpace(got) != strings.TrimSpace(tt.want) {
+				t.Errorf("Ipmitool.Run() = %v, want %v", got, tt.want)
 			}
 		})
 	}

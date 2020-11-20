@@ -2,8 +2,9 @@ package api
 
 import (
 	"fmt"
-	"github.com/metal-stack/go-hal/internal/kernel"
 	"strings"
+
+	"github.com/metal-stack/go-hal/internal/kernel"
 )
 
 // PasswordConstraints holds the constraints that are ensured for generated passwords
@@ -45,6 +46,41 @@ type Board struct {
 	BMC          *BMC
 	BIOS         *BIOS
 	Firmware     kernel.FirmwareMode
+}
+
+// BMCUser holds BMC user details
+type BMCUser struct {
+	Name          string
+	Id            string
+	ChannelNumber int
+}
+
+// BMCConnection offers methods to add/update BMC users and retrieve BMC details
+type BMCConnection interface {
+	// BMC returns the actual BMC details
+	BMC() (*BMC, error)
+	// PresentSuperUser returns the details of the already present bmc superuser
+	PresentSuperUser() BMCUser
+	// SuperUser returns the details of the preset metal bmc superuser
+	SuperUser() BMCUser
+	// User returns the details of the preset metal bmc user
+	User() BMCUser
+	// Present returns true if the InBand Connection found a usable BMC device
+	Present() bool
+	// Creates the given BMC user and returns generated password
+	CreateUserAndPassword(user BMCUser, privilege IpmiPrivilege) (string, error)
+	// Creates the given BMC user with the given password
+	CreateUser(user BMCUser, privilege IpmiPrivilege, password string) error
+	// Changes the password of the given BMC user
+	ChangePassword(user BMCUser, newPassword string) error
+	// Enables/Disables the given BMC user
+	SetUserEnabled(user BMCUser, enabled bool) error
+}
+
+// OutBandBMCConnection offers a method to retrieve BMC details
+type OutBandBMCConnection interface {
+	// BMC returns the actual BMC details
+	BMC() (*BMC, error)
 }
 
 // BMC Base Management Controller details
@@ -105,6 +141,19 @@ type (
 	Vendor int
 )
 
+func (v Vendor) PasswordConstraints() *PasswordConstraints {
+	switch v {
+	default:
+		return &PasswordConstraints{
+			Length:      10,
+			NumDigits:   3,
+			NumSymbols:  0,
+			NoUpper:     false,
+			AllowRepeat: false,
+		}
+	}
+}
+
 const (
 	// VendorUnknown is a unknown Vendor
 	VendorUnknown Vendor = iota
@@ -133,8 +182,11 @@ func (v Vendor) String() string { return vendors[v] }
 
 // GuessVendor will try to guess from vendor string
 func GuessVendor(vendor string) Vendor {
+	fmt.Printf("vendor:%s\n", vendor)
 	for _, v := range allVendors {
-		if strings.Contains(strings.ToLower(v.String()), strings.ToLower(vendor)) {
+		givenVendor := strings.TrimSpace(strings.ToLower(vendor))
+		possibleVendor := strings.TrimSpace(strings.ToLower(v.String()))
+		if strings.Contains(givenVendor, possibleVendor) {
 			return v
 		}
 	}
@@ -142,7 +194,7 @@ func GuessVendor(vendor string) Vendor {
 }
 
 func (b *Board) String() string {
-	return fmt.Sprintf("Vendor:%s Name:%s", b.Vendor, b.Model)
+	return fmt.Sprintf("Vendor:%s Model:%s", b.Vendor, b.Model)
 }
 
 func (b *BIOS) String() string {
