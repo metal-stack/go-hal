@@ -229,7 +229,17 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 		})
 	}
 
-	return ob.Redfish.SetBootOrder(bootOrder)
+	type boot struct {
+		BootOrderNext []string `json:"BootOrderNext"`
+	}
+	body, err := json.Marshal(&boot{
+		BootOrderNext: bootOrder,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = ob.Redfish.DoPatch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", bytes.NewReader(body))
+	return err
 }
 
 func (ob *outBand) getBootOrder() ([]string, error) {

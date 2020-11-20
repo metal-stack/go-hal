@@ -1,9 +1,7 @@
 package redfish
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -178,20 +176,6 @@ func (c *APIClient) do(method, path string, body io.Reader) (*http.Response, err
 	}
 	c.addHeadersAndAuth(req)
 	return c.Do(req)
-}
-
-func (c *APIClient) SetBootOrder(bootOrder []string) error {
-	type boot struct {
-		BootOrderNext []string `json:"BootOrderNext"`
-	}
-	body, err := json.Marshal(&boot{
-		BootOrderNext: bootOrder,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = c.DoPatch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", bytes.NewReader(body))
-	return err
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
