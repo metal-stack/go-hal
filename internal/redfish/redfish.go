@@ -5,8 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/metal-stack/go-hal"
@@ -162,64 +162,25 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return errors.Wrapf(err, "failed to set power to %s", resetType)
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
-	if target == hal.BootTargetBIOS {
-		return c.setNextBootBIOS()
-	}
-
-	currentBootOrder, err := c.getBootOrder()
-	if err != nil {
-		return err
-	}
-	switch target {
-	default:
-		return c.setPersistentPXE(currentBootOrder)
-	case hal.BootTargetDisk:
-		return c.setPersistentHDD(currentBootOrder)
-	}
+func (c *APIClient) DoGet(path string) (*http.Response, error) {
+	return c.do(http.MethodGet, path, nil)
 }
 
-func (c *APIClient) getBootOrder() ([]string, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
+func (c *APIClient) DoPatch(path string, body io.Reader) (*http.Response, error) {
+	return c.do(http.MethodPatch, path, body)
+}
+
+func (c *APIClient) do(method, path string, body io.Reader) (*http.Response, error) {
+	path = strings.TrimPrefix(path, "/")
+	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.urlPrefix, path), body)
 	if err != nil {
 		return nil, err
 	}
 	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	type boot struct {
-		BootOrderCurrent []string `json:"BootOrderCurrent"`
-	}
-	b := boot{}
-	err = json.Unmarshal(buf.Bytes(), &b)
-	return b.BootOrderCurrent, err
+	return c.Do(req)
 }
 
-func (c *APIClient) setPersistentPXE(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		if strings.ToLower(bootOrder[i]) == "network" {
-			return true
-		}
-		return !strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setPersistentHDD(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		return strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setBootOrder(bootOrder []string) error {
+func (c *APIClient) SetBootOrder(bootOrder []string) error {
 	type boot struct {
 		BootOrderNext []string `json:"BootOrderNext"`
 	}
@@ -229,12 +190,7 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-	_, err = c.Do(req)
+	_, err = c.DoPatch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", bytes.NewReader(body))
 	return err
 }
 
@@ -244,7 +200,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.SetBasicAuth(c.user, c.password)
 }
 
-func (c *APIClient) setNextBootBIOS() error {
+func (c *APIClient) SetNextBootBIOS() error {
 	systems, err := c.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
