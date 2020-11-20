@@ -238,12 +238,12 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	if err != nil {
 		return err
 	}
-	_, err = ob.Redfish.DoPatch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", bytes.NewReader(body))
+	_, err = ob.Redfish.Patch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", body)
 	return err
 }
 
 func (ob *outBand) getBootOrder() ([]string, error) {
-	resp, err := ob.Redfish.DoGet("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder")
+	resp, err := ob.Redfish.Get("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder")
 	if err != nil {
 		return nil, err
 	}

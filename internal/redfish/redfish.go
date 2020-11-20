@@ -1,7 +1,9 @@
 package redfish
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -160,16 +162,36 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return errors.Wrapf(err, "failed to set power to %s", resetType)
 }
 
-func (c *APIClient) DoGet(path string) (*http.Response, error) {
+func (c *APIClient) Get(path string) (*http.Response, error) {
 	return c.do(http.MethodGet, path, nil)
 }
 
-func (c *APIClient) DoPatch(path string, body io.Reader) (*http.Response, error) {
-	return c.do(http.MethodPatch, path, body)
+func (c *APIClient) Post(path string, payload interface{}) (*http.Response, error) {
+	return c.do(http.MethodPost, path, payload)
 }
 
-func (c *APIClient) do(method, path string, body io.Reader) (*http.Response, error) {
+func (c *APIClient) Put(path string, payload interface{}) (*http.Response, error) {
+	return c.do(http.MethodPut, path, payload)
+}
+
+func (c *APIClient) Patch(path string, payload interface{}) (*http.Response, error) {
+	return c.do(http.MethodPatch, path, payload)
+}
+
+func (c *APIClient) Delete(path string) (*http.Response, error) {
+	return c.do(http.MethodDelete, path, nil)
+}
+
+func (c *APIClient) do(method, path string, payload interface{}) (*http.Response, error) {
 	path = strings.TrimPrefix(path, "/")
+	var body io.Reader
+	if payload != nil {
+		pl, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		body = bytes.NewReader(pl)
+	}
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", c.urlPrefix, path), body)
 	if err != nil {
 		return nil, err
