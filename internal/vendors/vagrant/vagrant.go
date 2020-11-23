@@ -18,11 +18,6 @@ import (
 	goipmi "github.com/vmware/goipmi"
 )
 
-var (
-	// errorNotImplemented for all functions that are not implemented yet
-	errorNotImplemented = fmt.Errorf("not implemented yet")
-)
-
 const (
 	vendor = api.VendorVagrant
 )
@@ -74,15 +69,15 @@ func (ib *inBand) PowerReset() error {
 }
 
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ib.IpmiTool.SetChassisIdentifyLEDState(state)
+	return nil
 }
 
 func (ib *inBand) IdentifyLEDOn() error {
-	return ib.IpmiTool.SetChassisIdentifyLEDOn()
+	return nil
 }
 
 func (ib *inBand) IdentifyLEDOff() error {
-	return ib.IpmiTool.SetChassisIdentifyLEDOff()
+	return nil
 }
 
 func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
@@ -90,7 +85,7 @@ func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
-	return errorNotImplemented //TODO
+	return nil
 }
 
 func (ib *inBand) Describe() string {
@@ -104,7 +99,7 @@ func (ib *inBand) BMCConnection() api.BMCConnection {
 }
 
 func (c *bmcConnection) BMC() (*api.BMC, error) {
-	return c.IpmiTool.BMC()
+	return api.VagrantBoard.BMC, nil
 }
 
 func (c *bmcConnection) PresentSuperUser() api.BMCUser {
@@ -120,49 +115,40 @@ func (c *bmcConnection) User() api.BMCUser {
 }
 
 func (c *bmcConnection) Present() bool {
-	return c.IpmiTool.DevicePresent()
+	return false
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+	return "", nil
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
-	return err
+	return nil
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
-	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+	return nil
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+	return nil
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
-	return false, errorNotImplemented
+	return false, nil
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
-	return errorNotImplemented
+	return nil
 }
 
 // OutBand
 func (ob *outBand) UUID() (*uuid.UUID, error) {
-	u, err := ob.Redfish.MachineUUID()
-	if err != nil {
-		return nil, err
-	}
-	us, err := uuid.Parse(u)
-	if err != nil {
-		return nil, err
-	}
-	return &us, nil
+	return nil, nil
 }
 
 func (ob *outBand) PowerState() (hal.PowerState, error) {
-	return ob.Redfish.PowerState()
+	return hal.PowerOnState, nil
 }
 
 func (ob *outBand) PowerOff() error {
@@ -190,21 +176,15 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDState(state)
-	})
+	return nil
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDOn()
-	})
+	return nil
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.SetChassisIdentifyLEDOff()
-	})
+	return nil
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
@@ -235,5 +215,5 @@ func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 }
 
 func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
-	return c.IpmiTool.BMC()
+	return api.VagrantBoard.BMC, nil
 }
