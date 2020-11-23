@@ -97,7 +97,7 @@ func (ib *inBand) BMCConnection() api.BMCConnection {
 }
 
 func (c *bmcConnection) BMC() (*api.BMC, error) {
-	return &api.BMC{}, nil
+	return api.VagrantBoard.BMC, nil
 }
 
 func (c *bmcConnection) PresentSuperUser() api.BMCUser {
@@ -213,5 +213,5 @@ func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 }
 
 func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
-	return &api.BMC{}, nil
+	return api.VagrantBoard.BMC, nil
 }
