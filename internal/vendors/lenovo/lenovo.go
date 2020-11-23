@@ -1,8 +1,9 @@
 package lenovo
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -12,6 +13,8 @@ import (
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
+	"sort"
+	"strings"
 )
 
 var (
@@ -204,7 +207,57 @@ func (ob *outBand) IdentifyLEDOff() error {
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return ob.Redfish.SetBootOrder(target, vendor)
+	if target == hal.BootTargetBIOS {
+		return ob.Redfish.SetNextBootBIOS()
+	}
+
+	bootOrder, err := ob.getBootOrder()
+	if err != nil {
+		return err
+	}
+	switch target {
+	default:
+		sort.SliceStable(bootOrder, func(i, j int) bool {
+			if strings.ToLower(bootOrder[i]) == "network" {
+				return true
+			}
+			return !strings.Contains(bootOrder[i], "metal")
+		})
+	case hal.BootTargetDisk:
+		sort.SliceStable(bootOrder, func(i, j int) bool {
+			return strings.Contains(bootOrder[i], "metal")
+		})
+	}
+
+	type boot struct {
+		BootOrderNext []string `json:"BootOrderNext"`
+	}
+	body, err := json.Marshal(&boot{
+		BootOrderNext: bootOrder,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = ob.Redfish.Patch("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", body)
+	return err
+}
+
+func (ob *outBand) getBootOrder() ([]string, error) {
+	resp, err := ob.Redfish.Get("/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder")
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	type boot struct {
+		BootOrderCurrent []string `json:"BootOrderCurrent"`
+	}
+	b := boot{}
+	err = json.Unmarshal(buf.Bytes(), &b)
+	return b.BootOrderCurrent, err
 }
 
 func (ob *outBand) Describe() string {
