@@ -5,6 +5,10 @@ go 1.15
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/aws/aws-sdk-go-v2 v1.1.0
+	github.com/aws/aws-sdk-go-v2/config v1.1.0
+	github.com/aws/aws-sdk-go-v2/credentials v1.1.0
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.1.0
 	github.com/creack/pty v1.1.11
 	github.com/gliderlabs/ssh v0.3.1
 	github.com/go-stack/stack v1.8.0 // indirect

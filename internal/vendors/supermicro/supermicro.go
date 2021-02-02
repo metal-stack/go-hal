@@ -1,7 +1,14 @@
 package supermicro
 
 import (
+	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"io"
+	"strings"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -269,6 +276,77 @@ func (ob *outBand) Describe() string {
 
 func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
+}
+
+func (ob *outBand) newS3Client(cfg *api.S3Config) (*s3.Client, error) {
+	customResolver := aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
+		if cfg.Region == region {
+			return aws.Endpoint{
+				PartitionID:       "aws",
+				URL:               cfg.Url,
+				SigningRegion:     region,
+				HostnameImmutable: cfg.HostnameImmutable,
+			}, nil
+		}
+		// returning EndpointNotFoundError will allow the service to fallback to it's default resolution
+		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+	})
+	c, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(customResolver))
+	if err != nil {
+		return nil, err
+	}
+	c.Region = cfg.Region
+	c.Credentials = credentials.NewStaticCredentialsProvider(cfg.Key, cfg.Secret, "")
+	return s3.NewFromConfig(c), nil
+}
+
+func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
+	update, err := ob.downloadUpdate("bios", board, revision, s3Config)
+	if err != nil {
+		return err
+	}
+
+	err = ob.PowerOff()
+	if err != nil {
+		return err
+	}
+
+	return ob.sum.UpdateBIOS(update)
+}
+
+func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
+	update, err := ob.downloadUpdate("bmc", board, revision, s3Config)
+	if err != nil {
+		return err
+	}
+
+	err = ob.PowerOff()
+	if err != nil {
+		return err
+	}
+
+	return ob.sum.UpdateBMC(update)
+}
+
+func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
+	board = strings.ToUpper(board)
+
+	s3Client, err := ob.newS3Client(s3Config)
+	if err != nil {
+		return nil, err
+	}
+
+	bucketName := strings.ToLower(vendor.String())
+	key := fmt.Sprintf("updates/%s/%s/%s", kind, board, revision)
+	resp, err := s3Client.GetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: &bucketName,
+		Key:    &key,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
 
 func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
