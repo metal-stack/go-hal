@@ -285,7 +285,7 @@ func (ob *outBand) newS3Client(cfg *api.S3Config) (*s3.Client, error) {
 				PartitionID:       "aws",
 				URL:               cfg.Url,
 				SigningRegion:     region,
-				HostnameImmutable: cfg.HostnameImmutable,
+				HostnameImmutable: true,
 			}, nil
 		}
 		// returning EndpointNotFoundError will allow the service to fallback to it's default resolution

@@ -8,11 +8,10 @@ import (
 )
 
 type S3Config struct {
-	Region            string
-	Url               string
-	Key               string
-	Secret            string
-	HostnameImmutable bool
+	Region string
+	Url    string
+	Key    string
+	Secret string
 }
 
 // PasswordConstraints holds the constraints that are ensured for generated passwords
