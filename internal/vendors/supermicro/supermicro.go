@@ -340,10 +340,10 @@ func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3
 		return nil, err
 	}
 
-	bucketName := strings.ToLower(vendor.String())
-	key := fmt.Sprintf("updates/%s/%s/%s", kind, board, revision)
+	v := strings.ToLower(vendor.String())
+	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
 	resp, err := s3Client.GetObject(context.Background(), &s3.GetObjectInput{
-		Bucket: &bucketName,
+		Bucket: aws.String("firmware-updates"),
 		Key:    &key,
 	})
 	if err != nil {
