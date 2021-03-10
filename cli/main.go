@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
 	"os"
 
 	"github.com/metal-stack/go-hal/connect"
@@ -50,18 +49,6 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	s, err := supermicro.NewRemoteSum("/home/kolsa/bin/summ", *host, *user, *password)
-	if err != nil {
-		panic(err)
-	}
-	reboot, err := s.ConfigureBIOS()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Reboot? %t\n", reboot)
-}
-
-func outband2(log logger.Logger) {
 	ob, err := connect.OutBand(*host, *port, *user, *password, log)
 	if err != nil {
 		panic(err)
