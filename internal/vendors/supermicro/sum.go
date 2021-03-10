@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"syscall"
 )
 
 type machineType int
@@ -145,7 +144,7 @@ func newSum(sumBin string) (*sum, error) {
 	}, nil
 }
 
-func newRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
+func NewRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
 	s, err := newSum(sumBin)
 	if err != nil {
 		return nil, err
@@ -168,9 +167,12 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 		return false, err
 	}
 
-	if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
-		return false, nil
-	}
+	println(firmware == kernel.EFI)
+	println(s.machineType == s2)
+	println(s.secureBootEnabled)
+	//if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+	//	return false, nil
+	//}
 
 	fragment := uefiBootXMLFragmentTemplates[s.machineType]
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
@@ -346,7 +348,8 @@ func (s *sum) changeBiosCfg(fragment string) error {
 		return err
 	}
 
-	return s.execute("-c", "ChangeBiosCfg", "--file", biosCfgUpdateXML)
+	return nil
+	//return s.execute("-c", "ChangeBiosCfg", "--file", biosCfgUpdateXML)
 }
 
 func (s *sum) execute(args ...string) error {
@@ -355,13 +358,13 @@ func (s *sum) execute(args ...string) error {
 	}
 	cmd := exec.Command(s.binary, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid:    uint32(0),
-			Gid:    uint32(0),
-			Groups: []uint32{0},
-		},
-	}
+	//cmd.SysProcAttr = &syscall.SysProcAttr{
+	//	Credential: &syscall.Credential{
+	//		Uid:    uint32(0),
+	//		Gid:    uint32(0),
+	//		Groups: []uint32{0},
+	//	},
+	//}
 	return cmd.Run()
 }
 

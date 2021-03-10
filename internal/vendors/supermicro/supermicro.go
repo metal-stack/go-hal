@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -68,7 +70,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 
 // OutBand creates an outband connection to a supermicro server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	rs, err := newRemoteSum(sumBin, ip, user, password)
+	rs, err := NewRemoteSum(sumBin, ip, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -279,23 +281,25 @@ func (ob *outBand) Console(s ssh.Session) error {
 }
 
 func (ob *outBand) newS3Client(cfg *api.S3Config) (*s3.Client, error) {
+	dummyRegion := "dummy" // we don't use AWS S3, we don't need a proper region
 	customResolver := aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
-		if cfg.Region == region {
-			return aws.Endpoint{
-				PartitionID:       "aws",
-				URL:               cfg.Url,
-				SigningRegion:     region,
-				HostnameImmutable: true,
-			}, nil
-		}
-		// returning EndpointNotFoundError will allow the service to fallback to it's default resolution
-		return aws.Endpoint{}, &aws.EndpointNotFoundError{}
+		return aws.Endpoint{
+			PartitionID:       "aws",
+			URL:               cfg.Url,
+			SigningRegion:     dummyRegion,
+			HostnameImmutable: true,
+		}, nil
 	})
-	c, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(customResolver))
+	retryer := func() aws.Retryer {
+		r := retry.AddWithMaxAttempts(retry.NewStandard(), 3)
+		r = retry.AddWithMaxBackoffDelay(r, 10*time.Second)
+		return r
+	}
+	c, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(customResolver), config.WithRetryer(retryer))
 	if err != nil {
 		return nil, err
 	}
-	c.Region = cfg.Region
+	c.Region = dummyRegion
 	c.Credentials = credentials.NewStaticCredentialsProvider(cfg.Key, cfg.Secret, "")
 	return s3.NewFromConfig(c), nil
 }
