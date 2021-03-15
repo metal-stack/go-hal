@@ -343,7 +343,7 @@ func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3
 	v := strings.ToLower(vendor.String())
 	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
 	resp, err := s3Client.GetObject(context.Background(), &s3.GetObjectInput{
-		Bucket: aws.String("firmware-updates"),
+		Bucket: &s3Config.FirmwareBucket,
 		Key:    &key,
 	})
 	if err != nil {
