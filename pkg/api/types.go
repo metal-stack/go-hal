@@ -8,9 +8,9 @@ import (
 )
 
 type S3Config struct {
-	Url    string
-	Key    string
-	Secret string
+	Url            string
+	Key            string
+	Secret         string
 	FirmwareBucket string
 }
 
