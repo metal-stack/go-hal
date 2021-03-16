@@ -3,14 +3,10 @@ package supermicro
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/aws/retry"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/metal-stack/go-hal/internal/s3client"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -280,30 +276,6 @@ func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
 }
 
-func (ob *outBand) newS3Client(cfg *api.S3Config) (*s3.Client, error) {
-	dummyRegion := "dummy" // we don't use AWS S3, we don't need a proper region
-	customResolver := aws.EndpointResolverFunc(func(service, region string) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			PartitionID:       "aws",
-			URL:               cfg.Url,
-			SigningRegion:     dummyRegion,
-			HostnameImmutable: true,
-		}, nil
-	})
-	retryer := func() aws.Retryer {
-		r := retry.AddWithMaxAttempts(retry.NewStandard(), 3)
-		r = retry.AddWithMaxBackoffDelay(r, 10*time.Second)
-		return r
-	}
-	c, err := config.LoadDefaultConfig(context.Background(), config.WithEndpointResolver(customResolver), config.WithRetryer(retryer))
-	if err != nil {
-		return nil, err
-	}
-	c.Region = dummyRegion
-	c.Credentials = credentials.NewStaticCredentialsProvider(cfg.Key, cfg.Secret, "")
-	return s3.NewFromConfig(c), nil
-}
-
 func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
 	update, err := ob.downloadUpdate("bios", board, revision, s3Config)
 	if err != nil {
@@ -335,14 +307,14 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
 	board = strings.ToUpper(board)
 
-	s3Client, err := ob.newS3Client(s3Config)
+	c, err := s3client.New(s3Config)
 	if err != nil {
 		return nil, err
 	}
 
 	v := strings.ToLower(vendor.String())
 	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
-	resp, err := s3Client.GetObject(context.Background(), &s3.GetObjectInput{
+	resp, err := c.GetObjectWithContext(context.Background(), &s3.GetObjectInput{
 		Bucket: &s3Config.FirmwareBucket,
 		Key:    &key,
 	})
