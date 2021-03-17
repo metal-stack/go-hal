@@ -305,14 +305,13 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 }
 
 func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
-	board = strings.ToUpper(board)
-
 	c, err := s3client.New(s3Config)
 	if err != nil {
 		return nil, err
 	}
 
 	v := strings.ToLower(vendor.String())
+	board = strings.ToUpper(board)
 	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
 	resp, err := c.GetObjectWithContext(context.Background(), &s3.GetObjectInput{
 		Bucket: &s3Config.FirmwareBucket,

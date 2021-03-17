@@ -149,15 +149,12 @@ type (
 )
 
 func (v Vendor) PasswordConstraints() *PasswordConstraints {
-	switch v {
-	default:
-		return &PasswordConstraints{
-			Length:      10,
-			NumDigits:   3,
-			NumSymbols:  0,
-			NoUpper:     false,
-			AllowRepeat: false,
-		}
+	return &PasswordConstraints{
+		Length:      10,
+		NumDigits:   3,
+		NumSymbols:  0,
+		NoUpper:     false,
+		AllowRepeat: false,
 	}
 }
 

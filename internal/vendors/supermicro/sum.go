@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 type machineType int
@@ -167,12 +168,9 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 		return false, err
 	}
 
-	println(firmware == kernel.EFI)
-	println(s.machineType == s2)
-	println(s.secureBootEnabled)
-	//if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
-	//	return false, nil
-	//}
+	if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+		return false, nil
+	}
 
 	fragment := uefiBootXMLFragmentTemplates[s.machineType]
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
@@ -343,28 +341,28 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 
 func (s *sum) changeBiosCfg(fragment string) error {
 	biosCfgUpdateXML := "biosCfgUpdate.xml"
-	err := ioutil.WriteFile(biosCfgUpdateXML, []byte(fragment), 0644)
+	err := ioutil.WriteFile(biosCfgUpdateXML, []byte(fragment), 0600)
 	if err != nil {
 		return err
 	}
 
-	return nil
-	//return s.execute("-c", "ChangeBiosCfg", "--file", biosCfgUpdateXML)
+	return s.execute("-c", "ChangeBiosCfg", "--file", biosCfgUpdateXML)
 }
 
 func (s *sum) execute(args ...string) error {
 	if s.remote {
 		args = append(args, "-i", s.ip, "-u", s.user, "-p", s.password)
 	}
+	// #nosec G204
 	cmd := exec.Command(s.binary, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	//cmd.SysProcAttr = &syscall.SysProcAttr{
-	//	Credential: &syscall.Credential{
-	//		Uid:    uint32(0),
-	//		Gid:    uint32(0),
-	//		Groups: []uint32{0},
-	//	},
-	//}
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid:    uint32(0),
+			Gid:    uint32(0),
+			Groups: []uint32{0},
+		},
+	}
 	return cmd.Run()
 }
 
@@ -372,14 +370,15 @@ func (s *sum) executeAsync(args ...string) (io.ReadCloser, error) {
 	if s.remote {
 		args = append(args, "-i", s.ip, "-u", s.user, "-p", s.password)
 	}
+	// #nosec G204
 	cmd := exec.Command(s.binary, args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("could not initiate sum command to get dmi data from ip:%s, err: %v", s.ip, err)
+		return nil, fmt.Errorf("could not initiate sum command to get dmi data from ip:%s, err: %w", s.ip, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return nil, fmt.Errorf("could not start sum command to get dmi data from ip:%s, err: %v", s.ip, err)
+		return nil, fmt.Errorf("could not start sum command to get dmi data from ip:%s, err: %w", s.ip, err)
 	}
 	go func() {
 		err = cmd.Wait()

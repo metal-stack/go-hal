@@ -65,6 +65,8 @@ func (c *Client) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
 		return c.SetChassisIdentifyLEDOff()
 	case hal.IdentifyLEDStateOn:
 		return c.SetChassisIdentifyLEDOn()
+	case hal.IdentifyLEDStateUnknown:
+		fallthrough
 	default:
 		return fmt.Errorf("unknown identify LED state: %s", state)
 	}
