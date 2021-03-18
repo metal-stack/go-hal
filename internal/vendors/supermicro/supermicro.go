@@ -286,9 +286,6 @@ func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) er
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = ob.PowerOn()
-	}()
 
 	time.Sleep(time.Minute)
 
@@ -305,9 +302,6 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = ob.PowerOn()
-	}()
 
 	time.Sleep(time.Minute)
 

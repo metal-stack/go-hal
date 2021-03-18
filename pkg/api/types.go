@@ -186,7 +186,6 @@ func (v Vendor) String() string { return vendors[v] }
 
 // GuessVendor will try to guess from vendor string
 func GuessVendor(vendor string) Vendor {
-	fmt.Printf("vendor:%s\n", vendor)
 	for _, v := range allVendors {
 		givenVendor := strings.TrimSpace(strings.ToLower(vendor))
 		possibleVendor := strings.TrimSpace(strings.ToLower(v.String()))
