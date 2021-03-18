@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"os"
 )
 
 // UpdateBIOS updates given BIOS
@@ -18,23 +19,38 @@ func (s *sum) UpdateBMC(reader io.Reader) error {
 
 // updateFirmware updates given firmware
 func (s *sum) updateFirmware(reader io.Reader, command string) error {
-	firmwareUpdate := "firmware.update"
-	err := writeUpdate(firmwareUpdate, reader)
+	firmwareUpdate, err := writeFirmwareUpdate(reader)
 	if err != nil {
 		return err
 	}
-	//defer func() {
-	//	_ = os.Remove(firmwareUpdate)
-	//}()
+	defer func() {
+		_ = os.Remove(firmwareUpdate)
+	}()
 
 	return s.execute("-c", command, "--file", firmwareUpdate, "--reboot")
 }
 
-func writeUpdate(filename string, reader io.Reader) error {
+func writeFirmwareUpdate(reader io.Reader) (string, error) {
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(reader)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return ioutil.WriteFile(filename, buf.Bytes(), 0600)
+
+	tmp, err := ioutil.TempFile(".", "firmware.update-")
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tmp.Write(buf.Bytes())
+	if err != nil {
+		return "", err
+	}
+
+	err = tmp.Close()
+	if err != nil {
+		return "", err
+	}
+
+	return tmp.Name(), nil
 }

@@ -4,10 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/metal-stack/go-hal/internal/s3client"
-	"io"
-	"strings"
-
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -15,10 +11,14 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/internal/s3client"
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
 	goipmi "github.com/vmware/goipmi"
+	"io"
+	"strings"
+	"time"
 )
 
 var (
@@ -277,7 +277,7 @@ func (ob *outBand) Console(s ssh.Session) error {
 }
 
 func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
-	update, err := ob.downloadUpdate("bios", board, revision, s3Config)
+	update, err := ob.downloadFirmwareUpdate("bios", board, revision, s3Config)
 	if err != nil {
 		return err
 	}
@@ -286,12 +286,13 @@ func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) er
 	if err != nil {
 		return err
 	}
+	time.Sleep(time.Minute)
 
 	return ob.sum.UpdateBIOS(update)
 }
 
 func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
-	update, err := ob.downloadUpdate("bmc", board, revision, s3Config)
+	update, err := ob.downloadFirmwareUpdate("bmc", board, revision, s3Config)
 	if err != nil {
 		return err
 	}
@@ -300,11 +301,12 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 	if err != nil {
 		return err
 	}
+	time.Sleep(time.Minute)
 
 	return ob.sum.UpdateBMC(update)
 }
 
-func (ob *outBand) downloadUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
+func (ob *outBand) downloadFirmwareUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
 	c, err := s3client.New(s3Config)
 	if err != nil {
 		return nil, err
