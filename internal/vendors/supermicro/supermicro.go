@@ -18,7 +18,6 @@ import (
 	goipmi "github.com/vmware/goipmi"
 	"io"
 	"strings"
-	"time"
 )
 
 var (
@@ -282,13 +281,6 @@ func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) er
 		return err
 	}
 
-	err = ob.PowerOff()
-	if err != nil {
-		return err
-	}
-
-	time.Sleep(time.Minute)
-
 	return ob.sum.UpdateBIOS(update)
 }
 
@@ -297,13 +289,6 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 	if err != nil {
 		return err
 	}
-
-	err = ob.PowerOff()
-	if err != nil {
-		return err
-	}
-
-	time.Sleep(time.Minute)
 
 	return ob.sum.UpdateBMC(update)
 }
