@@ -277,6 +277,8 @@ func (i *Ipmitool) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, pas
 				return i.createPasswordRaw(user.Name, userID, password, pc)
 			},
 		})
+	case HighLevel:
+		fallthrough
 	default:
 		cn := strconv.Itoa(user.ChannelNumber)
 		return i.createUser(bmcRequest{
@@ -314,6 +316,8 @@ func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType 
 			},
 		})
 		return err
+	case HighLevel:
+		fallthrough
 	default:
 		_, err := i.changePassword(bmcRequest{
 			username:        user.Name,
@@ -343,6 +347,8 @@ func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiTyp
 			disableUserArgs: RawDisableUser(userID),
 			enableUserArgs:  RawEnableUser(userID),
 		}, enabled)
+	case HighLevel:
+		fallthrough
 	default:
 		return i.setUserEnabled(bmcRequest{
 			username:        user.Name,
@@ -479,6 +485,8 @@ func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error 
 		return i.SetChassisIdentifyLEDOn()
 	case hal.IdentifyLEDStateOff:
 		return i.SetChassisIdentifyLEDOff()
+	case hal.IdentifyLEDStateUnknown:
+		fallthrough
 	default:
 		return fmt.Errorf("unknown identify LED state: %s", state)
 	}
@@ -573,6 +581,8 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQ
 		switch vendor {
 		case api.VendorSupermicro:
 			bootDevQualifier = supermicroHDQualifier
+		case api.VendorLenovo, api.VendorDell, api.VendorVagrant, api.VendorUnknown:
+			fallthrough
 		default:
 			bootDevQualifier = hdQualifier
 		}

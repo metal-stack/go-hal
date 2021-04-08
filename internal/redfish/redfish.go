@@ -2,6 +2,7 @@ package redfish
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -172,10 +173,12 @@ func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
 		return err
 	}
 	switch target {
-	default:
-		return c.setPersistentPXE(currentBootOrder)
 	case hal.BootTargetDisk:
 		return c.setPersistentHDD(currentBootOrder)
+	case hal.BootTargetPXE, hal.BootTargetBIOS:
+		fallthrough
+	default:
+		return c.setPersistentPXE(currentBootOrder)
 	}
 }
 
@@ -184,7 +187,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +196,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
@@ -233,12 +237,15 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
-	_, err = c.Do(req)
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
 	return err
 }
 

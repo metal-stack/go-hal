@@ -145,7 +145,7 @@ func newSum(sumBin string) (*sum, error) {
 	}, nil
 }
 
-func newRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
+func NewRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
 	s, err := newSum(sumBin)
 	if err != nil {
 		return nil, err
@@ -341,7 +341,7 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 
 func (s *sum) changeBiosCfg(fragment string) error {
 	biosCfgUpdateXML := "biosCfgUpdate.xml"
-	err := ioutil.WriteFile(biosCfgUpdateXML, []byte(fragment), 0644)
+	err := ioutil.WriteFile(biosCfgUpdateXML, []byte(fragment), 0600)
 	if err != nil {
 		return err
 	}
@@ -353,6 +353,7 @@ func (s *sum) execute(args ...string) error {
 	if s.remote {
 		args = append(args, "-i", s.ip, "-u", s.user, "-p", s.password)
 	}
+	// #nosec G204
 	cmd := exec.Command(s.binary, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -369,14 +370,15 @@ func (s *sum) executeAsync(args ...string) (io.ReadCloser, error) {
 	if s.remote {
 		args = append(args, "-i", s.ip, "-u", s.user, "-p", s.password)
 	}
+	// #nosec G204
 	cmd := exec.Command(s.binary, args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("could not initiate sum command to get dmi data from ip:%s, err: %v", s.ip, err)
+		return nil, fmt.Errorf("could not initiate sum command to get dmi data from ip:%s, err: %w", s.ip, err)
 	}
 	err = cmd.Start()
 	if err != nil {
-		return nil, fmt.Errorf("could not start sum command to get dmi data from ip:%s, err: %v", s.ip, err)
+		return nil, fmt.Errorf("could not start sum command to get dmi data from ip:%s, err: %w", s.ip, err)
 	}
 	go func() {
 		err = cmd.Wait()

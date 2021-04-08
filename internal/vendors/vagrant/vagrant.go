@@ -208,6 +208,14 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	return console.Open(s, cmd)
 }
 
+func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
+	return nil
+}
+
+func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
+	return nil
+}
+
 func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 	return &bmcConnectionOutBand{
 		outBand: ob,

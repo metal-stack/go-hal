@@ -174,6 +174,10 @@ type OutBand interface {
 
 	Console(ssh.Session) error
 
+	UpdateBIOS(board, revision string, s3Config *api.S3Config) error
+
+	UpdateBMC(board, revision string, s3Config *api.S3Config) error
+
 	// Returns a connection to the BMC
 	BMCConnection() api.OutBandBMCConnection
 }

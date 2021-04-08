@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/metal-stack/go-hal"
 	"os"
 
 	"github.com/metal-stack/go-hal/connect"
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	band     = flag.String("bandtype", "inband", "inband/outband")
+	band     = flag.String("bandtype", "outband", "inband/outband")
 	user     = flag.String("user", "ADMIN", "bmc username")
 	password = flag.String("password", "ADMIN", "bmc password")
 	host     = flag.String("host", "localhost", "bmc host")
@@ -36,11 +37,11 @@ func main() {
 }
 
 func inband(log logger.Logger) {
-	inband, err := connect.InBand(log)
+	ib, err := connect.InBand(log)
 	if err != nil {
 		panic(err)
 	}
-	uuid, err := inband.UUID()
+	uuid, err := ib.UUID()
 	if err != nil {
 		panic(err)
 	}
@@ -48,24 +49,73 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	outband, err := connect.OutBand(*host, *port, *user, *password, log)
+	ob, err := connect.OutBand(*host, *port, *user, *password, log)
 	if err != nil {
 		panic(err)
 	}
-	uuid, err := outband.UUID()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("UUID:%s\n", uuid)
-	ps, err := outband.PowerState()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Powerstate:%s\n", ps)
 
-	bmc, err := outband.BMCConnection().BMC()
+	uu := make(map[string]string)
+	ee := make(map[string]error)
+
+	b := ob.Board()
+	fmt.Printf("Board:\n%#v\n", b)
+
+	bmc, err := ob.BMCConnection().BMC()
 	if err != nil {
-		panic(err)
+		ee["BMCConnection.BMC"] = err
 	}
-	fmt.Printf("BMC:%s\n", bmc)
+	fmt.Printf("BMC:\n%#v\n", bmc)
+
+	_, err = ob.UUID()
+	if err != nil {
+		ee["UUID"] = err
+	}
+
+	ps, err := ob.PowerState()
+	if err != nil {
+		ee["PowerState"] = err
+	}
+	if ps == hal.PowerUnknownState {
+		uu["PowerState"] = "unexpected power state: PowerUnknownState"
+	}
+
+	// ipmitool sel
+	err = ob.IdentifyLEDState(hal.IdentifyLEDStateOff)
+	if err != nil {
+		ee["IdentifyLEDState"] = err
+	}
+	err = ob.IdentifyLEDOn()
+	if err != nil {
+		ee["IdentifyLEDOn"] = err
+	}
+	err = ob.IdentifyLEDOff()
+	if err != nil {
+		ee["IdentifyLEDOff"] = err
+	}
+
+	//_, err = ob.UpdateBIOS()
+	//if err != nil {
+	//	ee["UpdateBIOS"] = err
+	//}
+	//
+	//_, err = ob.UpdateBMC()
+	//if err != nil {
+	//	ee["UpdateBMC"] = err
+	//}
+
+	if len(uu) > 0 {
+		fmt.Println("Unexpected things:")
+		for m, u := range uu {
+			fmt.Printf("%s: %s\n", m, u)
+		}
+	}
+
+	if len(ee) > 0 {
+		fmt.Println("Failed checks:")
+		for m, err := range ee {
+			fmt.Printf("%s: %s\n", m, err.Error())
+		}
+	} else {
+		fmt.Println("Check succeeded")
+	}
 }

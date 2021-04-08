@@ -34,6 +34,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		return supermicro.InBand(b, log)
 	case api.VendorVagrant:
 		return vagrant.InBand(b, log)
+	case api.VendorDell, api.VendorUnknown:
+		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
 		return nil, errorUnknownVendor
@@ -59,6 +61,8 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
+	case api.VendorDell, api.VendorUnknown:
+		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
 		return nil, errorUnknownVendor

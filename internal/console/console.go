@@ -52,7 +52,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 
 	go func() {
 		_, err = io.Copy(f, s) // stdin
-		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
+		if err != nil && !errors.Is(err, io.EOF) && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
 			stdinErr = errors.Wrap(err, "failed to copy remote stdin to local")
 		}
 		done <- true
@@ -60,7 +60,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 
 	go func() {
 		_, err = io.Copy(s, f) // stdout
-		if err != nil && err != io.EOF && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
+		if err != nil && !errors.Is(err, io.EOF) && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
 			stdoutErr = errors.Wrap(err, "failed to copy local stdout to remote")
 		}
 		done <- true

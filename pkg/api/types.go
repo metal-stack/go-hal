@@ -7,6 +7,13 @@ import (
 	"github.com/metal-stack/go-hal/internal/kernel"
 )
 
+type S3Config struct {
+	Url            string
+	Key            string
+	Secret         string
+	FirmwareBucket string
+}
+
 // PasswordConstraints holds the constraints that are ensured for generated passwords
 type PasswordConstraints struct {
 	Length      int
@@ -142,15 +149,12 @@ type (
 )
 
 func (v Vendor) PasswordConstraints() *PasswordConstraints {
-	switch v {
-	default:
-		return &PasswordConstraints{
-			Length:      10,
-			NumDigits:   3,
-			NumSymbols:  0,
-			NoUpper:     false,
-			AllowRepeat: false,
-		}
+	return &PasswordConstraints{
+		Length:      10,
+		NumDigits:   3,
+		NumSymbols:  0,
+		NoUpper:     false,
+		AllowRepeat: false,
 	}
 }
 
@@ -182,7 +186,6 @@ func (v Vendor) String() string { return vendors[v] }
 
 // GuessVendor will try to guess from vendor string
 func GuessVendor(vendor string) Vendor {
-	fmt.Printf("vendor:%s\n", vendor)
 	for _, v := range allVendors {
 		givenVendor := strings.TrimSpace(strings.ToLower(vendor))
 		possibleVendor := strings.TrimSpace(strings.ToLower(v.String()))

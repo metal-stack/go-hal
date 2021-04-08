@@ -67,7 +67,8 @@ func Test_getLanConfig(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
 			got := i.output2Map(tt.cmdOutput)
@@ -87,7 +88,8 @@ func TestGetLanConfig(t *testing.T) {
 	}{
 		// TODO: Add test cases.
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			i := &Ipmitool{command: "/bin/true"}
 			got, err := i.GetLanConfig()
@@ -123,7 +125,8 @@ func TestLanConfig_From(t *testing.T) {
 			input: i.output2Map(lanPrint2),
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			c := &LanConfig{}
 			from(c, tt.input)
@@ -182,7 +185,8 @@ func TestIpmitool_Run(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			i := &Ipmitool{
 				command:  tt.fields.command,

@@ -1,8 +1,9 @@
 package supermicro
 
 import (
+	"context"
 	"fmt"
-
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -10,10 +11,13 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/internal/s3client"
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
 	goipmi "github.com/vmware/goipmi"
+	"io"
+	"strings"
 )
 
 var (
@@ -61,7 +65,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 
 // OutBand creates an outband connection to a supermicro server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	rs, err := newRemoteSum(sumBin, ip, user, password)
+	rs, err := NewRemoteSum(sumBin, ip, user, password)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +273,44 @@ func (ob *outBand) Describe() string {
 
 func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
+}
+
+func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
+	update, err := ob.downloadFirmwareUpdate("bios", board, revision, s3Config)
+	if err != nil {
+		return err
+	}
+
+	return ob.sum.UpdateBIOS(update)
+}
+
+func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
+	update, err := ob.downloadFirmwareUpdate("bmc", board, revision, s3Config)
+	if err != nil {
+		return err
+	}
+
+	return ob.sum.UpdateBMC(update)
+}
+
+func (ob *outBand) downloadFirmwareUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
+	c, err := s3client.New(s3Config)
+	if err != nil {
+		return nil, err
+	}
+
+	v := strings.ToLower(vendor.String())
+	board = strings.ToUpper(board)
+	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
+	resp, err := c.GetObjectWithContext(context.Background(), &s3.GetObjectInput{
+		Bucket: &s3Config.FirmwareBucket,
+		Key:    &key,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
 
 func (ob *outBand) BMCConnection() api.OutBandBMCConnection {

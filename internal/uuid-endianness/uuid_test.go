@@ -33,10 +33,11 @@ func TestUuid(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		value, err := FromBytes(test.value)
+	for i := range tests {
+		tt := tests[i]
+		value, err := FromBytes(tt.value)
 		if err != nil {
-			t.Fatalf("Cannot parse UUID %+v: %s", test.value, err)
+			t.Fatalf("Cannot parse UUID %+v: %s", tt.value, err)
 		}
 
 		got, err := value.MiddleEndianBytes()
@@ -44,8 +45,8 @@ func TestUuid(t *testing.T) {
 			t.Fatalf("Cannot convert to middle endian %+v: %s", value, err)
 		}
 
-		if !bytes.Equal(got, test.expect) {
-			t.Fatalf("Got %+v, expect %+v", got, test.expect)
+		if !bytes.Equal(got, tt.expect) {
+			t.Fatalf("Got %+v, expect %+v", got, tt.expect)
 		}
 	}
 }
@@ -72,7 +73,8 @@ func TestFromString(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := FromString(tt.input)
 			if (err != nil) != tt.wantErr {
@@ -100,7 +102,8 @@ func TestUuid_ToMiddleEndian(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			u, err := FromString(tt.input)
 			if err != nil {

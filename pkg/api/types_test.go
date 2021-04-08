@@ -15,7 +15,8 @@ func TestVendor_String(t *testing.T) {
 		{name: "lenovo", v: VendorLenovo, want: "Lenovo"},
 		{name: "unknown", v: VendorUnknown, want: "UNKNOWN"},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.v.String(); got != tt.want {
 				t.Errorf("Vendor.String() = %v, want %v", got, tt.want)
@@ -39,7 +40,8 @@ func TestGuessVendor(t *testing.T) {
 		{name: "vagrant", vendor: "vagrant", want: VendorVagrant},
 		{name: "dell", vendor: "Dell", want: VendorDell},
 	}
-	for _, tt := range tests {
+	for i := range tests {
+		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			if got := GuessVendor(tt.vendor); got != tt.want {
 				t.Errorf("GuessVendor() = %v, want %v", got, tt.want)
