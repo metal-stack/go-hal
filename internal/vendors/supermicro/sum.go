@@ -109,6 +109,20 @@ var (
     <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
   </Menu>
 </BiosCfg>`,
+		X11SDD_8C_F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
+    <Setting name="Boot Option #2" order="1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #3" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
+  </Menu>
+</BiosCfg>`,
 		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
