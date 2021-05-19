@@ -80,7 +80,7 @@ var (
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
-    <Setting name="Legacy to EFI support" selectedOption="Disabled" type="Option"/>
+    <Setting name="Legacy To EFI Support" selectedOption="Disabled" type="Option"/>
     <Setting name="UEFI Boot Option #1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
     <Setting name="UEFI Boot Option #2" selectedOption="Disabled" type="Option"/>
     <Setting name="UEFI Boot Option #3" selectedOption="Disabled" type="Option"/>
