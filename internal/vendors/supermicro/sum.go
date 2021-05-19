@@ -91,11 +91,6 @@ var (
     <Setting name="Boot Option #8" selectedOption="Disabled" type="Option"/>
     <Setting name="Boot Option #9" selectedOption="Disabled" type="Option"/>
   </Menu>
-  <Menu name="Security">
-    <Menu name="SMC Secure Boot Configuration">
-      <Setting name="Secure Boot" selectedOption="Enabled" type="Option"/>
-    </Menu>
-  </Menu>
 </BiosCfg>`,
 	}
 
