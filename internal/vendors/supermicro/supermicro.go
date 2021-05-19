@@ -49,7 +49,7 @@ type (
 
 // InBand creates an inband connection to a supermicro server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
-	s, err := newSum(sumBin)
+	s, err := newSum(sumBin, board.Model)
 	if err != nil {
 		return nil, err
 	}

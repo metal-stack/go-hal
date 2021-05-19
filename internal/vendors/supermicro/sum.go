@@ -4,10 +4,6 @@ import (
 	"bufio"
 	"encoding/xml"
 	"fmt"
-	log "github.com/inconshreveable/log15"
-	"github.com/metal-stack/go-hal/internal/kernel"
-	"github.com/pkg/errors"
-	"golang.org/x/net/html/charset"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,19 +11,30 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+
+	log "github.com/inconshreveable/log15"
+	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/pkg/errors"
+	"golang.org/x/net/html/charset"
 )
 
 type machineType int
 
 const (
-	bigTwin machineType = iota
-	s2
+	// Bigtwin
+	X11DPT_B machineType = iota
+	// S2 Storage
+	X11SDV_8C_TP8F
+	// S3
+	X11DPU
+	// N1 Firewall
+	X11SDD_8C_F
 )
 
 var (
 	// SUM does not complain or fail if more boot options are given than actually available
 	uefiBootXMLFragmentTemplates = map[machineType]string{
-		bigTwin: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
@@ -48,7 +55,28 @@ var (
     </Menu>
   </Menu>
 </BiosCfg>`,
-		s2: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
+    <Setting name="Legacy to EFI support" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="UEFI Boot Option #2" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #3" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #4" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #5" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #6" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #7" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #8" selectedOption="Disabled" type="Option"/>
+    <Setting name="UEFI Boot Option #9" selectedOption="Disabled" type="Option"/>
+  </Menu>
+  <Menu name="Security">
+    <Menu name="SMC Secure Boot Configuration">
+      <Setting name="Secure Boot" selectedOption="Enabled" type="Option"/>
+    </Menu>
+  </Menu>
+</BiosCfg>`,
+		X11SDD_8C_F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
@@ -72,7 +100,7 @@ var (
 	}
 
 	bootOrderXMLFragmentTemplates = map[machineType]string{
-		bigTwin: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
@@ -86,7 +114,7 @@ var (
     <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
   </Menu>
 </BiosCfg>`,
-		s2: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="UEFI Boot Option #1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
@@ -131,22 +159,24 @@ type sum struct {
 	biosCfgXML            string
 	biosCfg               BiosCfg
 	machineType           machineType
+	boardName             string
 	uefiNetworkBootOption string
 	secureBootEnabled     bool
 }
 
-func newSum(sumBin string) (*sum, error) {
+func newSum(sumBin, boardName string) (*sum, error) {
 	_, err := exec.LookPath(sumBin)
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
 	}
 	return &sum{
-		binary: sumBin,
+		binary:    sumBin,
+		boardName: boardName,
 	}, nil
 }
 
 func NewRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
-	s, err := newSum(sumBin)
+	s, err := newSum(sumBin, "")
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +198,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 		return false, err
 	}
 
-	if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+	if firmware == kernel.EFI && (s.machineType == X11SDV_8C_TP8F || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
 		return false, nil
 	}
 
@@ -237,23 +267,22 @@ func (s *sum) getCurrentBiosCfg() error {
 }
 
 func (s *sum) determineMachineType() {
-	for _, menu := range s.biosCfg.Menus {
-		if menu.Name != "Boot" {
-			continue
-		}
-		for _, setting := range menu.Settings {
-			if setting.Name == "UEFI Boot Option #1" { // not available in BigTwin BIOS
-				s.machineType = s2
-				return
-			}
-		}
+	switch s.boardName {
+	case "X11DPT-B":
+		s.machineType = X11DPT_B
+	case "X11SDV-8C-TP8F":
+		s.machineType = X11SDV_8C_TP8F
+	case "X11SDD-8C-F":
+		s.machineType = X11SDD_8C_F
+	case "X11DPU":
+		s.machineType = X11DPU
+	default:
+		s.machineType = X11DPT_B
 	}
-
-	s.machineType = bigTwin
 }
 
 func (s *sum) determineSecureBoot() {
-	if s.machineType == s2 { // secure boot option is not available in S2 BIOS
+	if s.machineType == X11SDV_8C_TP8F || s.machineType == X11SDD_8C_F { // secure boot option is not available in S2 BIOS
 		return
 	}
 	for _, menu := range s.biosCfg.Menus {
@@ -319,14 +348,14 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 		}
 		for _, setting := range menu.Settings {
 			switch s.machineType {
-			case bigTwin:
+			case X11DPT_B:
 				if setting.Order != "1" {
 					continue
 				}
 				if setting.Name != fmt.Sprintf("Boot Option #%d", index) {
 					continue
 				}
-			case s2:
+			case X11SDV_8C_TP8F:
 				if setting.Name != fmt.Sprintf("UEFI Boot Option #%d", index) {
 					continue
 				}
