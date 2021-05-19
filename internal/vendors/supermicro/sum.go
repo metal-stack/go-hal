@@ -194,7 +194,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	}
 
 	// FIXME stefan check
-	if firmware == kernel.EFI && (s.machineType == X11SDV_8C_TP8F || s.machineType == X11DPT_B || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+	if firmware == kernel.EFI && (s.machineType == X11SDV_8C_TP8F || s.machineType == X11SDD_8C_F || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
 		return false, nil
 	}
 
