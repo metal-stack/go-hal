@@ -348,7 +348,7 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 		}
 		for _, setting := range menu.Settings {
 			switch s.machineType {
-			case X11DPT_B:
+			case X11DPT_B, X11DPU, X11SDD_8C_F:
 				if setting.Order != "1" {
 					continue
 				}
