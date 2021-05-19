@@ -81,15 +81,15 @@ var (
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
     <Setting name="Legacy To EFI Support" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
-    <Setting name="UEFI Boot Option #2" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #3" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #4" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #5" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #6" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #7" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #8" selectedOption="Disabled" type="Option"/>
-    <Setting name="UEFI Boot Option #9" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #2" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #3" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" selectedOption="Disabled" type="Option"/>
   </Menu>
   <Menu name="Security">
     <Menu name="SMC Secure Boot Configuration">
