@@ -184,8 +184,8 @@ func newSum(sumBin, boardName string) (*sum, error) {
 	}, nil
 }
 
-func NewRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
-	s, err := newSum(sumBin, "")
+func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, error) {
+	s, err := newSum(sumBin, boardName)
 	if err != nil {
 		return nil, err
 	}
