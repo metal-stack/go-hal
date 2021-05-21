@@ -27,7 +27,7 @@ func TestUnmarshalS2BiosCfg(t *testing.T) {
 	s.determineMachineType()
 
 	// then
-	require.Equal(t, X11SDV_8C_TP8F, s.machineType)
+	require.Equal(t, X11SDV_8C_TP8F, s.boardModel)
 
 	// then
 	require.Nil(t, err)
@@ -52,7 +52,7 @@ func TestUnmarshalBigTwinBiosCfg(t *testing.T) {
 	s.determineMachineType()
 
 	// then
-	require.Equal(t, X11DPT_B, s.machineType)
+	require.Equal(t, X11DPT_B, s.boardModel)
 
 	// when
 	s.determineSecureBoot()

@@ -18,11 +18,11 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
-type machineType int
+type boardModel int
 
 const (
 	// Bigtwin
-	X11DPT_B machineType = iota
+	X11DPT_B boardModel = iota
 	// S2 Storage
 	X11SDV_8C_TP8F
 	// S3
@@ -32,8 +32,19 @@ const (
 )
 
 var (
+	boardModels = map[string]boardModel{
+		// Bigtwin
+		"X11DPT-B": X11DPT_B,
+		// S2 Storage
+		"X11SDV-8C-TP8F": X11SDV_8C_TP8F,
+		// S3
+		"X11DPU": X11DPU,
+		// N1 Firewall
+		"X11SDD-8C-F": X11SDD_8C_F,
+	}
+
 	// SUM does not complain or fail if more boot options are given than actually available
-	uefiBootXMLFragmentTemplates = map[machineType]string{
+	uefiBootXMLFragmentTemplates = map[boardModel]string{
 		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
@@ -94,7 +105,7 @@ var (
 </BiosCfg>`,
 	}
 
-	bootOrderXMLFragmentTemplates = map[machineType]string{
+	bootOrderXMLFragmentTemplates = map[boardModel]string{
 		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
@@ -167,7 +178,7 @@ type sum struct {
 	bootloaderID          string
 	biosCfgXML            string
 	biosCfg               BiosCfg
-	machineType           machineType
+	boardModel            boardModel
 	boardName             string
 	uefiNetworkBootOption string
 	secureBootEnabled     bool
@@ -208,11 +219,11 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	}
 
 	// FIXME stefan check
-	if firmware == kernel.EFI && (s.machineType == X11SDV_8C_TP8F || s.machineType == X11SDD_8C_F || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
 		return false, nil
 	}
 
-	fragment := uefiBootXMLFragmentTemplates[s.machineType]
+	fragment := uefiBootXMLFragmentTemplates[s.boardModel]
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
 	return true, s.changeBiosCfg(fragment)
@@ -234,7 +245,7 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 		return nil
 	}
 
-	fragment := bootOrderXMLFragmentTemplates[s.machineType]
+	fragment := bootOrderXMLFragmentTemplates[s.boardModel]
 	fragment = strings.ReplaceAll(fragment, "BOOTLOADER_ID", s.bootloaderID)
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
@@ -277,22 +288,16 @@ func (s *sum) getCurrentBiosCfg() error {
 }
 
 func (s *sum) determineMachineType() {
-	switch s.boardName {
-	case "X11DPT-B":
-		s.machineType = X11DPT_B
-	case "X11SDV-8C-TP8F":
-		s.machineType = X11SDV_8C_TP8F
-	case "X11SDD-8C-F":
-		s.machineType = X11SDD_8C_F
-	case "X11DPU":
-		s.machineType = X11DPU
-	default:
-		s.machineType = X11DPT_B
+	bm, ok := boardModels[s.boardName]
+	if ok {
+		s.boardModel = bm
+	} else {
+		s.boardModel = X11DPT_B
 	}
 }
 
 func (s *sum) determineSecureBoot() {
-	if s.machineType == X11SDV_8C_TP8F || s.machineType == X11SDD_8C_F { // secure boot option is not available in S2 BIOS
+	if s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F { // secure boot option is not available in S2 BIOS
 		return
 	}
 	for _, menu := range s.biosCfg.Menus {
@@ -357,7 +362,7 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 			continue
 		}
 		for _, setting := range menu.Settings {
-			switch s.machineType {
+			switch s.boardModel {
 			case X11DPT_B, X11DPU, X11SDD_8C_F:
 				if setting.Order != "1" {
 					continue
