@@ -211,7 +211,7 @@ func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, er
 // If returns whether machine needs to be rebooted or not.
 func (s *sum) ConfigureBIOS() (bool, error) {
 	firmware := kernel.Firmware()
-	log.Info("firmware", "is", firmware)
+	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
 	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F) {
@@ -222,6 +222,8 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName, "secureboot", s.secureBootEnabled)
+
 	// Secureboot can be set for specific bigtwins, called CSM Support in the bios
 	// This is so far only possible on these machines, detection requires sum call which downloads the bios.xml
 	if firmware == kernel.EFI && s.secureBootEnabled {
