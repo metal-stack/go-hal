@@ -1,8 +1,9 @@
 package supermicro
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseUUIDLine(t *testing.T) {
@@ -16,7 +17,7 @@ func TestParseUUIDLine(t *testing.T) {
 
 func TestUnmarshalS2BiosCfg(t *testing.T) {
 	// given
-	s := &sum{}
+	s := &sum{boardName: "X11SDV-8C-TP8F"}
 	s.biosCfgXML = testS2BiosCfg
 
 	// when
@@ -26,7 +27,7 @@ func TestUnmarshalS2BiosCfg(t *testing.T) {
 	s.determineMachineType()
 
 	// then
-	require.Equal(t, s2, s.machineType)
+	require.Equal(t, X11SDV_8C_TP8F, s.boardModel)
 
 	// then
 	require.Nil(t, err)
@@ -51,7 +52,7 @@ func TestUnmarshalBigTwinBiosCfg(t *testing.T) {
 	s.determineMachineType()
 
 	// then
-	require.Equal(t, bigTwin, s.machineType)
+	require.Equal(t, X11DPT_B, s.boardModel)
 
 	// when
 	s.determineSecureBoot()

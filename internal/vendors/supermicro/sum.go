@@ -4,10 +4,6 @@ import (
 	"bufio"
 	"encoding/xml"
 	"fmt"
-	log "github.com/inconshreveable/log15"
-	"github.com/metal-stack/go-hal/internal/kernel"
-	"github.com/pkg/errors"
-	"golang.org/x/net/html/charset"
 	"io"
 	"io/ioutil"
 	"os"
@@ -15,19 +11,41 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+
+	log "github.com/inconshreveable/log15"
+	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/pkg/errors"
+	"golang.org/x/net/html/charset"
 )
 
-type machineType int
+type boardModel int
 
 const (
-	bigTwin machineType = iota
-	s2
+	// Bigtwin
+	X11DPT_B boardModel = iota
+	// S2 Storage
+	X11SDV_8C_TP8F
+	// S3
+	X11DPU
+	// N1 Firewall
+	X11SDD_8C_F
 )
 
 var (
+	boardModels = map[string]boardModel{
+		// Bigtwin
+		"X11DPT-B": X11DPT_B,
+		// S2 Storage
+		"X11SDV-8C-TP8F": X11SDV_8C_TP8F,
+		// S3
+		"X11DPU": X11DPU,
+		// N1 Firewall
+		"X11SDD-8C-F": X11SDD_8C_F,
+	}
+
 	// SUM does not complain or fail if more boot options are given than actually available
-	uefiBootXMLFragmentTemplates = map[machineType]string{
-		bigTwin: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+	uefiBootXMLFragmentTemplates = map[boardModel]string{
+		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
@@ -48,7 +66,7 @@ var (
     </Menu>
   </Menu>
 </BiosCfg>`,
-		s2: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
@@ -69,10 +87,26 @@ var (
     </Menu>
   </Menu>
 </BiosCfg>`,
+		X11SDD_8C_F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
+    <Setting name="Legacy To EFI Support" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #2" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #3" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" selectedOption="Disabled" type="Option"/>
+  </Menu>
+</BiosCfg>`,
 	}
 
-	bootOrderXMLFragmentTemplates = map[machineType]string{
-		bigTwin: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+	bootOrderXMLFragmentTemplates = map[boardModel]string{
+		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
@@ -86,7 +120,21 @@ var (
     <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
   </Menu>
 </BiosCfg>`,
-		s2: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+		X11SDD_8C_F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
+    <Setting name="Boot Option #2" order="1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #3" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
+  </Menu>
+</BiosCfg>`,
+		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="UEFI Boot Option #1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
@@ -130,23 +178,25 @@ type sum struct {
 	bootloaderID          string
 	biosCfgXML            string
 	biosCfg               BiosCfg
-	machineType           machineType
+	boardModel            boardModel
+	boardName             string
 	uefiNetworkBootOption string
 	secureBootEnabled     bool
 }
 
-func newSum(sumBin string) (*sum, error) {
+func newSum(sumBin, boardName string) (*sum, error) {
 	_, err := exec.LookPath(sumBin)
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
 	}
 	return &sum{
-		binary: sumBin,
+		binary:    sumBin,
+		boardName: boardName,
 	}, nil
 }
 
-func NewRemoteSum(sumBin string, ip, user, password string) (*sum, error) {
-	s, err := newSum(sumBin)
+func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, error) {
+	s, err := newSum(sumBin, boardName)
 	if err != nil {
 		return nil, err
 	}
@@ -163,16 +213,22 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	firmware := kernel.Firmware()
 	log.Info("firmware", "is", firmware)
 
+	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
+	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F) {
+		return false, nil
+	}
+
 	err := s.prepare()
 	if err != nil {
 		return false, err
 	}
-
-	if firmware == kernel.EFI && (s.machineType == s2 || s.secureBootEnabled) { // we cannot disable csm-support for S2 servers yet
+	// Secureboot can be set for specific bigtwins, called CSM Support in the bios
+	// This is so far only possible on these machines, detection requires sum call which downloads the bios.xml
+	if firmware == kernel.EFI && s.secureBootEnabled {
 		return false, nil
 	}
 
-	fragment := uefiBootXMLFragmentTemplates[s.machineType]
+	fragment := uefiBootXMLFragmentTemplates[s.boardModel]
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
 	return true, s.changeBiosCfg(fragment)
@@ -194,7 +250,7 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 		return nil
 	}
 
-	fragment := bootOrderXMLFragmentTemplates[s.machineType]
+	fragment := bootOrderXMLFragmentTemplates[s.boardModel]
 	fragment = strings.ReplaceAll(fragment, "BOOTLOADER_ID", s.bootloaderID)
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
@@ -237,23 +293,16 @@ func (s *sum) getCurrentBiosCfg() error {
 }
 
 func (s *sum) determineMachineType() {
-	for _, menu := range s.biosCfg.Menus {
-		if menu.Name != "Boot" {
-			continue
-		}
-		for _, setting := range menu.Settings {
-			if setting.Name == "UEFI Boot Option #1" { // not available in BigTwin BIOS
-				s.machineType = s2
-				return
-			}
-		}
+	bm, ok := boardModels[s.boardName]
+	if ok {
+		s.boardModel = bm
+	} else {
+		s.boardModel = X11DPT_B
 	}
-
-	s.machineType = bigTwin
 }
 
 func (s *sum) determineSecureBoot() {
-	if s.machineType == s2 { // secure boot option is not available in S2 BIOS
+	if s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F { // secure boot option is not available in S2 BIOS
 		return
 	}
 	for _, menu := range s.biosCfg.Menus {
@@ -318,15 +367,15 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 			continue
 		}
 		for _, setting := range menu.Settings {
-			switch s.machineType {
-			case bigTwin:
+			switch s.boardModel {
+			case X11DPT_B, X11DPU, X11SDD_8C_F:
 				if setting.Order != "1" {
 					continue
 				}
 				if setting.Name != fmt.Sprintf("Boot Option #%d", index) {
 					continue
 				}
-			case s2:
+			case X11SDV_8C_TP8F:
 				if setting.Name != fmt.Sprintf("UEFI Boot Option #%d", index) {
 					continue
 				}

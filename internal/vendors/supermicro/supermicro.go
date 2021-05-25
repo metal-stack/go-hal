@@ -3,6 +3,9 @@ package supermicro
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -16,8 +19,6 @@ import (
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
 	goipmi "github.com/vmware/goipmi"
-	"io"
-	"strings"
 )
 
 var (
@@ -49,7 +50,7 @@ type (
 
 // InBand creates an inband connection to a supermicro server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
-	s, err := newSum(sumBin)
+	s, err := newSum(sumBin, board.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 
 // OutBand creates an outband connection to a supermicro server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	rs, err := NewRemoteSum(sumBin, ip, user, password)
+	rs, err := NewRemoteSum(sumBin, board.Model, ip, user, password)
 	if err != nil {
 		return nil, err
 	}
