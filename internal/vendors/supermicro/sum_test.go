@@ -17,14 +17,11 @@ func TestParseUUIDLine(t *testing.T) {
 
 func TestUnmarshalS2BiosCfg(t *testing.T) {
 	// given
-	s := &sum{boardName: "X11SDV-8C-TP8F"}
+	s, _ := newSum("/bin/true", "X11SDV-8C-TP8F")
 	s.biosCfgXML = testS2BiosCfg
 
 	// when
 	err := s.unmarshalBiosCfg()
-
-	// when
-	s.determineMachineType()
 
 	// then
 	require.Equal(t, X11SDV_8C_TP8F, s.boardModel)
@@ -47,9 +44,6 @@ func TestUnmarshalBigTwinBiosCfg(t *testing.T) {
 
 	// when
 	err := s.unmarshalBiosCfg()
-
-	// when
-	s.determineMachineType()
 
 	// then
 	require.Equal(t, X11DPT_B, s.boardModel)

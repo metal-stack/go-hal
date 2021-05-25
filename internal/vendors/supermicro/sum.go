@@ -189,10 +189,17 @@ func newSum(sumBin, boardName string) (*sum, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
 	}
-	return &sum{
+	sum := &sum{
 		binary:    sumBin,
 		boardName: boardName,
-	}, nil
+	}
+	bm, ok := boardModels[boardName]
+	if ok {
+		sum.boardModel = bm
+	} else {
+		sum.boardModel = X11DPT_B
+	}
+	return sum, nil
 }
 
 func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, error) {
@@ -211,7 +218,7 @@ func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, er
 // If returns whether machine needs to be rebooted or not.
 func (s *sum) ConfigureBIOS() (bool, error) {
 	firmware := kernel.Firmware()
-	log.Info("firmware", "is", firmware)
+	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
 	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F) {
@@ -222,6 +229,8 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName, "secureboot", s.secureBootEnabled)
+
 	// Secureboot can be set for specific bigtwins, called CSM Support in the bios
 	// This is so far only possible on these machines, detection requires sum call which downloads the bios.xml
 	if firmware == kernel.EFI && s.secureBootEnabled {
@@ -268,7 +277,6 @@ func (s *sum) prepare() error {
 		return errors.Wrapf(err, "unable to unmarshal BIOS configuration:\n%s", s.biosCfgXML)
 	}
 
-	s.determineMachineType()
 	s.determineSecureBoot()
 
 	return s.findUEFINetworkBootOption()
@@ -290,15 +298,6 @@ func (s *sum) getCurrentBiosCfg() error {
 
 	s.biosCfgXML = string(bb)
 	return nil
-}
-
-func (s *sum) determineMachineType() {
-	bm, ok := boardModels[s.boardName]
-	if ok {
-		s.boardModel = bm
-	} else {
-		s.boardModel = X11DPT_B
-	}
 }
 
 func (s *sum) determineSecureBoot() {
