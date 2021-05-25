@@ -189,10 +189,17 @@ func newSum(sumBin, boardName string) (*sum, error) {
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
 	}
-	return &sum{
+	sum := &sum{
 		binary:    sumBin,
 		boardName: boardName,
-	}, nil
+	}
+	bm, ok := boardModels[boardName]
+	if ok {
+		sum.boardModel = bm
+	} else {
+		sum.boardModel = X11DPT_B
+	}
+	return sum, nil
 }
 
 func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, error) {
@@ -270,7 +277,6 @@ func (s *sum) prepare() error {
 		return errors.Wrapf(err, "unable to unmarshal BIOS configuration:\n%s", s.biosCfgXML)
 	}
 
-	s.determineMachineType()
 	s.determineSecureBoot()
 
 	return s.findUEFINetworkBootOption()
@@ -292,15 +298,6 @@ func (s *sum) getCurrentBiosCfg() error {
 
 	s.biosCfgXML = string(bb)
 	return nil
-}
-
-func (s *sum) determineMachineType() {
-	bm, ok := boardModels[s.boardName]
-	if ok {
-		s.boardModel = bm
-	} else {
-		s.boardModel = X11DPT_B
-	}
 }
 
 func (s *sum) determineSecureBoot() {
