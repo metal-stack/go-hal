@@ -66,6 +66,27 @@ var (
     </Menu>
   </Menu>
 </BiosCfg>`,
+		X11DPU: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot mode select" selectedOption="UEFI" type="Option"/>
+    <Setting name="LEGACY to EFI support" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #1" order="1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #2" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #3" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
+  </Menu>
+  <Menu name="Security">
+    <Menu name="SMC Secure Boot Configuration">
+      <Setting name="Secure Boot" selectedOption="Enabled" type="Option"/>
+    </Menu>
+  </Menu>
+</BiosCfg>`,
 		X11SDV_8C_TP8F: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
@@ -107,6 +128,20 @@ var (
 
 	bootOrderXMLFragmentTemplates = map[boardModel]string{
 		X11DPT_B: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
+<BiosCfg>
+  <Menu name="Boot">
+    <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
+    <Setting name="Boot Option #2" order="1" selectedOption="UEFI_NETWORK_BOOT_OPTION" type="Option"/>
+    <Setting name="Boot Option #3" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #4" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #5" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #6" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #7" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #8" order="1" selectedOption="Disabled" type="Option"/>
+    <Setting name="Boot Option #9" order="1" selectedOption="Disabled" type="Option"/>
+  </Menu>
+</BiosCfg>`,
+		X11DPU: `<?xml version="1.0" encoding="ISO-8859-1" standalone="yes"?>
 <BiosCfg>
   <Menu name="Boot">
     <Setting name="Boot Option #1" order="1" selectedOption="UEFI Hard Disk:BOOTLOADER_ID" type="Option"/>
@@ -237,7 +272,10 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 		return false, nil
 	}
 
-	fragment := uefiBootXMLFragmentTemplates[s.boardModel]
+	fragment, ok := uefiBootXMLFragmentTemplates[s.boardModel]
+	if !ok {
+		return false, fmt.Errorf("no boot xml fragment found for boardmodel:%d", s.boardModel)
+	}
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
 	return true, s.changeBiosCfg(fragment)
@@ -259,7 +297,10 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 		return nil
 	}
 
-	fragment := bootOrderXMLFragmentTemplates[s.boardModel]
+	fragment, ok := bootOrderXMLFragmentTemplates[s.boardModel]
+	if !ok {
+		return fmt.Errorf("no boot order xml fragment found for boardmodel:%d", s.boardModel)
+	}
 	fragment = strings.ReplaceAll(fragment, "BOOTLOADER_ID", s.bootloaderID)
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
