@@ -272,7 +272,10 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 		return false, nil
 	}
 
-	fragment := uefiBootXMLFragmentTemplates[s.boardModel]
+	fragment, ok := uefiBootXMLFragmentTemplates[s.boardModel]
+	if !ok {
+		return false, fmt.Errorf("no boot xml fragment found for boardmodel:%d", s.boardModel)
+	}
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
 	return true, s.changeBiosCfg(fragment)
@@ -294,7 +297,10 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 		return nil
 	}
 
-	fragment := bootOrderXMLFragmentTemplates[s.boardModel]
+	fragment, ok := bootOrderXMLFragmentTemplates[s.boardModel]
+	if !ok {
+		return fmt.Errorf("no boot order xml fragment found for boardmodel:%d", s.boardModel)
+	}
 	fragment = strings.ReplaceAll(fragment, "BOOTLOADER_ID", s.bootloaderID)
 	fragment = strings.ReplaceAll(fragment, "UEFI_NETWORK_BOOT_OPTION", s.uefiNetworkBootOption)
 
