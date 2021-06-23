@@ -57,11 +57,12 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b), nil
-	case api.VendorSupermicro:
+	// FIXME this is just a workaround for supermicro firmwares which forgot the vendor
+	case api.VendorSupermicro, api.VendorUnknown:
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
