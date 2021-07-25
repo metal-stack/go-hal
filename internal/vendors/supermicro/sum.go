@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"regexp"
@@ -14,7 +13,6 @@ import (
 
 	log "github.com/inconshreveable/log15"
 	"github.com/metal-stack/go-hal/internal/kernel"
-	"github.com/pkg/errors"
 	"golang.org/x/net/html/charset"
 )
 
@@ -315,7 +313,7 @@ func (s *sum) prepare() error {
 
 	err = s.unmarshalBiosCfg()
 	if err != nil {
-		return errors.Wrapf(err, "unable to unmarshal BIOS configuration:\n%s", s.biosCfgXML)
+		return fmt.Errorf("unable to unmarshal BIOS configuration:\n%s %w", s.biosCfgXML, err)
 	}
 
 	s.determineSecureBoot()
@@ -329,12 +327,12 @@ func (s *sum) getCurrentBiosCfg() error {
 
 	err := s.execute("-c", "GetCurrentBiosCfg", "--file", biosCfgXML)
 	if err != nil {
-		return errors.Wrapf(err, "unable to get BIOS configuration via:%s -c GetCurrentBiosCfg --file %s", s.binary, biosCfgXML)
+		return fmt.Errorf("unable to get BIOS configuration via:%s -c GetCurrentBiosCfg --file %s %w", s.binary, biosCfgXML, err)
 	}
 
-	bb, err := ioutil.ReadFile(biosCfgXML)
+	bb, err := os.ReadFile(biosCfgXML)
 	if err != nil {
-		return errors.Wrapf(err, "unable to read file:%s", biosCfgXML)
+		return fmt.Errorf("unable to read file:%s %w", biosCfgXML, err)
 	}
 
 	s.biosCfgXML = string(bb)
@@ -430,7 +428,7 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 
 func (s *sum) changeBiosCfg(fragment string) error {
 	biosCfgUpdateXML := "biosCfgUpdate.xml"
-	err := ioutil.WriteFile(biosCfgUpdateXML, []byte(fragment), 0600)
+	err := os.WriteFile(biosCfgUpdateXML, []byte(fragment), 0600)
 	if err != nil {
 		return err
 	}

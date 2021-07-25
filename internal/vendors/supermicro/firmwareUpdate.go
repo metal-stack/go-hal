@@ -3,7 +3,6 @@ package supermicro
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
@@ -41,7 +40,7 @@ func writeFirmwareUpdate(reader io.Reader) (string, error) {
 		return "", err
 	}
 
-	tmp, err := ioutil.TempFile(".", "firmware.update-")
+	tmp, err := os.CreateTemp(".", "firmware.update-")
 	if err != nil {
 		return "", err
 	}

@@ -19,10 +19,9 @@ import (
 
 	"github.com/sethvargo/go-password/password"
 
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v3"
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal/pkg/api"
-	"github.com/pkg/errors"
 )
 
 type ApiType int
@@ -173,7 +172,7 @@ func (i *Ipmitool) DevicePresent() bool {
 func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 	path, err := exec.LookPath(i.command)
 	if err != nil {
-		return nil, errors.Wrapf(err, "unable to locate program:%s in path", i.command)
+		return nil, fmt.Errorf("unable to locate program:%s in path %w", i.command, err)
 	}
 	return exec.Command(path, args...), nil
 }
@@ -199,7 +198,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 	config := &Fru{}
 	cmdOutput, err := i.Run("fru")
 	if err != nil {
-		return *config, errors.Wrapf(err, "unable to execute ipmitool 'fru':%v", cmdOutput)
+		return *config, fmt.Errorf("unable to execute ipmitool 'fru':%v %w", cmdOutput, err)
 	}
 	fruMap := i.output2Map(cmdOutput)
 	from(config, fruMap)
@@ -211,7 +210,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 	bmc := &BMCInfo{}
 	cmdOutput, err := i.Run("bmc", "info")
 	if err != nil {
-		return *bmc, errors.Wrapf(err, "unable to execute ipmitool 'bmc info':%v", cmdOutput)
+		return *bmc, fmt.Errorf("unable to execute ipmitool 'bmc info':%v %w", cmdOutput, err)
 	}
 	bmcMap := i.output2Map(cmdOutput)
 	from(bmc, bmcMap)
@@ -223,7 +222,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 	config := &LanConfig{}
 	cmdOutput, err := i.Run("lan", "print")
 	if err != nil {
-		return *config, errors.Wrapf(err, "unable to execute ipmitool 'lan print':%v", cmdOutput)
+		return *config, fmt.Errorf("unable to execute ipmitool 'lan print':%v %w", cmdOutput, err)
 	}
 	lanConfigMap := i.output2Map(cmdOutput)
 	from(config, lanConfigMap)
@@ -235,7 +234,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	session := &Session{}
 	cmdOutput, err := i.Run("session", "info", "all")
 	if err != nil {
-		return *session, errors.Wrapf(err, "unable to execute ipmitool 'session info all':%v", cmdOutput)
+		return *session, fmt.Errorf("unable to execute ipmitool 'session info all':%v %w", cmdOutput, err)
 	}
 	sessionMap := i.output2Map(cmdOutput)
 	from(session, sessionMap)
@@ -260,7 +259,7 @@ func (i *Ipmitool) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, pas
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
 		if err != nil {
-			return "", errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+			return "", fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
 		userID := uint8(id)
 		cn := uint8(user.ChannelNumber)
@@ -303,7 +302,7 @@ func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType 
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
 		if err != nil {
-			return errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+			return fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
 		userID := uint8(id)
 		_, err = i.changePassword(bmcRequest{
@@ -338,7 +337,7 @@ func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiTyp
 	case LowLevel:
 		id, err := strconv.Atoi(user.Id)
 		if err != nil {
-			return errors.Wrapf(err, "invalid uid of user %s: %s", user.Name, user.Id)
+			return fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
 		userID := uint8(id)
 		return i.setUserEnabled(bmcRequest{
@@ -362,7 +361,7 @@ func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiTyp
 func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
 	out, err := i.Run(req.setUsernameArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed set username for user %s with id %s: %s", req.username, req.uid, out)
+		return "", fmt.Errorf("failed set username for user %s with id %s: %s %w", req.username, req.uid, out, err)
 	}
 
 	pw, err := i.changePassword(req)
@@ -372,12 +371,12 @@ func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
 
 	out, err = i.Run(req.setUserPrivilegeArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set privilege %d for user %s with id %s: %s", req.privilege, req.username, req.uid, out)
+		return "", fmt.Errorf("failed to set privilege %d for user %s with id %s: %s %w", req.privilege, req.username, req.uid, out, err)
 	}
 
 	out, err = i.Run(req.enableSOLPayloadAccessArgs...)
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set enable user SOL payload access for user %s with id %s: %s", req.username, req.uid, out)
+		return "", fmt.Errorf("failed to set enable user SOL payload access for user %s with id %s: %s %w", req.username, req.uid, out, err)
 	}
 
 	return pw, nil
@@ -391,7 +390,7 @@ func (i *Ipmitool) changePassword(req bmcRequest) (string, error) {
 
 	pw, err := req.setPasswordFunc()
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to set password %s for user %s with id %s", pw, req.username, req.uid)
+		return "", fmt.Errorf("failed to set password %s for user %s with id %s %w", pw, req.username, req.uid, err)
 	}
 
 	err = i.setUserEnabled(req, true)
@@ -406,14 +405,14 @@ func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
 	if enabled {
 		out, err := i.Run(req.enableUserArgs...)
 		if err != nil {
-			return errors.Wrapf(err, "failed to enable user %s with id %s: %s", req.username, req.uid, out)
+			return fmt.Errorf("failed to enable user %s with id %s: %s %w", req.username, req.uid, out, err)
 		}
 		return nil
 	}
 
 	out, err := i.Run(req.disableUserArgs...)
 	if err != nil {
-		return errors.Wrapf(err, "failed to disable user %s with id %s: %s", req.username, req.uid, out)
+		return fmt.Errorf("failed to disable user %s with id %s: %s %w", req.username, req.uid, out, err)
 	}
 
 	return nil
@@ -440,13 +439,13 @@ func (i *Ipmitool) createPw(username, uid, passwd string, pc *api.PasswordConstr
 			if pwd == "" && pc != nil {
 				gen, err := password.Generate(pc.Length, pc.NumDigits, pc.NumSymbols, pc.NoUpper, pc.AllowRepeat)
 				if err != nil {
-					return errors.Wrapf(err, "password generation failed for user:%s id:%s", username, uid)
+					return fmt.Errorf("password generation failed for user:%s id:%s %w", username, uid, err)
 				}
 				pwd = gen
 			}
 			out, err := i.Run(setPasswordArgs(pwd)...)
 			if err != nil {
-				return errors.Wrapf(err, "ipmi password creation failed for user:%s id:%s output:%s", username, uid, out)
+				return fmt.Errorf("ipmi password creation failed for user:%s id:%s output:%s %w", username, uid, out, err)
 			}
 			passwd = pwd
 			return nil
@@ -464,7 +463,7 @@ func (i *Ipmitool) createPw(username, uid, passwd string, pc *api.PasswordConstr
 func (i *Ipmitool) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
 	out, err := i.Run(RawSetSystemBootOptions(target, vendor)...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to persistently set boot order:%s out:%v", target, out)
+		return fmt.Errorf("unable to persistently set boot order:%s out:%v %w", target, out, err)
 	}
 	return nil
 }
@@ -473,7 +472,7 @@ func (i *Ipmitool) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error 
 func (i *Ipmitool) SetChassisControl(fn ChassisControlFunction) error {
 	_, err := i.Run(RawChassisControl(fn)...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to set chassis control function:%X", fn)
+		return fmt.Errorf("unable to set chassis control function:%X %w", fn, err)
 	}
 	return nil
 }
@@ -496,7 +495,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error 
 func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
 	_, err := i.Run(RawChassisIdentifyOn()...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to turn on the chassis identify LED")
+		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
 	}
 	return nil
 }
@@ -505,7 +504,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDOn() error {
 func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 	_, err := i.Run(RawChassisIdentifyOff()...)
 	if err != nil {
-		return errors.Wrapf(err, "unable to turn off the chassis identify LED")
+		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
 	return nil
 }
@@ -514,7 +513,7 @@ func (i *Ipmitool) SetChassisIdentifyLEDOff() error {
 func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	_, err := io.WriteString(s, "Exit with ~.\n")
 	if err != nil {
-		return errors.Wrap(err, "failed to write to console")
+		return fmt.Errorf("failed to write to console %w", err)
 	}
 	cmd, err := i.NewCommand("-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password, "sol", "activate")
 	if err != nil {

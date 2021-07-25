@@ -12,7 +12,6 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/logger"
-	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
@@ -55,7 +54,7 @@ func New(url, user, password string, insecure bool, log logger.Logger) (*APIClie
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
 	if c.Service == nil {
-		return nil, errors.New("gofish service root is not available most likely due to missing username")
+		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
 	}
 
 	biosVersion := ""
@@ -117,7 +116,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 			return system.UUID, nil
 		}
 	}
-	return "", errors.New("failed to detect machine UUID")
+	return "", fmt.Errorf("failed to detect machine UUID")
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
@@ -160,7 +159,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 			return nil
 		}
 	}
-	return errors.Wrapf(err, "failed to set power to %s", resetType)
+	return fmt.Errorf("failed to set power to %s %w", resetType, err)
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
@@ -269,7 +268,7 @@ func (c *APIClient) setNextBootBIOS() error {
 			return nil
 		}
 	}
-	return errors.Wrap(err, "failed to set next boot BIOS")
+	return fmt.Errorf("failed to set next boot BIOS %w", err)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {

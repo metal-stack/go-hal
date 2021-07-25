@@ -2,7 +2,6 @@ package dmi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -50,7 +49,7 @@ func BoardInfo() (*api.Board, error) {
 
 func dmi(path string) (string, error) {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			return "", fmt.Errorf("error getting content of %s: %w", path, err)
 		}
