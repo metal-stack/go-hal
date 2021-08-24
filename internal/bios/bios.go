@@ -2,7 +2,6 @@ package bios
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -40,7 +39,7 @@ func Bios() (*api.BIOS, error) {
 
 func read(file string) (string, error) {
 	if _, err := os.Stat(file); !os.IsNotExist(err) {
-		content, err := ioutil.ReadFile(file)
+		content, err := os.ReadFile(file)
 		if err != nil {
 			return "", err
 		}

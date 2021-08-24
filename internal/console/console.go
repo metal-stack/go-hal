@@ -1,16 +1,17 @@
 package console
 
 import (
+	"errors"
 	"fmt"
-	"github.com/creack/pty"
-	"github.com/gliderlabs/ssh"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/creack/pty"
+	"github.com/gliderlabs/ssh"
 )
 
 func Open(s ssh.Session, cmd *exec.Cmd) error {
@@ -18,10 +19,10 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	if !isPty {
 		_, err := io.WriteString(s, "No PTY requested.\n")
 		if err != nil {
-			err = errors.Wrap(err, "failed to write to console")
+			err = fmt.Errorf("failed to write to console :%w", err)
 			err2 := s.Exit(1)
 			if err2 != nil {
-				return errors.Wrapf(err, "failed to close ssh session: %v", err2)
+				return fmt.Errorf("failed to close ssh session: %w", err2)
 			}
 			return err
 		}
@@ -30,10 +31,10 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	cmd.Env = append(os.Environ(), fmt.Sprintf("TERM=%s", ptyReq.Term))
 	f, err := pty.Start(cmd)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to execute command via PTY: command:%s args:%s", cmd.Path, strings.Join(cmd.Args, " "))
+		err = fmt.Errorf("failed to execute command via PTY: command:%s args:%s error:%w", cmd.Path, strings.Join(cmd.Args, " "), err)
 		err2 := s.Exit(1)
 		if err2 != nil {
-			return errors.Wrapf(err, "failed to close ssh session: %v", err2)
+			return fmt.Errorf("failed to close ssh session: %w", err2)
 		}
 		return err
 	}
@@ -43,7 +44,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 		for win := range winCh {
 			err := setWinSize(f, win.Width, win.Height)
 			if err != nil {
-				winSizeErr = errors.Wrapf(err, "failed to set window size:%v", err)
+				winSizeErr = fmt.Errorf("failed to set window size:%w", err)
 			}
 		}
 	}()
@@ -53,7 +54,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	go func() {
 		_, err = io.Copy(f, s) // stdin
 		if err != nil && !errors.Is(err, io.EOF) && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-			stdinErr = errors.Wrap(err, "failed to copy remote stdin to local")
+			stdinErr = fmt.Errorf("failed to copy remote stdin to local %w", err)
 		}
 		done <- true
 	}()
@@ -61,7 +62,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	go func() {
 		_, err = io.Copy(s, f) // stdout
 		if err != nil && !errors.Is(err, io.EOF) && !strings.HasSuffix(err.Error(), syscall.EIO.Error()) {
-			stdoutErr = errors.Wrap(err, "failed to copy local stdout to remote")
+			stdoutErr = fmt.Errorf("failed to copy local stdout to remote: %w", err)
 		}
 		done <- true
 	}()
@@ -70,15 +71,15 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	<-done
 
 	if winSizeErr != nil {
-		err = errors.Wrapf(winSizeErr, "exit ssh session:%s", s.Exit(1))
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), winSizeErr)
 	} else if stdinErr != nil {
-		err = errors.Wrapf(stdinErr, "exit ssh session:%s", s.Exit(1))
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), stdinErr)
 	} else if stdoutErr != nil {
-		err = errors.Wrapf(stdoutErr, "exit ssh session:%s", s.Exit(1))
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), stdoutErr)
 	} else {
 		err2 := s.Exit(0)
 		if err2 != nil {
-			err = errors.Wrapf(err2, "failed to exit ssh session")
+			err = fmt.Errorf("failed to exit ssh session:%w", err2)
 		}
 	}
 

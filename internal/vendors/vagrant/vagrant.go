@@ -14,7 +14,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
-	"github.com/pkg/errors"
 	goipmi "github.com/vmware/goipmi"
 )
 
@@ -200,7 +199,7 @@ func (ob *outBand) Describe() string {
 func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	_, err := io.WriteString(s, "Exit with '<Ctrl> 5'\n")
 	if err != nil {
-		return errors.Wrap(err, "failed to write to console")
+		return fmt.Errorf("failed to write to console %w", err)
 	}
 	ip, port, _, _ := ob.IPMIConnection()
 	addr := fmt.Sprintf("%s:%d", ip, port)

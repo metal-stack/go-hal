@@ -5,7 +5,6 @@ import (
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
 	"github.com/metal-stack/go-hal/pkg/logger"
-	"github.com/pkg/errors"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
@@ -46,11 +45,11 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true, log)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to establish redfish connection for ip:%s user:%s", ip, user)
+		return nil, fmt.Errorf("Unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
 	b, err := r.BoardInfo()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to get board info via redfish for ip:%s user:%s", ip, user)
+		return nil, fmt.Errorf("Unable to get board info via redfish for ip:%s user:%s error:%w", ip, user, err)
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
 	log.Debugw("connect", "board", b)

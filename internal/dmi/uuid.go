@@ -2,7 +2,6 @@ package dmi
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -16,7 +15,7 @@ const (
 
 // MachineUUID calculates a unique uuid for this (hardware) machine
 func MachineUUID() (string, error) {
-	return machineUUID(ioutil.ReadFile)
+	return machineUUID(os.ReadFile)
 }
 
 func machineUUID(readFileFunc func(filename string) ([]byte, error)) (string, error) {
