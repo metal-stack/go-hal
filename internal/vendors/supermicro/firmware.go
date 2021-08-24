@@ -8,16 +8,16 @@ import (
 
 // UpdateBIOS updates given BIOS
 func (s *sum) UpdateBIOS(reader io.Reader) error {
-	return s.updateFirmware(reader, "UpdateBios", true)
+	return s.updateFirmware(reader, "UpdateBios", "--reboot", "--preserve_setting")
 }
 
 // UpdateBMC updates given BMC
 func (s *sum) UpdateBMC(reader io.Reader) error {
-	return s.updateFirmware(reader, "UpdateBmc", false)
+	return s.updateFirmware(reader, "UpdateBmc")
 }
 
 // updateFirmware updates given firmware
-func (s *sum) updateFirmware(reader io.Reader, command string, reboot bool) error {
+func (s *sum) updateFirmware(reader io.Reader, command string, additionalArgs ...string) error {
 	firmwareUpdate, err := writeFirmwareUpdate(reader)
 	if err != nil {
 		return err
@@ -27,9 +27,8 @@ func (s *sum) updateFirmware(reader io.Reader, command string, reboot bool) erro
 	}()
 
 	args := []string{"-c", command, "--file", firmwareUpdate}
-	if reboot {
-		args = append(args, "--reboot")
-	}
+	args = append(args, additionalArgs...)
+
 	return s.execute(args...)
 }
 
