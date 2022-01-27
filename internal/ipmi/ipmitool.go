@@ -19,7 +19,7 @@ import (
 
 	"github.com/sethvargo/go-password/password"
 
-	"github.com/avast/retry-go/v3"
+	"github.com/avast/retry-go/v4"
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal/pkg/api"
 )
