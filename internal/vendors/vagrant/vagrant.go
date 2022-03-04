@@ -220,6 +220,9 @@ func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 		outBand: ob,
 	}
 }
+func (ob *outBand) SEL() []string {
+	return nil
+}
 
 func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
 	return api.VagrantBoard.BMC, nil

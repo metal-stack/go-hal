@@ -123,6 +123,10 @@ func (ib *inBand) BMCConnection() api.BMCConnection {
 	}
 }
 
+func (ib *inBand) SEL() []string {
+	return ib.IpmiTool.SEL()
+}
+
 func (c *bmcConnection) BMC() (*api.BMC, error) {
 	return c.IpmiTool.BMC()
 }
@@ -274,6 +278,10 @@ func (ob *outBand) Describe() string {
 
 func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
+}
+
+func (ob *outBand) SEL() []string {
+	return ob.IpmiTool.SEL()
 }
 
 func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {

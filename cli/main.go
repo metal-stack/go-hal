@@ -4,8 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/metal-stack/go-hal"
 	"os"
+
+	"github.com/metal-stack/go-hal"
 
 	"github.com/metal-stack/go-hal/connect"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -79,7 +80,6 @@ func outband(log logger.Logger) {
 		uu["PowerState"] = "unexpected power state: PowerUnknownState"
 	}
 
-	// ipmitool sel
 	err = ob.IdentifyLEDState(hal.IdentifyLEDStateOff)
 	if err != nil {
 		ee["IdentifyLEDState"] = err
@@ -102,6 +102,12 @@ func outband(log logger.Logger) {
 	//if err != nil {
 	//	ee["UpdateBMC"] = err
 	//}
+
+	// ipmitool sel
+	sel := ob.SEL()
+	for _, s := range sel {
+		fmt.Println(s)
+	}
 
 	if len(uu) > 0 {
 		fmt.Println("Unexpected things:")

@@ -1,8 +1,9 @@
 package hal
 
 import (
-	"github.com/gliderlabs/ssh"
 	"strings"
+
+	"github.com/gliderlabs/ssh"
 
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -180,4 +181,7 @@ type OutBand interface {
 
 	// Returns a connection to the BMC
 	BMCConnection() api.OutBandBMCConnection
+
+	// SEL returns the list of system events
+	SEL() []string
 }
