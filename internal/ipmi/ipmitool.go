@@ -598,7 +598,7 @@ func (i *Ipmitool) SEL() []string {
 	result, err := i.Run("sel", "list")
 	if err != nil {
 		i.log.Errorw("unable to fetch sel", "error", err)
-		return nil
+		return []string{}
 	}
 	return strings.Split(result, "\n")
 }
