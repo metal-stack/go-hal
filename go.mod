@@ -3,8 +3,8 @@ module github.com/metal-stack/go-hal
 go 1.17
 
 require (
-	github.com/avast/retry-go/v4 v4.0.2
-	github.com/aws/aws-sdk-go v1.42.42
+	github.com/avast/retry-go/v4 v4.0.3
+	github.com/aws/aws-sdk-go v1.43.11
 	github.com/creack/pty v1.1.17
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/google/uuid v1.3.0
@@ -13,8 +13,8 @@ require (
 	github.com/stmcginnis/gofish v0.12.0
 	github.com/stretchr/testify v1.7.0
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
-	go.uber.org/zap v1.20.0
-	golang.org/x/net v0.0.0-20220127074510-2fabfed7e28f
+	go.uber.org/zap v1.21.0
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 )
 
 require (

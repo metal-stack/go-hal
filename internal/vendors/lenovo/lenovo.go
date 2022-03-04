@@ -2,6 +2,7 @@ package lenovo
 
 import (
 	"fmt"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -90,6 +91,10 @@ func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
 
 func (ib *inBand) Describe() string {
 	return "InBand connected to Lenovo"
+}
+
+func (ib *inBand) SEL() []string {
+	return ib.IpmiTool.SEL()
 }
 
 func (ib *inBand) BMCConnection() api.BMCConnection {
@@ -208,6 +213,10 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 
 func (ob *outBand) Describe() string {
 	return "OutBand connected to Lenovo"
+}
+
+func (ob *outBand) SEL() []string {
+	return ob.IpmiTool.SEL()
 }
 
 func (ob *outBand) Console(s ssh.Session) error {

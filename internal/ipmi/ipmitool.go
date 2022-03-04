@@ -49,6 +49,7 @@ type IpmiTool interface {
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
 	OpenConsole(s ssh.Session) error
+	SEL() []string
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
@@ -591,4 +592,13 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQ
 	}
 
 	return
+}
+
+func (i *Ipmitool) SEL() []string {
+	result, err := i.Run("sel", "list")
+	if err != nil {
+		i.log.Errorw("unable to fetch sel", "error", err)
+		return nil
+	}
+	return strings.Split(result, "\n")
 }
