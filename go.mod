@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/avast/retry-go/v4 v4.0.4
-	github.com/aws/aws-sdk-go v1.44.2
+	github.com/aws/aws-sdk-go v1.44.3
 	github.com/creack/pty v1.1.18
 	github.com/gliderlabs/ssh v0.3.3
 	github.com/google/uuid v1.3.0
@@ -19,6 +19,7 @@ require (
 
 require (
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
+	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
