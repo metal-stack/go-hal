@@ -50,7 +50,7 @@ type (
 
 // InBand creates an inband connection to a supermicro server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
-	s, err := newSum(sumBin, board.Model)
+	s, err := newSum(sumBin, board.Model, log)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 
 // OutBand creates an outband connection to a supermicro server.
 func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	rs, err := NewRemoteSum(sumBin, board.Model, ip, user, password)
+	rs, err := NewRemoteSum(sumBin, board.Model, ip, user, password, log)
 	if err != nil {
 		return nil, err
 	}

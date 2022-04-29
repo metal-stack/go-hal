@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/inconshreveable/log15"
 	"github.com/metal-stack/go-hal/internal/kernel"
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"golang.org/x/net/html/charset"
 )
 
@@ -215,9 +215,10 @@ type sum struct {
 	boardName             string
 	uefiNetworkBootOption string
 	secureBootEnabled     bool
+	log                   logger.Logger
 }
 
-func newSum(sumBin, boardName string) (*sum, error) {
+func newSum(sumBin, boardName string, log logger.Logger) (*sum, error) {
 	_, err := exec.LookPath(sumBin)
 	if err != nil {
 		return nil, fmt.Errorf("sum binary not present at:%s err:%w", sumBin, err)
@@ -225,6 +226,7 @@ func newSum(sumBin, boardName string) (*sum, error) {
 	sum := &sum{
 		binary:    sumBin,
 		boardName: boardName,
+		log:       log,
 	}
 	bm, ok := boardModels[boardName]
 	if ok {
@@ -235,8 +237,8 @@ func newSum(sumBin, boardName string) (*sum, error) {
 	return sum, nil
 }
 
-func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, error) {
-	s, err := newSum(sumBin, boardName)
+func NewRemoteSum(sumBin, boardName, ip, user, password string, log logger.Logger) (*sum, error) {
+	s, err := newSum(sumBin, boardName, log)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +253,7 @@ func NewRemoteSum(sumBin, boardName string, ip, user, password string) (*sum, er
 // If returns whether machine needs to be rebooted or not.
 func (s *sum) ConfigureBIOS() (bool, error) {
 	firmware := kernel.Firmware()
-	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
+	s.log.Infow("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
 	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F) {
@@ -262,7 +264,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	log.Info("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName, "secureboot", s.secureBootEnabled)
+	s.log.Infow("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName, "secureboot", s.secureBootEnabled)
 
 	// Secureboot can be set for specific bigtwins, called CSM Support in the bios
 	// This is so far only possible on these machines, detection requires sum call which downloads the bios.xml
@@ -285,13 +287,13 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 
 	err := s.prepare()
 	if err != nil {
-		log.Warn("BIOS updates for this machine type are intentionally not supported, skipping EnsureBootOrder", "error", err)
+		s.log.Warnw("BIOS updates for this machine type are intentionally not supported, skipping EnsureBootOrder", "error", err)
 		return nil
 	}
 
 	ok := s.bootOrderProperlySet()
 	if ok {
-		log.Info("sum", "message", "boot order is already configured")
+		s.log.Infow("sum", "message", "boot order is already configured")
 		return nil
 	}
 
@@ -470,7 +472,7 @@ func (s *sum) executeAsync(args ...string) (io.ReadCloser, error) {
 	go func() {
 		err = cmd.Wait()
 		if err != nil {
-			log.Info("wait for sum command failed ip", "ip", s.ip, "error", err)
+			s.log.Infow("wait for sum command failed ip", "ip", s.ip, "error", err)
 		}
 	}()
 	return out, nil

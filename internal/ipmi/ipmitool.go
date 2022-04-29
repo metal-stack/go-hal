@@ -527,15 +527,15 @@ func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
 	scanner := bufio.NewScanner(strings.NewReader(cmdOutput))
 	for scanner.Scan() {
 		line := scanner.Text()
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) < 2 {
+		key, value, found := strings.Cut(line, ":")
+		if !found {
 			continue
 		}
-		key := strings.TrimSpace(parts[0])
+		key = strings.TrimSpace(key)
 		if key == "" {
 			continue
 		}
-		value := strings.TrimSpace(strings.Join(parts[1:], ""))
+		value = strings.TrimSpace(value)
 		result[key] = value
 	}
 	for k, v := range result {
@@ -545,7 +545,7 @@ func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
 }
 
 // from uses reflection to fill a struct based on the tags on it
-func from(target interface{}, input map[string]string) {
+func from(target any, input map[string]string) {
 	val := reflect.ValueOf(target).Elem()
 	for i := 0; i < val.NumField(); i++ {
 		valueField := val.Field(i)

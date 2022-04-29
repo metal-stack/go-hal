@@ -14,26 +14,26 @@ func New(logger *zap.SugaredLogger) *ZapLogger {
 	}
 }
 
-func (l *ZapLogger) Debugw(format string, args ...interface{}) {
+func (l *ZapLogger) Debugw(format string, args ...any) {
 	l.sugaredLogger.Debugw(format, args...)
 }
 
-func (l *ZapLogger) Infow(format string, args ...interface{}) {
+func (l *ZapLogger) Infow(format string, args ...any) {
 	l.sugaredLogger.Infow(format, args...)
 }
 
-func (l *ZapLogger) Warnw(format string, args ...interface{}) {
+func (l *ZapLogger) Warnw(format string, args ...any) {
 	l.sugaredLogger.Warnw(format, args...)
 }
 
-func (l *ZapLogger) Errorw(format string, args ...interface{}) {
+func (l *ZapLogger) Errorw(format string, args ...any) {
 	l.sugaredLogger.Errorw(format, args...)
 }
 
-func (l *ZapLogger) Fatalw(format string, args ...interface{}) {
+func (l *ZapLogger) Fatalw(format string, args ...any) {
 	l.sugaredLogger.Fatalw(format, args...)
 }
 
-func (l *ZapLogger) Panicw(format string, args ...interface{}) {
+func (l *ZapLogger) Panicw(format string, args ...any) {
 	l.sugaredLogger.Fatalw(format, args...)
 }
