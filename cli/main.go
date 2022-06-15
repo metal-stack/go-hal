@@ -4,8 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/metal-stack/go-hal"
 	"os"
+
+	"github.com/metal-stack/go-hal"
 
 	"github.com/metal-stack/go-hal/connect"
 	"github.com/metal-stack/go-hal/pkg/logger"
