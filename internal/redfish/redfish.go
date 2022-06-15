@@ -15,6 +15,7 @@ import (
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
+	"github.com/stmcginnis/gofish/common"
 	"github.com/stmcginnis/gofish/redfish"
 )
 
@@ -99,11 +100,22 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				PartNumber:   chass.PartNumber,
 				SerialNumber: chass.SerialNumber,
 				BiosVersion:  biosVersion,
-				IndicatorLED: string(chass.IndicatorLED),
+				IndicatorLED: toMetalLEDState(chass.IndicatorLED),
 			}, nil
 		}
 	}
 	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
+}
+
+func toMetalLEDState(state common.IndicatorLED) string {
+	switch state {
+	case common.BlinkingIndicatorLED, common.LitIndicatorLED:
+		return "LED-ON"
+	case common.OffIndicatorLED, common.UnknownIndicatorLED:
+		return "LED-OFF"
+	default:
+		return "LED-OFF"
+	}
 }
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
