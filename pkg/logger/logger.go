@@ -1,8 +1,6 @@
 package logger
 
 import (
-	reallog15 "github.com/inconshreveable/log15"
-	"github.com/metal-stack/go-hal/pkg/logger/log15"
 	"github.com/metal-stack/go-hal/pkg/logger/zap"
 	uberzap "go.uber.org/zap"
 )
@@ -22,17 +20,13 @@ type Logger interface {
 
 // New returns an simple instance of logger
 func New() Logger {
-	return log15.New(reallog15.New())
+	l, _ := uberzap.NewProduction()
+	return l.Sugar()
 }
 
 // NewZap returns an zap instance of logger
 func NewZap(logger *uberzap.SugaredLogger) Logger {
 	return zap.New(logger)
-}
-
-// NewLog15 returns an log15 instance of logger
-func NewLog15(logger reallog15.Logger) Logger {
-	return log15.New(logger)
 }
 
 func Debugw(format string, args ...any) {

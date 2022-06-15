@@ -91,13 +91,15 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		if chass.ChassisType == redfish.RackMountChassisType {
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
-				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber, "BiosVersion", biosVersion)
+				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
+				"BiosVersion", biosVersion, "led", chass.IndicatorLED)
 			return &api.Board{
 				VendorString: manufacturer,
 				Model:        model,
 				PartNumber:   chass.PartNumber,
 				SerialNumber: chass.SerialNumber,
 				BiosVersion:  biosVersion,
+				IndicatorLED: string(chass.IndicatorLED),
 			}, nil
 		}
 	}

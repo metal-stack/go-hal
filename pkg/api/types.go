@@ -53,6 +53,7 @@ type Board struct {
 	BMC          *BMC
 	BIOS         *BIOS
 	Firmware     kernel.FirmwareMode
+	IndicatorLED string
 }
 
 // BMCUser holds BMC user details
