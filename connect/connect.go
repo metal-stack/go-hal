@@ -20,11 +20,13 @@ var (
 
 // InBand will detect the board and choose the correct inband hal implementation
 func InBand(log logger.Logger) (hal.InBand, error) {
-	b, err := dmi.BoardInfo()
-	if err != nil {
+	b := dmi.New(log).BoardInfo()
+	if b.VendorString == "" {
 		b = api.VagrantBoard
 	}
+
 	b.Vendor = api.GuessVendor(b.VendorString)
+
 	log.Debugw("connect", "vendor", b)
 	switch b.Vendor {
 	case api.VendorLenovo:
@@ -36,7 +38,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	case api.VendorDell, api.VendorUnknown:
 		fallthrough
 	default:
-		log.Errorw("connect", "unknown vendor", b.Vendor)
+		log.Errorw("connect", "missing vendor support", b.Vendor)
 		return nil, errorUnknownVendor
 	}
 }
@@ -47,11 +49,14 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	if err != nil {
 		return nil, fmt.Errorf("Unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
+
 	b, err := r.BoardInfo()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to get board info via redfish for ip:%s user:%s error:%w", ip, user, err)
 	}
+
 	b.Vendor = api.GuessVendor(b.VendorString)
+
 	log.Debugw("connect", "board", b)
 	switch b.Vendor {
 	case api.VendorLenovo:
@@ -63,7 +68,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	case api.VendorDell, api.VendorUnknown:
 		fallthrough
 	default:
-		log.Errorw("connect", "unknown vendor", b.Vendor)
+		log.Errorw("connect", "missing vendor support", b.Vendor)
 		return nil, errorUnknownVendor
 	}
 }

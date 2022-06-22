@@ -2,32 +2,70 @@ package dmi
 
 import (
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMachineUUID(t *testing.T) {
-	readFileFunc := func(filename string) ([]byte, error) {
-		return []byte("4C4C4544-0042-4810-8056-B4C04F395332"), nil
-	}
-
 	tests := []struct {
 		name    string
+		mockFn  func(fs afero.Fs)
 		want    string
-		wantErr bool
+		wantErr error
 	}{
 		{
-			name:    "TestMachineUUID Test 1",
-			want:    "4C4C4544-0042-4810-8056-B4C04F395332",
-			wantErr: false,
+			name:    "no file present",
+			want:    "",
+			wantErr: ErrNoUUIDFound,
+		},
+		{
+			name: "reading from " + dmiUUID,
+			mockFn: func(fs afero.Fs) {
+				require.NoError(t, afero.WriteFile(fs, dmiUUID, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
+			},
+			want: "4c4c4544-0042-4810-8056-b4c04f395332",
+		},
+		{
+			name: "reading from " + dmiSerial,
+			mockFn: func(fs afero.Fs) {
+				require.NoError(t, afero.WriteFile(fs, dmiSerial, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
+			},
+			want: "4c4c4544-0042-4810-8056-b4c04f395332",
+		},
+		{
+			name: "reading invalid serial from " + dmiSerial,
+			mockFn: func(fs afero.Fs) {
+				err := afero.WriteFile(fs, dmiSerial, []byte("HDZ8P73"), 0644)
+				require.NoError(t, err)
+			},
+			want:    "",
+			wantErr: ErrNoUUIDFound,
 		},
 	}
 	for i := range tests {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := machineUUID(readFileFunc); got != tt.want {
-				if err == nil && tt.wantErr {
-					t.Errorf("MachineUUID() = %v, want %v", err, tt.wantErr)
-				}
-				t.Errorf("MachineUUID() = %v, want %v", got, tt.want)
+			fs := afero.NewMemMapFs()
+			if tt.mockFn != nil {
+				tt.mockFn(fs)
+			}
+
+			d := &DMI{
+				log: zaptest.NewLogger(t).Sugar(),
+				fs:  fs,
+			}
+
+			got, err := d.MachineUUID()
+
+			if diff := cmp.Diff(tt.wantErr, err, cmpopts.EquateErrors()); diff != "" {
+				t.Errorf("MachineUUID() assertion failed (+got -want):\n %v", diff)
+			}
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("MachineUUID() assertion failed (+got -want):\n %v", diff)
 			}
 		})
 	}

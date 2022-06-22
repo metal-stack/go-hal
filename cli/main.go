@@ -47,6 +47,10 @@ func inband(log logger.Logger) {
 		panic(err)
 	}
 	fmt.Printf("UUID:%s\n", uuid)
+
+	b := ib.Board()
+	fmt.Printf("Board:\n%#v\n", b)
+
 }
 
 func outband(log logger.Logger) {

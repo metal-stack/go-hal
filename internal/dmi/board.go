@@ -1,10 +1,6 @@
 package dmi
 
 import (
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/metal-stack/go-hal/pkg/api"
 )
 
@@ -17,43 +13,30 @@ const (
 )
 
 // BoardInfo return raw dmi data of the board
-func BoardInfo() (*api.Board, error) {
-	vendor, err := dmi(boardVendor)
-	if err != nil {
-		return nil, err
+func (d *DMI) BoardInfo() *api.Board {
+	boardMap := map[string]string{
+		boardVendor:   "",
+		boardName:     "",
+		boardSerial:   "",
+		productSerial: "",
+		biosVersion:   "",
 	}
-	name, err := dmi(boardName)
-	if err != nil {
-		return nil, err
-	}
-	bserial, err := dmi(boardSerial)
-	if err != nil {
-		return nil, err
-	}
-	pserial, err := dmi(productSerial)
-	if err != nil {
-		return nil, err
-	}
-	version, err := dmi(biosVersion)
-	if err != nil {
-		return nil, err
-	}
-	return &api.Board{
-		VendorString: vendor,
-		Model:        name,
-		SerialNumber: bserial,
-		PartNumber:   pserial,
-		BiosVersion:  version,
-	}, nil
-}
 
-func dmi(path string) (string, error) {
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		content, err := os.ReadFile(path)
+	for k := range boardMap {
+		value, err := d.read(k)
 		if err != nil {
-			return "", fmt.Errorf("error getting content of %s: %w", path, err)
+			d.log.Errorw("board info not found", "path", k, "error", err)
+			continue
 		}
-		return strings.TrimSpace(string(content)), nil
+
+		boardMap[k] = value
 	}
-	return "", fmt.Errorf("%s does not exist", path)
+
+	return &api.Board{
+		VendorString: boardMap[boardVendor],
+		Model:        boardMap[boardName],
+		SerialNumber: boardMap[boardSerial],
+		PartNumber:   boardMap[productSerial],
+		BiosVersion:  boardMap[biosVersion],
+	}
 }

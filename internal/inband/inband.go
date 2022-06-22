@@ -14,6 +14,7 @@ import (
 type InBand struct {
 	IpmiTool ipmi.IpmiTool
 	board    *api.Board
+	dmi      *dmi.DMI
 }
 
 func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) {
@@ -38,6 +39,7 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 	return &InBand{
 		IpmiTool: i,
 		board:    board,
+		dmi:      dmi.New(log),
 	}, nil
 }
 
@@ -46,14 +48,16 @@ func (ib *InBand) Board() *api.Board {
 }
 
 func (ib *InBand) UUID() (*uuid.UUID, error) {
-	u, err := dmi.MachineUUID()
+	u, err := ib.dmi.MachineUUID()
 	if err != nil {
 		return nil, err
 	}
+
 	us, err := uuid.Parse(u)
 	if err != nil {
 		return nil, err
 	}
+
 	return &us, nil
 }
 
