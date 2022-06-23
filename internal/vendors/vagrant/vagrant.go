@@ -207,11 +207,11 @@ func (ob *outBand) Console(s ssh.Session) error { //Virsh console
 	return console.Open(s, cmd)
 }
 
-func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
+func (ob *outBand) UpdateBIOS(url string) error {
 	return nil
 }
 
-func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
+func (ob *outBand) UpdateBMC(url string) error {
 	return nil
 }
 
