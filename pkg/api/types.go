@@ -7,13 +7,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/kernel"
 )
 
-type S3Config struct {
-	Url            string
-	Key            string
-	Secret         string
-	FirmwareBucket string
-}
-
 // PasswordConstraints holds the constraints that are ensured for generated passwords
 type PasswordConstraints struct {
 	Length      int

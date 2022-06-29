@@ -2,6 +2,7 @@ package lenovo
 
 import (
 	"fmt"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -214,11 +215,11 @@ func (ob *outBand) Console(s ssh.Session) error {
 	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
 }
 
-func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
+func (ob *outBand) UpdateBIOS(url string) error {
 	return nil
 }
 
-func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
+func (ob *outBand) UpdateBMC(url string) error {
 	return nil
 }
 

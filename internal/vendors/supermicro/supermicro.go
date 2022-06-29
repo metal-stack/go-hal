@@ -1,12 +1,10 @@
 package supermicro
 
 import (
-	"context"
 	"fmt"
 	"io"
-	"strings"
+	"net/http"
 
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
@@ -14,7 +12,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
-	"github.com/metal-stack/go-hal/internal/s3client"
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -276,8 +273,8 @@ func (ob *outBand) Console(s ssh.Session) error {
 	return ob.IpmiTool.OpenConsole(s)
 }
 
-func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) error {
-	update, err := ob.downloadFirmwareUpdate("bios", board, revision, s3Config)
+func (ob *outBand) UpdateBIOS(url string) error {
+	update, err := ob.downloadFirmwareUpdate(url)
 	if err != nil {
 		return err
 	}
@@ -285,8 +282,8 @@ func (ob *outBand) UpdateBIOS(board, revision string, s3Config *api.S3Config) er
 	return ob.sum.UpdateBIOS(update)
 }
 
-func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) error {
-	update, err := ob.downloadFirmwareUpdate("bmc", board, revision, s3Config)
+func (ob *outBand) UpdateBMC(url string) error {
+	update, err := ob.downloadFirmwareUpdate(url)
 	if err != nil {
 		return err
 	}
@@ -294,19 +291,8 @@ func (ob *outBand) UpdateBMC(board, revision string, s3Config *api.S3Config) err
 	return ob.sum.UpdateBMC(update)
 }
 
-func (ob *outBand) downloadFirmwareUpdate(kind, board, revision string, s3Config *api.S3Config) (io.Reader, error) {
-	c, err := s3client.New(s3Config)
-	if err != nil {
-		return nil, err
-	}
-
-	v := strings.ToLower(vendor.String())
-	board = strings.ToUpper(board)
-	key := fmt.Sprintf("%s/%s/%s/%s", kind, v, board, revision)
-	resp, err := c.GetObjectWithContext(context.Background(), &s3.GetObjectInput{
-		Bucket: &s3Config.FirmwareBucket,
-		Key:    &key,
-	})
+func (ob *outBand) downloadFirmwareUpdate(url string) (io.Reader, error) {
+	resp, err := http.Get(url) // nolint:gosec
 	if err != nil {
 		return nil, err
 	}
