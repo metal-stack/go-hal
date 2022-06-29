@@ -10,30 +10,26 @@ var (
 	ErrNoUUIDFound = fmt.Errorf("no valid UUID found")
 )
 
-const (
-	dmiUUID   = "/sys/class/dmi/id/product_uuid"
-	dmiSerial = "/sys/class/dmi/id/product_serial"
-)
-
 // MachineUUID calculates a unique uuid for this (hardware) machine
 func (d *DMI) MachineUUID() (string, error) {
-	_, err := d.fs.Stat(dmiUUID)
-	if err == nil {
-		return d.read(dmiUUID)
+	content, err := d.readWithTrim(productUUID)
+	if err == nil && isUUID(content) {
+		return content, nil
 	}
 
-	_, err = d.fs.Stat(dmiSerial)
-	if err == nil {
-		productSerial, err := d.read(dmiSerial)
-		if err != nil {
-			return "", err
-		}
+	d.log.Debugw("unable to determine dmi uuid", "from", productUUID, "error", err)
 
-		_, err = guuid.Parse(productSerial)
-		if err == nil {
-			return productSerial, nil
-		}
+	content, err = d.readWithTrim(productSerial)
+	if err == nil && isUUID(content) {
+		return content, nil
 	}
+
+	d.log.Debugw("unable to determine dmi uuid", "from", productSerial, "error", err)
 
 	return "", ErrNoUUIDFound
+}
+
+func isUUID(s string) bool {
+	_, err := guuid.Parse(s)
+	return err == nil
 }

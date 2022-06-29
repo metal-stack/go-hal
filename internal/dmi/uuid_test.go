@@ -23,23 +23,23 @@ func TestMachineUUID(t *testing.T) {
 			wantErr: ErrNoUUIDFound,
 		},
 		{
-			name: "reading from " + dmiUUID,
+			name: "reading from " + productUUID,
 			mockFn: func(fs afero.Fs) {
-				require.NoError(t, afero.WriteFile(fs, dmiUUID, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
+				require.NoError(t, afero.WriteFile(fs, productUUID, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
 			},
 			want: "4c4c4544-0042-4810-8056-b4c04f395332",
 		},
 		{
-			name: "reading from " + dmiSerial,
+			name: "reading from " + productSerial,
 			mockFn: func(fs afero.Fs) {
-				require.NoError(t, afero.WriteFile(fs, dmiSerial, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
+				require.NoError(t, afero.WriteFile(fs, productSerial, []byte("4c4c4544-0042-4810-8056-b4c04f395332"), 0644))
 			},
 			want: "4c4c4544-0042-4810-8056-b4c04f395332",
 		},
 		{
-			name: "reading invalid serial from " + dmiSerial,
+			name: "reading invalid serial from " + productSerial,
 			mockFn: func(fs afero.Fs) {
-				err := afero.WriteFile(fs, dmiSerial, []byte("HDZ8P73"), 0644)
+				err := afero.WriteFile(fs, productSerial, []byte("HDZ8P73"), 0644)
 				require.NoError(t, err)
 			},
 			want:    "",
