@@ -3,7 +3,6 @@ package inband
 import (
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/bios"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/kernel"
@@ -14,6 +13,7 @@ import (
 type InBand struct {
 	IpmiTool ipmi.IpmiTool
 	board    *api.Board
+	dmi      *dmi.DMI
 }
 
 func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) {
@@ -22,13 +22,15 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 		return nil, err
 	}
 
+	dmi := dmi.New(log)
+
 	if inspectBMC {
 		bmc, err := i.BMC()
 		if err != nil {
 			return nil, err
 		}
 		board.BMC = bmc
-		board.BIOS, err = bios.Bios()
+		board.BIOS, err = dmi.Bios()
 		if err != nil {
 			return nil, err
 		}
@@ -38,6 +40,7 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 	return &InBand{
 		IpmiTool: i,
 		board:    board,
+		dmi:      dmi,
 	}, nil
 }
 
@@ -46,14 +49,16 @@ func (ib *InBand) Board() *api.Board {
 }
 
 func (ib *InBand) UUID() (*uuid.UUID, error) {
-	u, err := dmi.MachineUUID()
+	u, err := ib.dmi.MachineUUID()
 	if err != nil {
 		return nil, err
 	}
+
 	us, err := uuid.Parse(u)
 	if err != nil {
 		return nil, err
 	}
+
 	return &us, nil
 }
 
