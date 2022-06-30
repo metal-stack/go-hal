@@ -3,7 +3,6 @@ package inband
 import (
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/bios"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/kernel"
@@ -23,13 +22,15 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 		return nil, err
 	}
 
+	dmi := dmi.New(log)
+
 	if inspectBMC {
 		bmc, err := i.BMC()
 		if err != nil {
 			return nil, err
 		}
 		board.BMC = bmc
-		board.BIOS, err = bios.Bios()
+		board.BIOS, err = dmi.Bios()
 		if err != nil {
 			return nil, err
 		}
@@ -39,7 +40,7 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 	return &InBand{
 		IpmiTool: i,
 		board:    board,
-		dmi:      dmi.New(log),
+		dmi:      dmi,
 	}, nil
 }
 

@@ -8,11 +8,15 @@ import (
 )
 
 const (
-	boardVendor   = "/sys/class/dmi/id/board_vendor"
-	boardName     = "/sys/class/dmi/id/board_name"
-	boardSerial   = "/sys/class/dmi/id/board_serial"
+	boardVendor = "/sys/class/dmi/id/board_vendor"
+	boardName   = "/sys/class/dmi/id/board_name"
+	boardSerial = "/sys/class/dmi/id/board_serial"
+
+	biosDate    = "/sys/class/dmi/id/bios_date"
+	biosVendor  = "/sys/class/dmi/id/bios_vendor"
+	biosVersion = "/sys/class/dmi/id/bios_version"
+
 	productSerial = "/sys/class/dmi/id/product_serial"
-	biosVersion   = "/sys/class/dmi/id/bios_version"
 	productUUID   = "/sys/class/dmi/id/product_uuid"
 )
 
