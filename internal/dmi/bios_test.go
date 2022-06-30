@@ -18,7 +18,7 @@ func TestDMI_Bios(t *testing.T) {
 		want   *api.BIOS
 	}{
 		{
-			name: "reading board info",
+			name: "reading bios info",
 			mockFn: func(fs afero.Fs) {
 				require.NoError(t, afero.WriteFile(fs, biosDate, []byte("date"), 0644))
 				require.NoError(t, afero.WriteFile(fs, biosVendor, []byte("vendor"), 0644))
