@@ -20,8 +20,9 @@ var (
 
 // InBand will detect the board and choose the correct inband hal implementation
 func InBand(log logger.Logger) (hal.InBand, error) {
-	b := dmi.New(log).BoardInfo()
-	if b.VendorString == "" {
+	b, err := dmi.New(log).BoardInfo()
+	if err != nil {
+		log.Warnw("error retrieving board info, falling back to vagrant board impl", "error", err)
 		b = api.VagrantBoard
 	}
 

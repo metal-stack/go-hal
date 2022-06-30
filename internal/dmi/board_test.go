@@ -6,6 +6,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
@@ -47,7 +48,8 @@ func TestDMI_BoardInfo(t *testing.T) {
 				fs:  fs,
 			}
 
-			got := d.BoardInfo()
+			got, err := d.BoardInfo()
+			assert.NoError(t, err)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("BoardInfo() assertion failed (+got -want):\n %v", diff)
 			}
