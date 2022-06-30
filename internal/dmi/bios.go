@@ -14,15 +14,7 @@ func (d *DMI) Bios() (*api.BIOS, error) {
 		biosVersion: "",
 	}
 
-	for k := range biosMap {
-		value, err := d.readWithTrim(k)
-		if err != nil {
-			d.log.Errorw("bios info not found", "path", k, "error", err)
-			continue
-		}
-
-		biosMap[k] = value
-	}
+	d.readValues(biosMap)
 
 	if biosMap[biosVendor] == "" {
 		return nil, fmt.Errorf("bios vendor could not be detected")

@@ -12,19 +12,20 @@ var (
 
 // MachineUUID calculates a unique uuid for this (hardware) machine
 func (d *DMI) MachineUUID() (string, error) {
-	content, err := d.readWithTrim(productUUID)
-	if err == nil && isUUID(content) {
-		return content, nil
+	m := map[string]string{
+		productUUID:   "",
+		productSerial: "",
 	}
 
-	d.log.Debugw("unable to determine dmi uuid", "from", productUUID, "error", err)
+	d.readValues(m)
 
-	content, err = d.readWithTrim(productSerial)
-	if err == nil && isUUID(content) {
-		return content, nil
+	if m[productUUID] != "" && isUUID(m[productUUID]) {
+		return m[productUUID], nil
 	}
 
-	d.log.Debugw("unable to determine dmi uuid", "from", productSerial, "error", err)
+	if m[productSerial] != "" && isUUID(m[productSerial]) {
+		return m[productSerial], nil
+	}
 
 	return "", ErrNoUUIDFound
 }

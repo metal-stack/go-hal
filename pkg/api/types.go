@@ -42,6 +42,7 @@ type Board struct {
 	Model        string
 	PartNumber   string
 	SerialNumber string
+	// TODO: why is the bios version here and also in the BIOS?
 	BiosVersion  string
 	BMC          *BMC
 	BIOS         *BIOS

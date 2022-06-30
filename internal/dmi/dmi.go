@@ -32,11 +32,14 @@ func New(log logger.Logger) *DMI {
 	}
 }
 
-func (d *DMI) readWithTrim(path string) (string, error) {
-	content, err := afero.ReadFile(d.fs, path)
-	if err != nil {
-		return "", err
-	}
+func (d *DMI) readValues(m map[string]string) {
+	for k := range m {
+		content, err := afero.ReadFile(d.fs, k)
+		if err != nil {
+			d.log.Errorw("bios info not found", "path", k, "error", err)
+			continue
+		}
 
-	return strings.TrimSpace(string(content)), nil
+		m[k] = strings.TrimSpace(string(content))
+	}
 }

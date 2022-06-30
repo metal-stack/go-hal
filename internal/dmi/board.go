@@ -16,13 +16,16 @@ func (d *DMI) BoardInfo() (*api.Board, error) {
 		biosVersion:   "",
 	}
 
-	for k := range boardMap {
-		value, err := d.readWithTrim(k)
-		if err != nil {
-			return nil, fmt.Errorf("board info not found at %q: %w", k, err)
-		}
+	d.readValues(boardMap)
 
-		boardMap[k] = value
+	if boardMap[boardVendor] == "" {
+		return nil, fmt.Errorf("board vendor could not be detected")
+	}
+	if boardMap[boardName] == "" {
+		return nil, fmt.Errorf("board name could not be detected")
+	}
+	if boardMap[boardSerial] == "" {
+		return nil, fmt.Errorf("board serial could not be detected")
 	}
 
 	return &api.Board{
