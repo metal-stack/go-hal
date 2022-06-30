@@ -6,15 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
-	"unsafe"
 
 	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
 )
 
 func Open(s ssh.Session, cmd *exec.Cmd) error {
-	ptyReq, winCh, isPty := s.Pty()
+	ptyReq, _, isPty := s.Pty()
 	if !isPty {
 		_, err := io.WriteString(s, "No PTY requested.\n")
 		if err != nil {
@@ -38,17 +36,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 		return err
 	}
 
-	go func() {
-		for win := range winCh {
-			err := setWinSize(f, win.Width, win.Height)
-			if err != nil {
-				_, _ = io.WriteString(s, fmt.Sprintf("failed to set window size from ssh: %dx%d to:%dx%d\n", ptyReq.Window.Width, ptyReq.Window.Height, win.Width, win.Height))
-			}
-		}
-	}()
-
 	done := make(chan bool)
-
 	go func() {
 		_, err = io.Copy(f, s) // stdin
 		_, _ = io.WriteString(s, fmt.Sprintf("failed to copy local stdin to remote:%v\n", err))
@@ -68,9 +56,4 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	}
 
 	return s.Exit(0)
-}
-func setWinSize(f *os.File, w, h int) error {
-	_, _, err := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), uintptr(syscall.TIOCSWINSZ),
-		uintptr(unsafe.Pointer(&struct{ h, w, x, y uint16 }{uint16(h), uint16(w), 0, 0})))
-	return err
 }
