@@ -42,7 +42,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 		for win := range winCh {
 			err := setWinSize(f, win.Width, win.Height)
 			if err != nil {
-				_, _ = io.WriteString(s, fmt.Sprintf("failed to set window size to:%d x %d\n", win.Width, win.Height))
+				_, _ = io.WriteString(s, fmt.Sprintf("failed to set window size from ssh: %dx%d to:%dx%d\n", ptyReq.Window.Width, ptyReq.Window.Height, win.Width, win.Height))
 			}
 		}
 	}()
