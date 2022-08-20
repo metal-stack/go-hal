@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -180,7 +181,14 @@ func (i *Ipmitool) NewCommand(args ...string) (*exec.Cmd, error) {
 // Run executes ipmitool with given arguments and returns the outcome
 func (i *Ipmitool) Run(args ...string) (string, error) {
 	if i.outband {
-		args = append([]string{"-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password}, args...)
+		err := os.Setenv("IPMITOOL_PASSWORD", i.password)
+		if err != nil {
+			return "", err
+		}
+		defer func() {
+			_ = os.Unsetenv("IPMITOOL_PASSWORD")
+		}()
+		args = append([]string{"-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-E"}, args...)
 	}
 	cmd, err := i.NewCommand(args...)
 	if err != nil {
@@ -515,7 +523,14 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	if err != nil {
 		return fmt.Errorf("failed to write to console %w", err)
 	}
-	cmd, err := i.NewCommand("-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-P", i.password, "sol", "activate")
+	err = os.Setenv("IPMITOOL_PASSWORD", i.password)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.Unsetenv("IPMITOOL_PASSWORD")
+	}()
+	cmd, err := i.NewCommand("-I", "lanplus", "-H", i.ip, "-p", strconv.Itoa(i.port), "-U", i.user, "-E", "sol", "activate")
 	if err != nil {
 		return err
 	}
