@@ -167,7 +167,7 @@ func TestIpmitool_Run(t *testing.T) {
 				outband:  true,
 			},
 			args:    []string{"lan", "print"},
-			want:    "-I lanplus -H 1.2.3.4 -p 623 -U user -P password lan print",
+			want:    "-I lanplus -H 1.2.3.4 -p 623 -U user -E lan print",
 			wantErr: false,
 		},
 		{

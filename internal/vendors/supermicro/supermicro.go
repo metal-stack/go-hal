@@ -292,7 +292,7 @@ func (ob *outBand) UpdateBMC(url string) error {
 }
 
 func (ob *outBand) downloadFirmwareUpdate(url string) (io.Reader, error) {
-	resp, err := http.Get(url) // nolint:gosec
+	resp, err := http.Get(url) // nolint:gosec,bodyclose,noctx
 	if err != nil {
 		return nil, err
 	}
