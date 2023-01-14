@@ -60,6 +60,7 @@ func outband(log logger.Logger) {
 
 	b := ob.Board()
 	fmt.Printf("Board:\n%#v\n", b)
+	fmt.Printf("Power:\n%#v\n", b.PowerMetric)
 
 	bmc, err := ob.BMCConnection().BMC()
 	if err != nil {
