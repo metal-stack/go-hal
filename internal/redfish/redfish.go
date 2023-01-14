@@ -61,6 +61,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	biosVersion := ""
 	manufacturer := ""
 	model := ""
+
 	systems, err := c.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -90,6 +91,22 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	}
 	for _, chass := range chassis {
 		if chass.ChassisType == redfish.RackMountChassisType {
+			power, err := chass.Power()
+			var powerMetric *api.PowerMetric
+			if err != nil {
+				c.log.Warnw("ignoring power detection")
+			} else {
+				for _, pc := range power.PowerControl {
+					powerMetric = &api.PowerMetric{
+						AverageConsumedWatts: pc.PowerMetrics.AverageConsumedWatts,
+						IntervalInMin:        pc.PowerMetrics.IntervalInMin,
+						MaxConsumedWatts:     pc.PowerMetrics.MaxConsumedWatts,
+						MinConsumedWatts:     pc.PowerMetrics.MinConsumedWatts,
+					}
+					c.log.Debugw("power consumption", "metrics", powerMetric)
+					break
+				}
+			}
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
@@ -101,6 +118,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				SerialNumber: chass.SerialNumber,
 				BiosVersion:  biosVersion,
 				IndicatorLED: toMetalLEDState(chass.IndicatorLED),
+				PowerMetric:  powerMetric,
 			}, nil
 		}
 	}
