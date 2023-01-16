@@ -47,6 +47,27 @@ type Board struct {
 	BIOS         *BIOS
 	Firmware     kernel.FirmwareMode
 	IndicatorLED string
+	PowerMetric  *PowerMetric
+}
+
+type PowerMetric struct {
+	// AverageConsumedWatts shall represent the
+	// average power level that occurred averaged over the last IntervalInMin
+	// minutes.
+	AverageConsumedWatts float32
+	// IntervalInMin shall represent the time
+	// interval (or window), in minutes, in which the PowerMetrics properties
+	// are measured over.
+	// Should be an integer, but some Dell implementations return as a float.
+	IntervalInMin float32
+	// MaxConsumedWatts shall represent the
+	// maximum power level in watts that occurred within the last
+	// IntervalInMin minutes.
+	MaxConsumedWatts float32
+	// MinConsumedWatts shall represent the
+	// minimum power level in watts that occurred within the last
+	// IntervalInMin minutes.
+	MinConsumedWatts float32
 }
 
 // BMCUser holds BMC user details
