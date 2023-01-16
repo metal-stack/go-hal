@@ -94,7 +94,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 			power, err := chass.Power()
 			var powerMetric *api.PowerMetric
 			if err != nil {
-				c.log.Warnw("ignoring power detection")
+				c.log.Warnw("ignoring power detection", "error", err)
 			} else {
 				for _, pc := range power.PowerControl {
 					powerMetric = &api.PowerMetric{
