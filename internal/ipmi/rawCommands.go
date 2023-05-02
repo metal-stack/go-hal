@@ -1,9 +1,10 @@
 package ipmi
 
 import (
+	"strconv"
+
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/api"
-	"strconv"
 )
 
 func RawUserAccess(channelNumber, uid uint8, privilege api.IpmiPrivilege) []string {
@@ -35,7 +36,7 @@ func RawSetUserPassword(uid uint8, password string) []string {
 }
 
 func RawSetSystemBootOptions(target hal.BootTarget, vendor api.Vendor) []string {
-	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(target, vendor)
+	uefiQualifier, bootDevQualifier := getBootOrderQualifiers(target, vendor)
 	return rawCommand(ChassisNetworkFunction, SetSystemBootOptions, BootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
 }
 
