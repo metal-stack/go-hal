@@ -1,14 +1,10 @@
 package redfish
 
 import (
-	"bytes"
-	"context"
 	"encoding/base64"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"sort"
-	"strings"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -195,112 +191,31 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	if target == hal.BootTargetBIOS {
-		return c.setNextBootBIOS()
-	}
 
-	currentBootOrder, err := c.retrieveBootOrder(vendor)
+	ss, err := c.Service.Systems()
 	if err != nil {
 		return err
 	}
+
+	var t redfish.BootSourceOverrideTarget
 	switch target {
+	case hal.BootTargetBIOS:
+		t = redfish.BiosSetupBootSourceOverrideTarget
+	case hal.BootTargetPXE:
+		t = redfish.PxeBootSourceOverrideTarget
 	case hal.BootTargetDisk:
-		return c.setPersistentHDD(currentBootOrder)
-	case hal.BootTargetPXE, hal.BootTargetBIOS:
-		fallthrough
-	default:
-		return c.setPersistentPXE(currentBootOrder)
-	}
-}
-
-func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //TODO move out
-	if vendor != api.VendorLenovo { // TODO implement also for Supermicro
-		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
+		t = redfish.HddBootSourceOverrideTarget
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
-	if err != nil {
-		return nil, err
+	var errs []error
+	for _, system := range ss {
+		err := system.SetBoot(redfish.Boot{
+			BootSourceOverrideTarget:  t,
+			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
+		})
+		errs = append(errs, err)
 	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	type boot struct {
-		BootOrderCurrent []string `json:"BootOrderCurrent"`
-	}
-	b := boot{}
-	err = json.Unmarshal(buf.Bytes(), &b)
-	return b.BootOrderCurrent, err
-}
-
-func (c *APIClient) setPersistentPXE(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		if strings.ToLower(bootOrder[i]) == "network" {
-			return true
-		}
-		return !strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setPersistentHDD(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		return strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setBootOrder(bootOrder []string) error {
-	type boot struct {
-		BootOrderNext []string `json:"BootOrderNext"`
-	}
-	body, err := json.Marshal(&boot{
-		BootOrderNext: bootOrder,
-	})
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
-	return err
-}
-
-func (c *APIClient) addHeadersAndAuth(req *http.Request) {
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	req.SetBasicAuth(c.user, c.password)
-}
-
-func (c *APIClient) setNextBootBIOS() error {
-	systems, err := c.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-	for _, system := range systems {
-		boot := system.Boot
-		boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
-		boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
-		err = system.SetBoot(boot)
-		if err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("failed to set next boot BIOS %w", err)
+	return errors.Join(errs...)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
