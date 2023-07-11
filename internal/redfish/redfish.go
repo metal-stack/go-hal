@@ -190,7 +190,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return fmt.Errorf("failed to set power to %s %w", resetType, err)
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
+func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
 
 	ss, err := c.Service.Systems()
 	if err != nil {
