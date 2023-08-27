@@ -584,8 +584,8 @@ const (
 	biosQualifier = uint8(0x18)
 )
 
-// GetBootOrderQualifiers returns the qualifiers needed to set the given boot order according to the given vendor
-func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQualifier, bootDevQualifier uint8) {
+// getBootOrderQualifiers returns the qualifiers needed to set the given boot order according to the given vendor
+func getBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQualifier, bootDevQualifier uint8) {
 	switch bootTarget {
 	case hal.BootTargetPXE:
 		uefiQualifier = persistentUEFIQualifier

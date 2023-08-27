@@ -118,7 +118,7 @@ func (c *Client) SetBootOrder(bootTarget hal.BootTarget, vendor api.Vendor) erro
 		return err
 	}
 
-	uefiQualifier, bootDevQualifier := GetBootOrderQualifiers(bootTarget, vendor)
+	uefiQualifier, bootDevQualifier := getBootOrderQualifiers(bootTarget, vendor)
 	err = c.SetSystemBoot(goipmi.BootParamBootFlags, uefiQualifier, bootDevQualifier, 0, 0, 0)
 	if err == nil {
 		if useProgress {
