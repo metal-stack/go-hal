@@ -191,12 +191,13 @@ const (
 var (
 	vendors = [...]string{
 		VendorSupermicro: "Supermicro",
+		VendorNovarion:   "Novarion-Systems",
 		VendorLenovo:     "Lenovo",
 		VendorDell:       "Dell",
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
 	}
-	allVendors = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
+	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
 )
 
 func (v Vendor) String() string { return vendors[v] }
