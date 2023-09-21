@@ -178,6 +178,8 @@ const (
 	VendorUnknown Vendor = iota
 	// VendorSupermicro identifies all Supermicro servers
 	VendorSupermicro
+	// VendorNovarion identifies all Novarion servers
+	VendorNovarion
 	// VendorLenovo identifies all Lenovo servers
 	VendorLenovo
 	// VendorDell identifies all Dell servers
