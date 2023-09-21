@@ -71,11 +71,11 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	<-done
 
 	if winSizeErr != nil {
-		err = fmt.Errorf("exit ssh session:%w error:%w", s.Exit(1), winSizeErr)
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), winSizeErr) //nolint:wrapcheck
 	} else if stdinErr != nil {
-		err = fmt.Errorf("exit ssh session:%w error:%w", s.Exit(1), stdinErr)
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), stdinErr) //nolint:wrapcheck
 	} else if stdoutErr != nil {
-		err = fmt.Errorf("exit ssh session:%w error:%w", s.Exit(1), stdoutErr)
+		err = fmt.Errorf("exit ssh session:%s error:%w", s.Exit(1), stdoutErr) //nolint:wrapcheck
 	} else {
 		err2 := s.Exit(0)
 		if err2 != nil {
