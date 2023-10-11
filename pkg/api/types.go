@@ -178,6 +178,8 @@ const (
 	VendorUnknown Vendor = iota
 	// VendorSupermicro identifies all Supermicro servers
 	VendorSupermicro
+	// VendorNovarion identifies all Novarion servers
+	VendorNovarion
 	// VendorLenovo identifies all Lenovo servers
 	VendorLenovo
 	// VendorDell identifies all Dell servers
@@ -189,12 +191,13 @@ const (
 var (
 	vendors = [...]string{
 		VendorSupermicro: "Supermicro",
+		VendorNovarion:   "Novarion-Systems",
 		VendorLenovo:     "Lenovo",
 		VendorDell:       "Dell",
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
 	}
-	allVendors = [...]Vendor{VendorSupermicro, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
+	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
 )
 
 func (v Vendor) String() string { return vendors[v] }

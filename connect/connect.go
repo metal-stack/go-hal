@@ -29,7 +29,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.InBand(b, log)
-	case api.VendorSupermicro:
+	case api.VendorSupermicro, api.VendorNovarion:
 		return supermicro.InBand(b, log)
 	case api.VendorVagrant:
 		return vagrant.InBand(b, log)
@@ -56,7 +56,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	switch b.Vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b), nil
-	case api.VendorSupermicro:
+	case api.VendorSupermicro, api.VendorNovarion:
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
