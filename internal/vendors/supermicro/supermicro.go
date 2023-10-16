@@ -179,38 +179,37 @@ func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
 
 // OutBand
 func (ob *outBand) UUID() (*uuid.UUID, error) {
-	u, err := ob.Redfish.MachineUUID()
+	u, err := ob.sum.uuidRemote()
 	if err != nil {
-		u, err = ob.sum.uuidRemote()
+		u, err := ob.Redfish.MachineUUID()
+		if err != nil {
+			return nil, err
+		}
+		// Redfish returns the UUID in the wrong byte order
+		// we need to convert it to mixed endian
+		// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
+		raw, err := uuidendian.FromString(u)
 		if err != nil {
 			return nil, err
 		}
 
-		us, err := uuid.Parse(u)
+		mixed, err := raw.ToMiddleEndian()
+		if err != nil {
+			return nil, err
+		}
+
+		us, err := uuid.Parse(mixed.String())
 		if err != nil {
 			return nil, err
 		}
 		return &us, nil
 	}
-
-	// Redfish returns the UUID in the wrong byte order
-	// we need to convert it to mixed endian
-	// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
-	raw, err := uuidendian.FromString(u)
-	if err != nil {
-		return nil, err
-	}
-
-	mixed, err := raw.ToMiddleEndian()
-	if err != nil {
-		return nil, err
-	}
-
-	us, err := uuid.Parse(mixed.String())
+	us, err := uuid.Parse(u)
 	if err != nil {
 		return nil, err
 	}
 	return &us, nil
+
 }
 
 func (ob *outBand) PowerState() (hal.PowerState, error) {
