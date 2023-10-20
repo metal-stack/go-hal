@@ -22,12 +22,20 @@ type uid struct {
 	Node             [6]byte
 }
 
+// Redfish API and probably the DHCP Request return the GUID of a machine encoded either
+// in middleEndianBytes
+// or as normal string
+//
+// To detect which one is actually in use, we extract the creation time of the uuid,
+// if this time is somehow reasonable, we return the string of the GUID as we got it,
+// we need to convert it to mixed endian
+// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
 func Convert(s string) (string, error) {
 	u, err := uuid.Parse(s)
 	if err != nil {
 		return "", err
 	}
-	if !isMixedEncoded(u) {
+	if isNotEncoded(u) {
 		return u.String(), nil
 	}
 
@@ -49,9 +57,9 @@ func Convert(s string) (string, error) {
 
 const tenYears = 10 * 365 * 24 * time.Hour
 
-func isMixedEncoded(u uuid.UUID) bool {
+func isNotEncoded(u uuid.UUID) bool {
 	timeDistance := time.Since(time.Unix(u.Time().UnixTime())).Abs()
-	return timeDistance > tenYears
+	return timeDistance < tenYears
 }
 
 // middleEndianBytes returns the UUID encoded in Middle Endian.

@@ -193,9 +193,7 @@ func (ob *outBand) UUID() (*uuid.UUID, error) {
 		return &us, nil
 	}
 
-	// Redfish returns the UUID in the wrong byte order
-	// we need to convert it to mixed endian
-	// https://en.wikipedia.org/wiki/Universally_unique_identifier#Encoding
+	// Redfish returns the UUID sometimes in mixed encoding
 	uid, err := uuidendian.Convert(u)
 	if err != nil {
 		return nil, err
