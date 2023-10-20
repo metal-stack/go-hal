@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	guuid "github.com/google/uuid"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-// UuidSize is the size in bytes of a UUID object
-const UuidSize = 16
+// uuidSize is the size in bytes of a UUID object
+const uuidSize = 16
 
-// Uuid represents a UUID object as defined by RFC 4122.
-type Uuid struct {
+// uid represents a UUID object as defined by RFC 4122.
+type uid struct {
 	TimeLow          uint32
 	TimeMid          uint16
 	TimeHiAndVersion uint16
@@ -20,65 +22,41 @@ type Uuid struct {
 	Node             [6]byte
 }
 
-// String implements the fmt.Stringer interface
-func (u Uuid) String() string {
-	return fmt.Sprintf("%08x-%04x-%04x-%02x%02x-%x", u.TimeLow, u.TimeMid, u.TimeHiAndVersion, u.ClockSeqHiAndRes, u.ClockSeqLow, u.Node)
-}
-
-func FromString(s string) (Uuid, error) {
-	var uid Uuid
-	u, err := guuid.Parse(s)
+func Convert(s string) (string, error) {
+	u, err := uuid.Parse(s)
 	if err != nil {
-		return uid, err
+		return "", err
 	}
+	if !isMixedEncoded(u) {
+		return u.String(), nil
+	}
+
 	b, err := u.MarshalBinary()
 	if err != nil {
-		return uid, err
+		return "", err
 	}
-	return FromBytes(b)
-}
-
-// ToMiddleEndian encodes the UUID into a middle-endian UUID.
-//
-// A middle-endian encoded UUID represents a UUID where the first
-// three groups are Little Endian encoded, while the rest of the
-// groups are Big Endian encoded.
-func (u Uuid) ToMiddleEndian() (Uuid, error) {
-	buf, err := u.MiddleEndianBytes()
+	uid, err := fromBytes(b)
 	if err != nil {
-		return Uuid{}, err
+		return "", err
 	}
-
-	return FromBytes(buf)
-}
-
-// BigEndianBytes returns the UUID encoded in Big Endian.
-func (u Uuid) BigEndianBytes() ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, 0, UuidSize))
-
-	err := binary.Write(buf, binary.BigEndian, u)
+	buf, err := uid.middleEndianBytes()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	return buf.Bytes(), nil
+	uid, err = fromBytes(buf)
+	return fmt.Sprintf("%08x-%04x-%04x-%02x%02x-%x", uid.TimeLow, uid.TimeMid, uid.TimeHiAndVersion, uid.ClockSeqHiAndRes, uid.ClockSeqLow, uid.Node), err
 }
 
-// LittleEndianBytes returns the UUID encoded in Little Endian.
-func (u Uuid) LittleEndianBytes() ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, 0, UuidSize))
+const tenYears = 10 * 365 * 24 * time.Hour
 
-	err := binary.Write(buf, binary.LittleEndian, u)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+func isMixedEncoded(u uuid.UUID) bool {
+	timeDistance := time.Since(time.Unix(u.Time().UnixTime())).Abs()
+	return timeDistance > tenYears
 }
 
-// MiddleEndianBytes returns the UUID encoded in Middle Endian.
-func (u Uuid) MiddleEndianBytes() ([]byte, error) {
-	buf := bytes.NewBuffer(make([]byte, 0, UuidSize))
+// middleEndianBytes returns the UUID encoded in Middle Endian.
+func (u uid) middleEndianBytes() ([]byte, error) {
+	buf := bytes.NewBuffer(make([]byte, 0, uuidSize))
 
 	if err := binary.Write(buf, binary.LittleEndian, u.TimeLow); err != nil {
 		return nil, err
@@ -108,8 +86,8 @@ func (u Uuid) MiddleEndianBytes() ([]byte, error) {
 }
 
 // UuidFromBytes reads a UUID from a given byte slice.
-func FromBytes(buf []byte) (Uuid, error) {
-	var u Uuid
+func fromBytes(buf []byte) (uid, error) {
+	var u uid
 	reader := bytes.NewReader(buf)
 
 	err := binary.Read(reader, binary.BigEndian, &u)
