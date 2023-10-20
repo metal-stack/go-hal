@@ -28,13 +28,13 @@ func TestUnmarshalS2BiosCfg(t *testing.T) {
 	require.Equal(t, X11SDV_8C_TP8F, s.boardModel)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// when
 	err = s.findUEFINetworkBootOption()
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "UEFI Network:UEFI: PXE IPv4 Intel(R) I350 Gigabit Network Connection", s.uefiNetworkBootOption)
 }
 
@@ -56,13 +56,13 @@ func TestUnmarshalBigTwinBiosCfg(t *testing.T) {
 	require.True(t, s.secureBootEnabled)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// when
 	err = s.findUEFINetworkBootOption()
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "UEFI Network:UEFI: PXE IP4 Intel(R) Ethernet Controller XXV710 for 25GbE SFP28", s.uefiNetworkBootOption)
 }
 

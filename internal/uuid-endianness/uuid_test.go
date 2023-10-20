@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func convertUUID(s string) []byte {
@@ -56,12 +57,12 @@ func TestUUIDConvert(t *testing.T) {
 	good := "bdc26000-8930-11eb-8000-7cc255106b08"
 
 	result, err := Convert(good)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, good, result)
 
 	result, err = Convert(bad)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, good, result)
 }
