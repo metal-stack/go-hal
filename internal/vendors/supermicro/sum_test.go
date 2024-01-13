@@ -3,8 +3,8 @@ package supermicro
 import (
 	"testing"
 
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestParseUUIDLine(t *testing.T) {
@@ -18,7 +18,7 @@ func TestParseUUIDLine(t *testing.T) {
 
 func TestUnmarshalS2BiosCfg(t *testing.T) {
 	// given
-	s, _ := newSum("/bin/true", "X11SDV-8C-TP8F", zaptest.NewLogger(t).Sugar())
+	s, _ := newSum("/bin/true", "X11SDV-8C-TP8F", logger.New())
 	s.biosCfgXML = testS2BiosCfg
 
 	// when
