@@ -1,8 +1,10 @@
 package logger
 
 import (
-	"github.com/metal-stack/go-hal/pkg/logger/zap"
-	uberzap "go.uber.org/zap"
+	"log/slog"
+	"os"
+
+	halslog "github.com/metal-stack/go-hal/pkg/logger/slog"
 )
 
 // A global variable so that log functions can be directly accessed
@@ -20,13 +22,14 @@ type Logger interface {
 
 // New returns an simple instance of logger
 func New() Logger {
-	l, _ := uberzap.NewProduction()
-	return l.Sugar()
+	jsonHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+	log := slog.New(jsonHandler)
+	return halslog.New(log)
 }
 
-// NewZap returns an zap instance of logger
-func NewZap(logger *uberzap.SugaredLogger) Logger {
-	return zap.New(logger)
+// NewSlog returns an zap instance of logger
+func NewSlog(logger *slog.Logger) Logger {
+	return halslog.New(logger)
 }
 
 func Debugw(format string, args ...any) {

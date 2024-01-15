@@ -1,11 +1,12 @@
 package supermicro
 
 import (
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_UUID(t *testing.T) {
@@ -15,7 +16,7 @@ func Test_UUID(t *testing.T) {
 	uid, err := uuidendian.FromString(u)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, uid)
 	require.Equal(t, "f6157800-70e3-11e9-8000-efbeaddeefbe", uid.String())
 
@@ -23,7 +24,7 @@ func Test_UUID(t *testing.T) {
 	id, err := UUID(u)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, id)
 	require.Equal(t, "007815f6-e370-e911-8000-efbeaddeefbe", id.String())
 }

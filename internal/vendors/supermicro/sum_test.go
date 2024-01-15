@@ -3,8 +3,8 @@ package supermicro
 import (
 	"testing"
 
+	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestParseUUIDLine(t *testing.T) {
@@ -18,7 +18,7 @@ func TestParseUUIDLine(t *testing.T) {
 
 func TestUnmarshalS2BiosCfg(t *testing.T) {
 	// given
-	s, _ := newSum("/bin/true", "X11SDV-8C-TP8F", zaptest.NewLogger(t).Sugar())
+	s, _ := newSum("/bin/true", "X11SDV-8C-TP8F", logger.New())
 	s.biosCfgXML = testS2BiosCfg
 
 	// when
@@ -28,13 +28,13 @@ func TestUnmarshalS2BiosCfg(t *testing.T) {
 	require.Equal(t, X11SDV_8C_TP8F, s.boardModel)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// when
 	err = s.findUEFINetworkBootOption()
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "UEFI Network:UEFI: PXE IPv4 Intel(R) I350 Gigabit Network Connection", s.uefiNetworkBootOption)
 }
 
@@ -56,13 +56,13 @@ func TestUnmarshalBigTwinBiosCfg(t *testing.T) {
 	require.True(t, s.secureBootEnabled)
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// when
 	err = s.findUEFINetworkBootOption()
 
 	// then
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "UEFI Network:UEFI: PXE IP4 Intel(R) Ethernet Controller XXV710 for 25GbE SFP28", s.uefiNetworkBootOption)
 }
 
