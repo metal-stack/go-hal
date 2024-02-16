@@ -58,11 +58,16 @@ func Convert(s string) (string, error) {
 // thirtyYears is an educated guess for a plausible time stored in the uuid.
 // RFC states that the time is stored in 100s of nanos since 15 Okt 1582 as defined in RFC 4122
 // We check if this time is not more than 30 years apart from now.
+// Also if the encoded time is in the future
 // If the uid returned from the BMC is mixedEndian encoded, the time extracted is usually in the year 4000 or so.
 const thirtyYears = 30 * 365 * 24 * time.Hour
 
 func isNotEncoded(u uuid.UUID) bool {
-	timeDistance := time.Since(time.Unix(u.Time().UnixTime())).Abs()
+	uuidTime := time.Unix(u.Time().UnixTime())
+	if time.Time(uuidTime).Year() > time.Now().Year() {
+		return false
+	}
+	timeDistance := time.Since(uuidTime).Abs()
 	return timeDistance < thirtyYears
 }
 
