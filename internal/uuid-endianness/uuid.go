@@ -35,7 +35,7 @@ func Convert(s string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if isNotEncoded(u) {
+	if isNotMixedEncoded(u) {
 		return u.String(), nil
 	}
 
@@ -62,7 +62,10 @@ func Convert(s string) (string, error) {
 // If the uid returned from the BMC is mixedEndian encoded, the time extracted is usually in the year 4000 or so.
 const thirtyYears = 30 * 365 * 24 * time.Hour
 
-func isNotEncoded(u uuid.UUID) bool {
+func isNotMixedEncoded(u uuid.UUID) bool {
+	if u.Version() != 1 {
+		return false
+	}
 	uuidTime := time.Unix(u.Time().UnixTime())
 	if time.Time(uuidTime).Year() > time.Now().Year() {
 		return false
