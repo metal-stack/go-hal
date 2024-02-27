@@ -427,6 +427,8 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 				if setting.Name != fmt.Sprintf("UEFI Boot Option #%d", index) {
 					continue
 				}
+			case X13DDW_A:
+				// FIXME
 			}
 
 			return strings.Contains(setting.SelectedOption, bootOption)
