@@ -260,7 +260,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	s.log.Infow("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
-	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F) {
+	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F || s.boardModel == X13DDW_A) {
 		return false, nil
 	}
 
