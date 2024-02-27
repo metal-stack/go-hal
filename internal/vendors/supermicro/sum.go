@@ -27,6 +27,8 @@ const (
 	X11DPU
 	// N1 Firewall
 	X11SDD_8C_F
+	// G1 GPU machine
+	X13DDW_A
 )
 
 var (
@@ -39,6 +41,8 @@ var (
 		"X11DPU": X11DPU,
 		// N1 Firewall
 		"X11SDD-8C-F": X11SDD_8C_F,
+		// G1 GPU Machine
+		"X13DDW-A": X13DDW_A,
 	}
 
 	// SUM does not complain or fail if more boot options are given than actually available
@@ -284,6 +288,10 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 // EnsureBootOrder ensures BIOS boot order so that boot from the given allocated OS image is attempted before PXE boot.
 func (s *sum) EnsureBootOrder(bootloaderID string) error {
 	s.bootloaderID = bootloaderID
+	if s.boardModel == X13DDW_A {
+		s.log.Infow("GPU board detected, skip bios modification", "board", s.boardName)
+		return nil
+	}
 
 	err := s.prepare()
 	if err != nil {
