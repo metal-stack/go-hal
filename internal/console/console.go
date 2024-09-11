@@ -44,6 +44,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 			err := pty.Setsize(f, &pty.Winsize{X: uint16(win.Width), Y: uint16(win.Height)}) // nolint:gosec
 			if err != nil {
 				winSizeErr = fmt.Errorf("failed to set window size:%w", err)
+				_, _ = io.WriteString(s, winSizeErr.Error())
 			}
 		}
 	}()
