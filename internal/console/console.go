@@ -41,7 +41,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	var winSizeErr, stdinErr, stdoutErr error
 	go func() {
 		for win := range winCh {
-			_, _ = io.WriteString(s, fmt.Sprintf("window size changed with:%d height:%d\n", win.Width, win.Height))
+			_, _ = io.WriteString(s, fmt.Sprintf("window size changed width:%d height:%d\n", win.Width, win.Height))
 			err := pty.Setsize(f, &pty.Winsize{X: uint16(win.Width), Y: uint16(win.Height)}) // nolint:gosec
 			if err != nil {
 				winSizeErr = fmt.Errorf("failed to set window size:%w", err)
