@@ -269,8 +269,8 @@ func (i *Ipmitool) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, pas
 		if err != nil {
 			return "", fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
-		userID := uint8(id)
-		cn := uint8(user.ChannelNumber)
+		userID := uint8(id)             // nolint:gosec
+		cn := uint8(user.ChannelNumber) // nolint:gosec
 		return i.createUser(bmcRequest{
 			username:                   user.Name,
 			uid:                        user.Id,
@@ -312,7 +312,7 @@ func (i *Ipmitool) ChangePassword(user api.BMCUser, newPassword string, apiType 
 		if err != nil {
 			return fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
-		userID := uint8(id)
+		userID := uint8(id) // nolint:gosec
 		_, err = i.changePassword(bmcRequest{
 			username:        user.Name,
 			uid:             user.Id,
@@ -347,7 +347,7 @@ func (i *Ipmitool) SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiTyp
 		if err != nil {
 			return fmt.Errorf("invalid uid of user %s: %s %w", user.Name, user.Id, err)
 		}
-		userID := uint8(id)
+		userID := uint8(id) // nolint:gosec
 		return i.setUserEnabled(bmcRequest{
 			username:        user.Name,
 			uid:             user.Id,
