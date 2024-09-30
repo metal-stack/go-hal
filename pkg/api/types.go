@@ -36,18 +36,19 @@ const (
 
 // Board raw dmi board information
 type Board struct {
-	VM           bool
-	VendorString string
-	Vendor       Vendor
-	Model        string
-	PartNumber   string
-	SerialNumber string
-	BiosVersion  string
-	BMC          *BMC
-	BIOS         *BIOS
-	Firmware     kernel.FirmwareMode
-	IndicatorLED string
-	PowerMetric  *PowerMetric
+	VM            bool
+	VendorString  string
+	Vendor        Vendor
+	Model         string
+	PartNumber    string
+	SerialNumber  string
+	BiosVersion   string
+	BMC           *BMC
+	BIOS          *BIOS
+	Firmware      kernel.FirmwareMode
+	IndicatorLED  string
+	PowerMetric   *PowerMetric
+	PowerSupplies []PowerSupply
 }
 
 type PowerMetric struct {
@@ -68,6 +69,17 @@ type PowerMetric struct {
 	// minimum power level in watts that occurred within the last
 	// IntervalInMin minutes.
 	MinConsumedWatts float32
+}
+
+type PowerSupply struct {
+	// Status shall contain any status or health properties
+	// of the resource.
+	Status Status
+}
+
+type Status struct {
+	Health string
+	State  string
 }
 
 // BMCUser holds BMC user details
