@@ -115,6 +115,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 						State:  string(ps.Status.State),
 					},
 				})
+				c.log.Debugw("powersupplies", "powersupply", ps)
 			}
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
