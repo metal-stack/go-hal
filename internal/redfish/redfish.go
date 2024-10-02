@@ -107,18 +107,29 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 					break
 				}
 			}
+			var powerSupplies []api.PowerSupply
+			for _, ps := range power.PowerSupplies {
+				powerSupplies = append(powerSupplies, api.PowerSupply{
+					Status: api.Status{
+						Health: string(ps.Status.Health),
+						State:  string(ps.Status.State),
+					},
+				})
+				c.log.Debugw("powersupplies", "powersupply", ps)
+			}
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
 				"BiosVersion", biosVersion, "led", chass.IndicatorLED)
 			return &api.Board{
-				VendorString: manufacturer,
-				Model:        model,
-				PartNumber:   chass.PartNumber,
-				SerialNumber: chass.SerialNumber,
-				BiosVersion:  biosVersion,
-				IndicatorLED: toMetalLEDState(chass.IndicatorLED),
-				PowerMetric:  powerMetric,
+				VendorString:  manufacturer,
+				Model:         model,
+				PartNumber:    chass.PartNumber,
+				SerialNumber:  chass.SerialNumber,
+				BiosVersion:   biosVersion,
+				IndicatorLED:  toMetalLEDState(chass.IndicatorLED),
+				PowerMetric:   powerMetric,
+				PowerSupplies: powerSupplies,
 			}, nil
 		}
 	}
