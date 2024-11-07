@@ -3,15 +3,15 @@ package connect
 import (
 	"fmt"
 
-	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
-	"github.com/metal-stack/go-hal/pkg/logger"
-
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
+	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 var (
@@ -60,7 +60,9 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.OutBand(r, b, ip, ipmiPort, user, password, log)
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
