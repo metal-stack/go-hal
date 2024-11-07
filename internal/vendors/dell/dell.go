@@ -13,6 +13,7 @@ import (
 
 type outBand struct {
 	*outband.OutBand
+	log logger.Logger
 }
 
 // OutBand creates an outband connection to a supermicro server.
@@ -23,12 +24,14 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, us
 	}
 	return &outBand{
 		OutBand: outband.New(r, i, board, ip, ipmiPort, user, password),
+		log:     log,
 	}, nil
 }
 
 // BMCConnection implements hal.OutBand.
 func (o *outBand) BMCConnection() api.OutBandBMCConnection {
-	panic("unimplemented")
+	o.log.Infow("bmc connection needs implementation")
+	return nil
 }
 
 // BootFrom implements hal.OutBand.
