@@ -41,7 +41,23 @@ func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 }
 
 func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
-	return c.IpmiTool.BMC()
+	board, err := c.outBand.Redfish.BoardInfo()
+	if err != nil {
+		return nil, err
+	}
+	return &api.BMC{
+		IP:                  c.outBand.Ip,
+		MAC:                 "",
+		ChassisPartNumber:   "",
+		ChassisPartSerial:   "",
+		BoardMfg:            "",
+		BoardMfgSerial:      "",
+		BoardPartNumber:     board.PartNumber,
+		ProductManufacturer: board.VendorString,
+		ProductPartNumber:   "",
+		ProductSerial:       board.SerialNumber,
+		FirmwareRevision:    "",
+	}, nil
 }
 
 // BootFrom implements hal.OutBand.
@@ -82,32 +98,37 @@ func (o *outBand) IdentifyLEDState(hal.IdentifyLEDState) error {
 
 // PowerCycle implements hal.OutBand.
 func (o *outBand) PowerCycle() error {
-	panic("unimplemented")
+	return o.Redfish.PowerCycle()
 }
 
 // PowerOff implements hal.OutBand.
 func (o *outBand) PowerOff() error {
-	panic("unimplemented")
+	return o.Redfish.PowerOff()
 }
 
 // PowerOn implements hal.OutBand.
 func (o *outBand) PowerOn() error {
-	panic("unimplemented")
+	return o.Redfish.PowerOn()
 }
 
 // PowerReset implements hal.OutBand.
 func (o *outBand) PowerReset() error {
-	panic("unimplemented")
+	return o.Redfish.PowerReset()
 }
 
 // PowerState implements hal.OutBand.
 func (o *outBand) PowerState() (hal.PowerState, error) {
-	panic("unimplemented")
+	return o.Redfish.PowerState()
 }
 
 // UUID implements hal.OutBand.
 func (o *outBand) UUID() (*uuid.UUID, error) {
-	panic("unimplemented")
+	uuidString, err := o.Redfish.MachineUUID()
+	if err != nil {
+		return nil, err
+	}
+	id, err := uuid.Parse(uuidString)
+	return &id, err
 }
 
 // UpdateBIOS implements hal.OutBand.

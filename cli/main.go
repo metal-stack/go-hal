@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/metal-stack/go-hal"
 
@@ -80,6 +81,18 @@ func outband(log logger.Logger) {
 	}
 	if ps == hal.PowerUnknownState {
 		uu["PowerState"] = "unexpected power state: PowerUnknownState"
+	}
+
+	err = ob.PowerOff()
+	if err != nil {
+		fmt.Printf("error during power off: %v\n", err)
+	}
+
+	time.Sleep(10 * time.Second)
+
+	err = ob.PowerOn()
+	if err != nil {
+		fmt.Printf("error during power on: %v\n", err)
 	}
 
 	// ipmitool sel
