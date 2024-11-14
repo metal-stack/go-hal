@@ -82,42 +82,59 @@ func outband(log logger.Logger) {
 	if ps == hal.PowerUnknownState {
 		uu["PowerState"] = "unexpected power state: PowerUnknownState"
 	}
-
 	err = ob.PowerOff()
 	if err != nil {
 		fmt.Printf("error during power off: %v\n", err)
 	}
 
-	time.Sleep(10 * time.Second)
+	board := ob.Board()
+	fmt.Println("LED: " + board.IndicatorLED)
 
-	err = ob.PowerOn()
+	err = ob.PowerCycle()
 	if err != nil {
-		fmt.Printf("error during power on: %v\n", err)
-	}
-
-	// ipmitool sel
-	err = ob.IdentifyLEDState(hal.IdentifyLEDStateOff)
-	if err != nil {
-		ee["IdentifyLEDState"] = err
-	}
-	err = ob.IdentifyLEDOn()
-	if err != nil {
-		ee["IdentifyLEDOn"] = err
-	}
-	err = ob.IdentifyLEDOff()
-	if err != nil {
-		ee["IdentifyLEDOff"] = err
+		ee["PowerCycle"] = err
 	}
 
-	//_, err = ob.UpdateBIOS()
-	//if err != nil {
-	//	ee["UpdateBIOS"] = err
-	//}
-	//
-	//_, err = ob.UpdateBMC()
-	//if err != nil {
-	//	ee["UpdateBMC"] = err
-	//}
+	board = ob.Board()
+	fmt.Println("LED: " + board.IndicatorLED)
+
+	if false {
+		err = ob.PowerOff()
+		if err != nil {
+			fmt.Printf("error during power off: %v\n", err)
+		}
+
+		time.Sleep(10 * time.Second)
+
+		err = ob.PowerOn()
+		if err != nil {
+			fmt.Printf("error during power on: %v\n", err)
+		}
+
+		// ipmitool sel
+		err = ob.IdentifyLEDState(hal.IdentifyLEDStateOff)
+		if err != nil {
+			ee["IdentifyLEDState"] = err
+		}
+		err = ob.IdentifyLEDOn()
+		if err != nil {
+			ee["IdentifyLEDOn"] = err
+		}
+		err = ob.IdentifyLEDOff()
+		if err != nil {
+			ee["IdentifyLEDOff"] = err
+		}
+
+		//_, err = ob.UpdateBIOS()
+		//if err != nil {
+		//	ee["UpdateBIOS"] = err
+		//}
+		//
+		//_, err = ob.UpdateBMC()
+		//if err != nil {
+		//	ee["UpdateBMC"] = err
+		//}
+	}
 
 	if len(uu) > 0 {
 		fmt.Println("Unexpected things:")

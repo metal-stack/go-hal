@@ -1,8 +1,9 @@
 package hal
 
 import (
-	"github.com/gliderlabs/ssh"
 	"strings"
+
+	"github.com/gliderlabs/ssh"
 
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -42,6 +43,8 @@ const (
 	IdentifyLEDStateOn
 	// IdentifyLEDStateOff the LED is off
 	IdentifyLEDStateOff
+	// IdentifyLEDStateBlinking the LED is blinking
+	IdentifyLEDStateBlinking
 )
 const (
 	// FirmwareModeUnknown server is in unknown firmware state

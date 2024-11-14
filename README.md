@@ -30,3 +30,25 @@ func main() {
     err = smcInBand.PowerOff()
 }
 ```
+
+## Dell
+
+Sample Lab Machines
+172.19.100.107
+Default PW: 9XW9FR9PN3FF
+
+172.19.100.108
+Default PW: K4P4NVAK9KVK
+
+TODO:
+
+- Console access must be switched to ssh root@<IP> console com2
+  Can password access switched to pubkey ?
+
+- Identify LED ON/OFF and State does not work
+
+- IPMI is disabled by default, unsure if Redfish Password can be set from Inband
+
+- Redfish Sessions must be closed, see: https://github.com/stmcginnis/gofish/blob/main/examples/query_sessions.md
+
+- Dell iDrac Redfish Samples: https://github.com/dell/iDRAC-Redfish-Scripting

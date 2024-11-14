@@ -67,6 +67,7 @@ func (o *outBand) BootFrom(hal.BootTarget) error {
 
 // Console implements hal.OutBand.
 func (o *outBand) Console(ssh.Session) error {
+	// Console access must be switched to ssh root@<IP> console com2
 	panic("unimplemented")
 }
 
@@ -83,17 +84,17 @@ func (o *outBand) IPMIConnection() (ip string, port int, user string, password s
 
 // IdentifyLEDOff implements hal.OutBand.
 func (o *outBand) IdentifyLEDOff() error {
-	panic("unimplemented")
+	return o.Redfish.IdentifyLEDState(hal.IdentifyLEDStateOff)
 }
 
 // IdentifyLEDOn implements hal.OutBand.
 func (o *outBand) IdentifyLEDOn() error {
-	panic("unimplemented")
+	return o.Redfish.IdentifyLEDState(hal.IdentifyLEDStateOn)
 }
 
 // IdentifyLEDState implements hal.OutBand.
-func (o *outBand) IdentifyLEDState(hal.IdentifyLEDState) error {
-	panic("unimplemented")
+func (o *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return o.Redfish.IdentifyLEDState(state)
 }
 
 // PowerCycle implements hal.OutBand.

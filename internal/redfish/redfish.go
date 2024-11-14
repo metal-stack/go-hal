@@ -176,7 +176,8 @@ func (c *APIClient) PowerState() (hal.PowerState, error) {
 }
 
 func (c *APIClient) PowerOn() error {
-	return c.setPower(redfish.ForceOnResetType)
+	// TODO: check if this is enough for supermicro
+	return c.setPower(redfish.OnResetType)
 }
 
 func (c *APIClient) PowerOff() error {
@@ -347,4 +348,60 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
 
 	return bmc, nil
+}
+
+func (c *APIClient) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	chassis, err := c.Service.Chassis()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return err
+	}
+	// Not sure if system or chassis is responsible for LED
+	for _, system := range systems {
+		c.log.Infow("setting indicator led via system", "system", system.ID, "state", state)
+		switch state {
+		case hal.IdentifyLEDStateOff:
+			system.LocationIndicatorActive = false
+			system.IndicatorLED = common.OffIndicatorLED
+		case hal.IdentifyLEDStateOn:
+			system.LocationIndicatorActive = true
+			system.IndicatorLED = common.LitIndicatorLED
+		case hal.IdentifyLEDStateBlinking:
+			system.IndicatorLED = common.BlinkingIndicatorLED
+		case hal.IdentifyLEDStateUnknown:
+			return fmt.Errorf("unknown LED state:%s", state)
+		}
+	}
+
+	for _, chass := range chassis {
+		if chass.ChassisType != redfish.RackMountChassisType {
+			continue
+		}
+		c.log.Infow("setting indicator led via chassis", "chassis", chass.ID, "state", state)
+		switch state {
+		case hal.IdentifyLEDStateOff:
+			chass.LocationIndicatorActive = false
+			chass.IndicatorLED = common.OffIndicatorLED
+		case hal.IdentifyLEDStateOn:
+			chass.LocationIndicatorActive = true
+			chass.IndicatorLED = common.LitIndicatorLED
+		case hal.IdentifyLEDStateBlinking:
+			chass.IndicatorLED = common.BlinkingIndicatorLED
+		case hal.IdentifyLEDStateUnknown:
+			return fmt.Errorf("unknown LED state:%s", state)
+		}
+	}
+	return nil
+}
+
+func (c *APIClient) IdentifyLEDOn() error {
+	return c.IdentifyLEDState(hal.IdentifyLEDStateOn)
+}
+
+func (c *APIClient) IdentifyLEDOff() error {
+	return c.IdentifyLEDState(hal.IdentifyLEDStateOff)
 }
