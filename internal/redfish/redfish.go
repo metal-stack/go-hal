@@ -176,11 +176,24 @@ func (c *APIClient) PowerState() (hal.PowerState, error) {
 }
 
 func (c *APIClient) PowerOn() error {
-	// TODO: check if this is enough for supermicro
+	state, err := c.PowerState()
+	if err != nil {
+		return err
+	}
+	if state == hal.PowerOnState {
+		return nil
+	}
 	return c.setPower(redfish.OnResetType)
 }
 
 func (c *APIClient) PowerOff() error {
+	state, err := c.PowerState()
+	if err != nil {
+		return err
+	}
+	if state == hal.PowerOffState {
+		return nil
+	}
 	return c.setPower(redfish.ForceOffResetType)
 }
 

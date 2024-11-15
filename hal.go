@@ -94,6 +94,36 @@ func GuessPowerState(powerState string) PowerState {
 	return PowerUnknownState
 }
 
+type Hal interface {
+	// Board return board information of the current connection
+	Board() *api.Board
+
+	// UUID get the machine UUID
+	// current usage in metal-hammer
+	UUID() (*uuid.UUID, error)
+
+	// PowerState returns the power state of the server
+	PowerState() (PowerState, error)
+	// PowerOn set power state of the server to on
+	PowerOn() error
+	// PowerOff set power state of the server to off
+	PowerOff() error
+	// PowerReset reset the power state of the server
+	PowerReset() error
+	// PowerCycle cycle the power state of the server
+	PowerCycle() error
+
+	// IdentifyLEDState get the identify LED state
+	IdentifyLEDState(IdentifyLEDState) error
+	// IdentifyLEDOn set the identify LED to on
+	IdentifyLEDOn() error
+	// IdentifyLEDOff set the identify LED to off
+	IdentifyLEDOff() error
+
+	// Describe print a basic information about this connection
+	Describe() string
+}
+
 // InBand get and set settings from the server via the inband interface.
 type InBand interface {
 	// Board return board information of the current connection
@@ -103,6 +133,10 @@ type InBand interface {
 	// current usage in metal-hammer
 	UUID() (*uuid.UUID, error)
 
+	// PowerState returns the power state of the server
+	PowerState() (PowerState, error)
+	// PowerOn set power state of the server to on
+	PowerOn() error
 	// PowerOff set power state of the server to off
 	PowerOff() error
 	// PowerReset reset the power state of the server

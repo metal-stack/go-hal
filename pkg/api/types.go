@@ -115,6 +115,8 @@ type BMCConnection interface {
 type OutBandBMCConnection interface {
 	// BMC returns the actual BMC details
 	BMC() (*BMC, error)
+	// Close this session
+	Close()
 }
 
 // BMC Base Management Controller details

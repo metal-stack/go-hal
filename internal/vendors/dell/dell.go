@@ -40,6 +40,10 @@ func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.APIClient.Logout()
+}
+
 func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
 	board, err := c.outBand.Redfish.BoardInfo()
 	if err != nil {

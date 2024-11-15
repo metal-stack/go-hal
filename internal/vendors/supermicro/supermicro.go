@@ -45,6 +45,11 @@ type (
 	}
 )
 
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+
 // InBand creates an inband connection to a supermicro server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	s, err := newSum(sumBin, board.Model, log)
@@ -79,6 +84,9 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, us
 
 // InBand
 func (ib *inBand) PowerOff() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
+func (ib *inBand) PowerOn() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
 
@@ -146,6 +154,10 @@ func (c *bmcConnection) User() api.BMCUser {
 		Id:            "10",
 		ChannelNumber: 1,
 	}
+}
+
+func (ob *outBand) Close() {
+	ob.Redfish.APIClient.Logout()
 }
 
 func (c *bmcConnection) Present() bool {

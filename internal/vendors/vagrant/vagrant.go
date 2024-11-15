@@ -54,7 +54,20 @@ func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) h
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.APIClient.Logout()
+}
+
 // InBand
+
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+func (ib *inBand) PowerOn() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
+
 func (ib *inBand) PowerOff() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }

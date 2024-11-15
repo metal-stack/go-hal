@@ -56,11 +56,23 @@ func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.APIClient.Logout()
+}
+
 // InBand
+
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+
+func (ib *inBand) PowerOn() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
 func (ib *inBand) PowerOff() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
-
 func (ib *inBand) PowerCycle() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }

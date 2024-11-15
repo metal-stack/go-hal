@@ -35,9 +35,11 @@ func main() {
 
 Sample Lab Machines
 172.19.100.107
+User: root
 Default PW: 9XW9FR9PN3FF
 
 172.19.100.108
+User: root
 Default PW: K4P4NVAK9KVK
 
 TODO:
