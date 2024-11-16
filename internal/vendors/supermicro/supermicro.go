@@ -157,7 +157,7 @@ func (c *bmcConnection) User() api.BMCUser {
 }
 
 func (ob *outBand) Close() {
-	ob.Redfish.APIClient.Logout()
+	ob.Redfish.Gofish.Logout()
 }
 
 func (c *bmcConnection) Present() bool {

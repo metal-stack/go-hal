@@ -57,7 +57,7 @@ func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 }
 
 func (ob *outBand) Close() {
-	ob.Redfish.APIClient.Logout()
+	ob.Redfish.Gofish.Logout()
 }
 
 // InBand

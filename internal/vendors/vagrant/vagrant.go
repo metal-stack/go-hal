@@ -55,7 +55,7 @@ func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) h
 }
 
 func (ob *outBand) Close() {
-	ob.Redfish.APIClient.Logout()
+	ob.Redfish.Gofish.Logout()
 }
 
 // InBand

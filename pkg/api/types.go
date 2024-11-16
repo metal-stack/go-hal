@@ -36,19 +36,20 @@ const (
 
 // Board raw dmi board information
 type Board struct {
-	VM            bool
-	VendorString  string
-	Vendor        Vendor
-	Model         string
-	PartNumber    string
-	SerialNumber  string
-	BiosVersion   string
-	BMC           *BMC
-	BIOS          *BIOS
-	Firmware      kernel.FirmwareMode
-	IndicatorLED  string
-	PowerMetric   *PowerMetric
-	PowerSupplies []PowerSupply
+	VM             bool
+	VendorString   string
+	Vendor         Vendor
+	Model          string
+	PartNumber     string
+	SerialNumber   string
+	BiosVersion    string
+	RedfishVersion string
+	BMC            *BMC
+	BIOS           *BIOS
+	Firmware       kernel.FirmwareMode
+	IndicatorLED   string
+	PowerMetric    *PowerMetric
+	PowerSupplies  []PowerSupply
 }
 
 type PowerMetric struct {

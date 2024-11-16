@@ -20,13 +20,14 @@ import (
 )
 
 type APIClient struct {
-	*gofish.APIClient
+	Gofish *gofish.APIClient
 	*http.Client
-	urlPrefix string
-	user      string
-	password  string
-	basicAuth string
-	log       logger.Logger
+	urlPrefix      string
+	user           string
+	password       string
+	basicAuth      string
+	log            logger.Logger
+	redfishVersion string
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
@@ -41,20 +42,22 @@ func New(url, user, password string, insecure bool, log logger.Logger) (*APIClie
 	if err != nil {
 		return nil, err
 	}
+
 	return &APIClient{
-		APIClient: c,
-		Client:    c.HTTPClient,
-		user:      user,
-		password:  password,
-		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
-		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
-		log:       log,
+		Gofish:         c,
+		Client:         c.HTTPClient,
+		redfishVersion: c.Service.RedfishVersion,
+		user:           user,
+		password:       password,
+		basicAuth:      base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		urlPrefix:      fmt.Sprintf("%s/redfish/v1", url),
+		log:            log,
 	}, nil
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
-	if c.Service == nil {
+	if c.Gofish.Service == nil {
 		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
 	}
 
@@ -62,7 +65,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	manufacturer := ""
 	model := ""
 
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -85,7 +88,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		}
 	}
 
-	chassis, err := c.Service.Chassis()
+	chassis, err := c.Gofish.Service.Chassis()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -122,14 +125,15 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
 				"BiosVersion", biosVersion, "led", chass.IndicatorLED)
 			return &api.Board{
-				VendorString:  manufacturer,
-				Model:         model,
-				PartNumber:    chass.PartNumber,
-				SerialNumber:  chass.SerialNumber,
-				BiosVersion:   biosVersion,
-				IndicatorLED:  toMetalLEDState(chass.IndicatorLED),
-				PowerMetric:   powerMetric,
-				PowerSupplies: powerSupplies,
+				VendorString:   manufacturer,
+				Model:          model,
+				PartNumber:     chass.PartNumber,
+				SerialNumber:   chass.SerialNumber,
+				BiosVersion:    biosVersion,
+				RedfishVersion: c.redfishVersion,
+				IndicatorLED:   toMetalLEDState(chass.IndicatorLED),
+				PowerMetric:    powerMetric,
+				PowerSupplies:  powerSupplies,
 			}, nil
 		}
 	}
@@ -149,7 +153,7 @@ func toMetalLEDState(state common.IndicatorLED) string {
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Errorw("error during system query, unable to detect uuid", "error", err.Error())
 		return "", err
@@ -163,7 +167,7 @@ func (c *APIClient) MachineUUID() (string, error) {
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -206,7 +210,7 @@ func (c *APIClient) PowerCycle() error {
 }
 
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -312,7 +316,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 }
 
 func (c *APIClient) setNextBootBIOS() error {
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -329,12 +333,12 @@ func (c *APIClient) setNextBootBIOS() error {
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
-	systems, err := c.Service.Systems()
+	systems, err := c.Gofish.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 
-	chassis, err := c.Service.Chassis()
+	chassis, err := c.Gofish.Service.Chassis()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -364,51 +368,54 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 }
 
 func (c *APIClient) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	chassis, err := c.Service.Chassis()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
+	var payload map[string]any
 
-	systems, err := c.Service.Systems()
+	switch state {
+	case hal.IdentifyLEDStateOff:
+		payload = map[string]any{"LocationIndicatorActive": false}
+	case hal.IdentifyLEDStateOn:
+		payload = map[string]any{"LocationIndicatorActive": true}
+	case hal.IdentifyLEDStateBlinking:
+		payload = map[string]any{"LocationIndicatorActive": true}
+	case hal.IdentifyLEDStateUnknown:
+		return fmt.Errorf("unknown LED state:%s", state)
+	}
+	resp, err := c.Gofish.Patch("/redfish/v1/Chassis/System.Embedded.1", payload)
 	if err != nil {
-		return err
+		c.log.Errorw("unable to set led", "error", err)
 	}
-	// Not sure if system or chassis is responsible for LED
-	for _, system := range systems {
-		c.log.Infow("setting indicator led via system", "system", system.ID, "state", state)
-		switch state {
-		case hal.IdentifyLEDStateOff:
-			system.LocationIndicatorActive = false
-			system.IndicatorLED = common.OffIndicatorLED
-		case hal.IdentifyLEDStateOn:
-			system.LocationIndicatorActive = true
-			system.IndicatorLED = common.LitIndicatorLED
-		case hal.IdentifyLEDStateBlinking:
-			system.IndicatorLED = common.BlinkingIndicatorLED
-		case hal.IdentifyLEDStateUnknown:
-			return fmt.Errorf("unknown LED state:%s", state)
-		}
-	}
+	c.log.Infow("set led", "response", resp.Body)
 
-	for _, chass := range chassis {
-		if chass.ChassisType != redfish.RackMountChassisType {
-			continue
-		}
-		c.log.Infow("setting indicator led via chassis", "chassis", chass.ID, "state", state)
-		switch state {
-		case hal.IdentifyLEDStateOff:
-			chass.LocationIndicatorActive = false
-			chass.IndicatorLED = common.OffIndicatorLED
-		case hal.IdentifyLEDStateOn:
-			chass.LocationIndicatorActive = true
-			chass.IndicatorLED = common.LitIndicatorLED
-		case hal.IdentifyLEDStateBlinking:
-			chass.IndicatorLED = common.BlinkingIndicatorLED
-		case hal.IdentifyLEDStateUnknown:
-			return fmt.Errorf("unknown LED state:%s", state)
-		}
-	}
 	return nil
+}
+
+func (c *APIClient) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+
+	resp, err := c.Gofish.Get("/redfish/v1/Chassis/System.Embedded.1")
+	if err != nil {
+		c.log.Errorw("unable to get led", "error", err)
+		return hal.IdentifyLEDStateUnknown, err
+	}
+	c.log.Infow("set led", "response", resp.Body)
+	var ledstate map[string]string
+	err = json.NewDecoder(resp.Body).Decode(ledstate)
+	if err != nil {
+		c.log.Errorw("unable to parse led state", "error", err)
+		return hal.IdentifyLEDStateUnknown, err
+	}
+
+	state, ok := ledstate["LocationIndicatorActive"]
+	if !ok {
+		return hal.IdentifyLEDStateUnknown, fmt.Errorf("ledstate does not contain a LocationIndicatorActive key")
+	}
+
+	switch state {
+	case "true":
+		return hal.IdentifyLEDStateOn, nil
+	case "false":
+		return hal.IdentifyLEDStateOff, nil
+	}
+	return hal.IdentifyLEDStateUnknown, fmt.Errorf("unknown state:%s", state)
 }
 
 func (c *APIClient) IdentifyLEDOn() error {
