@@ -31,6 +31,8 @@ const (
 	X12DPT_B6
 	// G1 GPU machine
 	X13DDW_A
+	// Newer Microclouds
+	X13SCD_F
 )
 
 var (
@@ -47,6 +49,8 @@ var (
 		"X12DPT-B6": X12DPT_B6,
 		// G1 GPU Machine
 		"X13DDW-A": X13DDW_A,
+		// Newer Microclouds
+		"X13SCD-F": X13SCD_F,
 	}
 
 	// SUM does not complain or fail if more boot options are given than actually available
@@ -264,7 +268,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	s.log.Infow("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
-	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F || s.boardModel == X12DPT_B6 || s.boardModel == X13DDW_A) {
+	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F || s.boardModel == X12DPT_B6 || s.boardModel == X13DDW_A || s.boardModel == X13SCD_F) {
 		return false, nil
 	}
 
@@ -292,7 +296,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 // EnsureBootOrder ensures BIOS boot order so that boot from the given allocated OS image is attempted before PXE boot.
 func (s *sum) EnsureBootOrder(bootloaderID string) error {
 	s.bootloaderID = bootloaderID
-	if s.boardModel == X13DDW_A || s.boardModel == X12DPT_B6 {
+	if s.boardModel == X13DDW_A || s.boardModel == X12DPT_B6 || s.boardModel == X13SCD_F {
 		s.log.Infow("GPU board detected, skip bios modification", "board", s.boardName)
 		return nil
 	}
@@ -431,7 +435,7 @@ func (s *sum) checkBootOptionAt(index int, bootOption string) bool {
 				if setting.Name != fmt.Sprintf("UEFI Boot Option #%d", index) {
 					continue
 				}
-			case X13DDW_A, X12DPT_B6:
+			case X13DDW_A, X12DPT_B6, X13SCD_F:
 				// FIXME
 			}
 
