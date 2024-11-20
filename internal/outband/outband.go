@@ -29,7 +29,6 @@ func New(r *redfish.APIClient, ipmiTool ipmi.IpmiTool, board *api.Board, ip stri
 	return &OutBand{
 		Redfish:  r,
 		IpmiTool: ipmiTool,
-		board:    board,
 		Ip:       ip,
 		ipmiPort: ipmiPort,
 		user:     user,
@@ -48,8 +47,8 @@ func ViaGoipmi(board *api.Board, ip string, ipmiPort int, user, password string)
 	}
 }
 
-func (ob *OutBand) Board() *api.Board {
-	return ob.board
+func (ob *OutBand) Board() (*api.Board, error) {
+	return ob.Redfish.BoardInfo()
 }
 
 func (ob *OutBand) IPMIConnection() (string, int, string, string) {

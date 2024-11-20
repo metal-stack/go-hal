@@ -47,13 +47,17 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	if err != nil {
 		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
-	b, err := r.BoardInfo()
+	vendor, vendorString, modelString, err := r.VendorAndModel()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get board info via redfish for ip:%s user:%s error:%w", ip, user, err)
 	}
-	b.Vendor = api.GuessVendor(b.VendorString)
+	b := &api.Board{
+		VendorString: vendorString,
+		Vendor:       vendor,
+		Model:        modelString,
+	}
 	log.Debugw("connect", "board", b)
-	switch b.Vendor {
+	switch vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b), nil
 	case api.VendorSupermicro, api.VendorNovarion:

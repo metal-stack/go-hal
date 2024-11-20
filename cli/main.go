@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/metal-stack/go-hal"
@@ -19,6 +20,7 @@ var (
 	password string
 	host     string
 	port     int
+	debug    bool
 
 	bandtypeFlag = &cli.StringFlag{
 		Name:        "bandtype",
@@ -61,8 +63,7 @@ var (
 )
 
 func main() {
-	log = logger.New()
-
+	log = logger.NewSlog(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	app := &cli.App{
 		Name:  "hal",
 		Usage: "try bmc commands",
@@ -72,7 +73,10 @@ func main() {
 			ledCmd,
 			powerCmd,
 		},
+		Flags: flags,
 	}
+
+	log.Infow("go hal cli", "host", host, "port", port, "password", password, "bandtype", bandtype)
 
 	if err := app.Run(os.Args); err != nil {
 		panic(err)

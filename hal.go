@@ -96,7 +96,7 @@ func GuessPowerState(powerState string) PowerState {
 
 type Hal interface {
 	// Board return board information of the current connection
-	Board() *api.Board
+	Board() (*api.Board, error)
 
 	// UUID get the machine UUID
 	// current usage in metal-hammer
@@ -127,7 +127,7 @@ type Hal interface {
 // InBand get and set settings from the server via the inband interface.
 type InBand interface {
 	// Board return board information of the current connection
-	Board() *api.Board
+	Board() (*api.Board, error)
 
 	// UUID get the machine UUID
 	// current usage in metal-hammer
@@ -178,7 +178,7 @@ type InBand interface {
 // OutBand get and set settings from the server via the out of band interface.
 type OutBand interface {
 	// Board return board information of the current connection
-	Board() *api.Board
+	Board() (*api.Board, error)
 	// UUID get the machine uuid
 	// current usage in ipmi-catcher
 	UUID() (*uuid.UUID, error)

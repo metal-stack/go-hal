@@ -55,6 +55,38 @@ func New(url, user, password string, insecure bool, log logger.Logger) (*APIClie
 	}, nil
 }
 
+func (c *APIClient) VendorAndModel() (api.Vendor, string, string, error) {
+	manufacturer := ""
+	model := ""
+	vendor := api.VendorUnknown
+	// Query the chassis data using the session token
+	if c.Gofish.Service == nil {
+		return vendor, manufacturer, model, fmt.Errorf("gofish service root is not available most likely due to missing username")
+	}
+
+	systems, err := c.Gofish.Service.Systems()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+	for _, system := range systems {
+		if system.Manufacturer != "" {
+			manufacturer = system.Manufacturer
+		}
+		if system.Model != "" {
+			model = system.Model
+		}
+		if manufacturer != "" && model != "" {
+			break
+		}
+	}
+	if manufacturer == "" || model == "" {
+		return vendor, manufacturer, model, fmt.Errorf("unable to detect vendor and model")
+	}
+
+	vendor = api.GuessVendor(manufacturer)
+	return vendor, manufacturer, model, nil
+}
+
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	// Query the chassis data using the session token
 	if c.Gofish.Service == nil {

@@ -14,7 +14,10 @@ var ledCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		board := c.Board()
+		board, err := c.Board()
+		if err != nil {
+			return err
+		}
 		log.Infow("lead", "state", board.IndicatorLED)
 		return nil
 	},
@@ -33,7 +36,10 @@ var ledCmd = &cli.Command{
 					return err
 				}
 				log.Infow("led state set to on")
-				board := c.Board()
+				board, err := c.Board()
+				if err != nil {
+					return err
+				}
 				log.Infow("lead", "state", board.IndicatorLED)
 				return nil
 			},
@@ -52,7 +58,10 @@ var ledCmd = &cli.Command{
 					return err
 				}
 				log.Infow("led state set to off")
-				board := c.Board()
+				board, err := c.Board()
+				if err != nil {
+					return err
+				}
 				log.Infow("lead", "state", board.IndicatorLED)
 				return nil
 			},

@@ -13,7 +13,10 @@ var boardCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		board := c.Board()
+		board, err := c.Board()
+		if err != nil {
+			return err
+		}
 		log.Infow("board", "bandtype", bandtype, "host", host, "result", board.String(), "redfish version", board.RedfishVersion, "bios", board.BiosVersion, "powermetric", board.PowerMetric, "powersupplies", board.PowerSupplies, "ledstate", board.IndicatorLED)
 		bmc, err := outBandBMCConnection.BMC()
 		if err != nil {
