@@ -98,6 +98,10 @@ func (ib *inBand) PowerReset() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
+func (o *inBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return hal.IdentifyLEDStateUnknown, nil
+}
+
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 	return ib.IpmiTool.SetChassisIdentifyLEDState(state)
 }
@@ -248,6 +252,10 @@ func (ob *outBand) PowerCycle() error {
 	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerCycle)
 	})
+}
+
+func (o *outBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return o.Redfish.GetIdentifyLED()
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {

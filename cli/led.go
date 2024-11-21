@@ -14,11 +14,11 @@ var ledCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		board, err := c.Board()
+		ledstate, err := c.GetIdentifyLED()
 		if err != nil {
 			return err
 		}
-		log.Infow("lead", "state", board.IndicatorLED)
+		log.Infow("led", "state", ledstate.String())
 		return nil
 	},
 	Subcommands: []*cli.Command{
@@ -36,11 +36,11 @@ var ledCmd = &cli.Command{
 					return err
 				}
 				log.Infow("led state set to on")
-				board, err := c.Board()
+				ledstate, err := c.GetIdentifyLED()
 				if err != nil {
 					return err
 				}
-				log.Infow("lead", "state", board.IndicatorLED)
+				log.Infow("led", "state", ledstate.String())
 				return nil
 			},
 		},
@@ -58,11 +58,11 @@ var ledCmd = &cli.Command{
 					return err
 				}
 				log.Infow("led state set to off")
-				board, err := c.Board()
+				ledstate, err := c.GetIdentifyLED()
 				if err != nil {
 					return err
 				}
-				log.Infow("lead", "state", board.IndicatorLED)
+				log.Infow("led", "state", ledstate.String())
 				return nil
 			},
 		},

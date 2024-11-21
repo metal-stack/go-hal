@@ -79,7 +79,7 @@ func main() {
 	log.Infow("go hal cli", "host", host, "port", port, "password", password, "bandtype", bandtype)
 
 	if err := app.Run(os.Args); err != nil {
-		panic(err)
+		log.Errorw("execution failed", "error", err)
 	}
 
 	if outBandBMCConnection != nil {

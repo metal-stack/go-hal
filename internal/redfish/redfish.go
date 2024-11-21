@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -412,11 +413,10 @@ func (c *APIClient) IdentifyLEDState(state hal.IdentifyLEDState) error {
 	case hal.IdentifyLEDStateUnknown:
 		return fmt.Errorf("unknown LED state:%s", state)
 	}
-	resp, err := c.Gofish.Patch("/redfish/v1/Chassis/System.Embedded.1", payload)
+	_, err := c.Gofish.Patch("/redfish/v1/Chassis/System.Embedded.1", payload)
 	if err != nil {
 		c.log.Errorw("unable to set led", "error", err)
 	}
-	c.log.Infow("set led", "response", resp.Body)
 
 	return nil
 }
@@ -428,23 +428,28 @@ func (c *APIClient) GetIdentifyLED() (hal.IdentifyLEDState, error) {
 		c.log.Errorw("unable to get led", "error", err)
 		return hal.IdentifyLEDStateUnknown, err
 	}
-	c.log.Infow("set led", "response", resp.Body)
-	var ledstate map[string]string
-	err = json.NewDecoder(resp.Body).Decode(ledstate)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return hal.IdentifyLEDStateUnknown, err
+	}
+
+	var parsedBody map[string]any
+	err = json.Unmarshal(body, &parsedBody)
 	if err != nil {
 		c.log.Errorw("unable to parse led state", "error", err)
 		return hal.IdentifyLEDStateUnknown, err
 	}
 
-	state, ok := ledstate["LocationIndicatorActive"]
+	state, ok := parsedBody["LocationIndicatorActive"]
 	if !ok {
 		return hal.IdentifyLEDStateUnknown, fmt.Errorf("ledstate does not contain a LocationIndicatorActive key")
 	}
 
-	switch state {
-	case "true":
+	switch state.(bool) {
+	case true:
 		return hal.IdentifyLEDStateOn, nil
-	case "false":
+	case false:
 		return hal.IdentifyLEDStateOff, nil
 	}
 	return hal.IdentifyLEDStateUnknown, fmt.Errorf("unknown state:%s", state)

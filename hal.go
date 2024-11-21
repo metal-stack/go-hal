@@ -113,6 +113,7 @@ type Hal interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
@@ -144,6 +145,7 @@ type InBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
@@ -194,6 +196,7 @@ type OutBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on

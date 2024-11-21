@@ -86,6 +86,10 @@ func (o *outBand) IPMIConnection() (ip string, port int, user string, password s
 	panic("unimplemented")
 }
 
+func (o *outBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return o.Redfish.GetIdentifyLED()
+}
+
 // IdentifyLEDOff implements hal.OutBand.
 func (o *outBand) IdentifyLEDOff() error {
 	return o.Redfish.IdentifyLEDState(hal.IdentifyLEDStateOff)
