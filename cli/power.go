@@ -38,7 +38,7 @@ var powerCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				retry.Do(func() error {
+				err = retry.Do(func() error {
 					state, err := c.PowerState()
 					if err != nil {
 						return err
@@ -49,6 +49,9 @@ var powerCmd = &cli.Command{
 					}
 					return nil
 				})
+				if err != nil {
+					return err
+				}
 				state, err := c.PowerState()
 				if err != nil {
 					return err
@@ -70,7 +73,7 @@ var powerCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				retry.Do(func() error {
+				err = retry.Do(func() error {
 					state, err := c.PowerState()
 					if err != nil {
 						return err
@@ -81,6 +84,9 @@ var powerCmd = &cli.Command{
 					}
 					return nil
 				})
+				if err != nil {
+					return err
+				}
 				state, err := c.PowerState()
 				if err != nil {
 					return err

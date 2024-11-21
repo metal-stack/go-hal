@@ -43,8 +43,6 @@ const (
 	IdentifyLEDStateOn
 	// IdentifyLEDStateOff the LED is off
 	IdentifyLEDStateOff
-	// IdentifyLEDStateBlinking the LED is blinking
-	IdentifyLEDStateBlinking
 )
 const (
 	// FirmwareModeUnknown server is in unknown firmware state

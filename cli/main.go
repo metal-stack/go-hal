@@ -20,7 +20,6 @@ var (
 	password string
 	host     string
 	port     int
-	debug    bool
 
 	bandtypeFlag = &cli.StringFlag{
 		Name:        "bandtype",

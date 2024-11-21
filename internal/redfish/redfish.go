@@ -408,15 +408,14 @@ func (c *APIClient) IdentifyLEDState(state hal.IdentifyLEDState) error {
 		payload = map[string]any{"LocationIndicatorActive": false}
 	case hal.IdentifyLEDStateOn:
 		payload = map[string]any{"LocationIndicatorActive": true}
-	case hal.IdentifyLEDStateBlinking:
-		payload = map[string]any{"LocationIndicatorActive": true}
 	case hal.IdentifyLEDStateUnknown:
 		return fmt.Errorf("unknown LED state:%s", state)
 	}
-	_, err := c.Gofish.Patch("/redfish/v1/Chassis/System.Embedded.1", payload)
+	resp, err := c.Gofish.Patch("/redfish/v1/Chassis/System.Embedded.1", payload)
 	if err != nil {
 		c.log.Errorw("unable to set led", "error", err)
 	}
+	defer resp.Body.Close()
 
 	return nil
 }
