@@ -11,10 +11,9 @@ import (
 var redfishCmd = &cli.Command{
 	Name:        "redfish",
 	Usage:       "raw redfish usage",
-	Description: "for example use --redfish-path /redfish/v1/Chassis/System.Embedded.1",
+	Description: "for example use --redfish-path /redfish/v1/Chassis/System.Embedded.1 or /redfish/v1 to get the root of the redfish tree",
 	Flags:       append(flags, redfishPathFlag),
 	Action: func(ctx *cli.Context) error {
-
 		config := gofish.ClientConfig{
 			Endpoint: "https://" + host,
 			Username: user,
@@ -25,6 +24,7 @@ var redfishCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer c.Logout()
 
 		resp, err := c.Get(redfishPath)
 		if err != nil {
