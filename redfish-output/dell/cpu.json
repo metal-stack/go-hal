@@ -1,0 +1,122 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1",
+  "@odata.type": "#Processor.v1_20_0.Processor",
+  "@odata.context": "/redfish/v1/$metadata#Processor.Processor",
+  "Assembly": {
+    "@odata.id": "/redfish/v1/Chassis/System.Embedded.1/Assembly"
+  },
+  "Description": "Represents the properties of a Processor attached to this System",
+  "Enabled": true,
+  "EnvironmentMetrics": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1/EnvironmentMetrics"
+  },
+  "Id": "CPU.Socket.1",
+  "InstructionSet": "x86-64",
+  "Links": {
+    "Chassis": {
+      "@odata.id": "/redfish/v1/Chassis/System.Embedded.1"
+    },
+    "Memory": [
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A3"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A2"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A4"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory/DIMM.Socket.A1"
+      }
+    ],
+    "Memory@odata.count": 4
+  },
+  "Manufacturer": "AMD",
+  "MaxSpeedMHz": 4400,
+  "MemorySummary": {
+    "TotalCacheSizeMiB": 81,
+    "TotalMemorySizeMiB": 131072
+  },
+  "Model": "AMD EPYC 9124 16-Core Processor",
+  "Name": "CPU 1",
+  "Oem": {
+    "Dell": {
+      "@odata.type": "#DellOem.v1_3_0.DellOemResources",
+      "DellProcessor": {
+        "CPUFamily": "AMDZenProcessorFamily",
+        "CPUStatus": "CPUEnabled",
+        "Cache1Associativity": "8-WaySet-Associative",
+        "Cache1ErrorMethodology": "Parity",
+        "Cache1InstalledSizeKB": 1024,
+        "Cache1Level": "L1",
+        "Cache1Location": "Internal",
+        "Cache1PrimaryStatus": "OK",
+        "Cache1SRAMType": "Unknown",
+        "Cache1SizeKB": 1024,
+        "Cache1Type": "Unified",
+        "Cache1WritePolicy": "WriteBack",
+        "Cache2Associativity": "8-WaySet-Associative",
+        "Cache2ErrorMethodology": "Multi-bitECC",
+        "Cache2InstalledSizeKB": 16384,
+        "Cache2Level": "L2",
+        "Cache2Location": "Internal",
+        "Cache2PrimaryStatus": "OK",
+        "Cache2SRAMType": "Unknown",
+        "Cache2SizeKB": 16384,
+        "Cache2Type": "Unified",
+        "Cache2WritePolicy": "WriteBack",
+        "Cache3Associativity": "16-WaySet-Associative",
+        "Cache3ErrorMethodology": "Multi-bitECC",
+        "Cache3InstalledSizeKB": 65536,
+        "Cache3Level": "L3",
+        "Cache3Location": "Internal",
+        "Cache3PrimaryStatus": "OK",
+        "Cache3SRAMType": "Unknown",
+        "Cache3SizeKB": 65536,
+        "Cache3Type": "Unified",
+        "Cache3WritePolicy": "WriteBack",
+        "CurrentClockSpeedMhz": 3000,
+        "ExecuteDisabledCapable": "Yes",
+        "ExecuteDisabledEnabled": "Yes",
+        "ExternalBusClockSpeedMhz": 0,
+        "HyperThreadingCapable": "Yes",
+        "HyperThreadingEnabled": "Yes",
+        "Id": "CPU.Socket.1",
+        "LastSystemInventoryTime": "2024-11-21T18:36:41+00:00",
+        "LastUpdateTime": "2024-10-24T23:54:36+00:00",
+        "Name": "DellProcessor",
+        "TurboModeCapable": "Yes",
+        "TurboModeEnabled": "Yes",
+        "VirtualizationTechnologyCapable": "Yes",
+        "VirtualizationTechnologyEnabled": "Yes",
+        "Volts": "1.8",
+        "@odata.context": "/redfish/v1/$metadata#DellProcessor.DellProcessor",
+        "@odata.type": "#DellProcessor.v1_2_0.DellProcessor",
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors/CPU.Socket.1/Oem/Dell/DellProcessors/CPU.Socket.1"
+      }
+    }
+  },
+  "OperatingSpeedMHz": 3000,
+  "ProcessorArchitecture": "x86",
+  "ProcessorId": {
+    "EffectiveFamily": "15",
+    "EffectiveModel": "17",
+    "IdentificationRegisters": "0x00A10F11",
+    "MicrocodeInfo": "0xA101148",
+    "ProtectedIdentificationNumber": "02B705273A900029",
+    "Step": "1",
+    "VendorId": "AuthenticAMD"
+  },
+  "ProcessorType": "CPU",
+  "Socket": "CPU.Socket.1",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "TotalCores": 16,
+  "TotalEnabledCores": 16,
+  "TotalThreads": 32,
+  "TurboState": "Enabled",
+  "Version": "Model 17 Stepping 1"
+}

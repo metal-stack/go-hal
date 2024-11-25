@@ -41,8 +41,8 @@ func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) 
 	}, nil
 }
 
-func (ib *InBand) Board() *api.Board {
-	return ib.board
+func (ib *InBand) Board() (*api.Board, error) {
+	return ib.board, nil
 }
 
 func (ib *InBand) UUID() (*uuid.UUID, error) {
