@@ -74,11 +74,12 @@ func main() {
 		Name:  "hal",
 		Usage: "try bmc commands",
 		Commands: []*cli.Command{
-			uuidCmd,
 			boardCmd,
+			bootCmd,
 			ledCmd,
 			powerCmd,
 			redfishCmd,
+			uuidCmd,
 		},
 		Flags: flags,
 	}

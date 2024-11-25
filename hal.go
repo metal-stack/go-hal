@@ -111,6 +111,9 @@ type Hal interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	// BootFrom set the boot order of the server to the specified target
+	BootFrom(BootTarget) error
+
 	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
