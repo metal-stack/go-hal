@@ -54,3 +54,28 @@ TODO:
 - Redfish Sessions must be closed, see: https://github.com/stmcginnis/gofish/blob/main/examples/query_sessions.md
 
 - Dell iDrac Redfish Samples: https://github.com/dell/iDRAC-Redfish-Scripting
+
+## Supermicro console over ssh
+
+```bash
+ssh -oHostKeyAlgorithms=+ssh-rsa metal@10.1.1.134
+or
+ssh -oHostKeyAlgorithms=+ssh-dss metal@10.1.1.134
+metal@10.1.1.134's password: 
+
+Insyde SMASH-CLP System Management Shell, versions
+Copyright (c) 2015-2016 by Insyde International CO., Ltd.
+All Rights Reserved 
+
+
+-> cd system1/sol1
+/system1/sol1
+
+-> start
+/system1/sol1
+
+press <Enter>, <Esc>, and then <T> to terminate session
+(press the keys in sequence, one after the other)
+
+metal@shoot--test--fraequ01b-group-cri-0-d65b6-pmfp7:~$
+```
