@@ -1,0 +1,49 @@
+{
+  "@Redfish.Settings": {
+    "@odata.context": "/redfish/v1/$metadata#Settings.Settings",
+    "@odata.type": "#Settings.v1_4_0.Settings",
+    "SettingsObject": {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Oem/Dell/DellBootSources/Settings"
+    },
+    "SupportedApplyTimes": [
+      "OnReset",
+      "AtMaintenanceWindowStart",
+      "InMaintenanceWindowOnReset"
+    ]
+  },
+  "@odata.context": "/redfish/v1/$metadata#DellBootSources.DellBootSources",
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Oem/Dell/DellBootSources",
+  "@odata.type": "#DellBootSources.v1_1_0.DellBootSources",
+  "AttributeRegistry": "DellBootSourcesRegistry.v1_1_0",
+  "Attributes": {
+    "UefiBootSeq": [
+      {
+        "Enabled": true,
+        "Id": "BIOS.Setup.1-1#UefiBootSeq#Disk.Bay.0:Enclosure.Internal.0-1#a850edc89070957751ce0eeaf6c11403",
+        "Index": 0,
+        "Name": "Disk.Bay.0:Enclosure.Internal.0-1"
+      },
+      {
+        "Enabled": true,
+        "Id": "BIOS.Setup.1-1#UefiBootSeq#NIC.PxeDevice.1-1#709c0888d3f7fb4aa12e13c31f22ef1b",
+        "Index": 1,
+        "Name": "NIC.PxeDevice.1-1"
+      },
+      {
+        "Enabled": true,
+        "Id": "BIOS.Setup.1-1#UefiBootSeq#Floppy.iDRACVirtual.1-1#08f2555d043e0db604a2b5868d81e51f",
+        "Index": 2,
+        "Name": "Floppy.iDRACVirtual.1-1"
+      },
+      {
+        "Enabled": true,
+        "Id": "BIOS.Setup.1-1#UefiBootSeq#Optical.iDRACVirtual.1-1#74fff76b2296325c63f15ee7c5ece77d",
+        "Index": 3,
+        "Name": "Optical.iDRACVirtual.1-1"
+      }
+    ]
+  },
+  "Description": "Boot Sources Current Settings",
+  "Id": "DellBootSources",
+  "Name": "Boot Sources Configuration Current Settings"
+}
