@@ -1,8 +1,9 @@
 package hal
 
 import (
-	"github.com/gliderlabs/ssh"
 	"strings"
+
+	"github.com/gliderlabs/ssh"
 
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -91,15 +92,18 @@ func GuessPowerState(powerState string) PowerState {
 	return PowerUnknownState
 }
 
-// InBand get and set settings from the server via the inband interface.
-type InBand interface {
+type Hal interface {
 	// Board return board information of the current connection
-	Board() *api.Board
+	Board() (*api.Board, error)
 
 	// UUID get the machine UUID
 	// current usage in metal-hammer
 	UUID() (*uuid.UUID, error)
 
+	// PowerState returns the power state of the server
+	PowerState() (PowerState, error)
+	// PowerOn set power state of the server to on
+	PowerOn() error
 	// PowerOff set power state of the server to off
 	PowerOff() error
 	// PowerReset reset the power state of the server
@@ -107,6 +111,42 @@ type InBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	// BootFrom set the boot order of the server to the specified target
+	BootFrom(BootTarget) error
+
+	GetIdentifyLED() (IdentifyLEDState, error)
+	// IdentifyLEDState get the identify LED state
+	IdentifyLEDState(IdentifyLEDState) error
+	// IdentifyLEDOn set the identify LED to on
+	IdentifyLEDOn() error
+	// IdentifyLEDOff set the identify LED to off
+	IdentifyLEDOff() error
+
+	// Describe print a basic information about this connection
+	Describe() string
+}
+
+// InBand get and set settings from the server via the inband interface.
+type InBand interface {
+	// Board return board information of the current connection
+	Board() (*api.Board, error)
+
+	// UUID get the machine UUID
+	// current usage in metal-hammer
+	UUID() (*uuid.UUID, error)
+
+	// PowerState returns the power state of the server
+	PowerState() (PowerState, error)
+	// PowerOn set power state of the server to on
+	PowerOn() error
+	// PowerOff set power state of the server to off
+	PowerOff() error
+	// PowerReset reset the power state of the server
+	PowerReset() error
+	// PowerCycle cycle the power state of the server
+	PowerCycle() error
+
+	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
@@ -141,7 +181,7 @@ type InBand interface {
 // OutBand get and set settings from the server via the out of band interface.
 type OutBand interface {
 	// Board return board information of the current connection
-	Board() *api.Board
+	Board() (*api.Board, error)
 	// UUID get the machine uuid
 	// current usage in ipmi-catcher
 	UUID() (*uuid.UUID, error)
@@ -157,6 +197,7 @@ type OutBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
+	GetIdentifyLED() (IdentifyLEDState, error)
 	// IdentifyLEDState get the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
