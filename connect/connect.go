@@ -65,7 +65,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	case api.VendorDell:
-		return dell.OutBand(r, b, ip, ipmiPort, user, password, log)
+		return dell.OutBand(r, b, log)
 	case api.VendorUnknown:
 		fallthrough
 	default:

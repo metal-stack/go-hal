@@ -4,7 +4,6 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
@@ -22,13 +21,9 @@ type (
 )
 
 // OutBand creates an outband connection to a supermicro server.
-func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	i, err := ipmi.NewOutBand(ip, ipmiPort, user, password, log)
-	if err != nil {
-		return nil, err
-	}
+func OutBand(r *redfish.APIClient, board *api.Board, log logger.Logger) (hal.OutBand, error) {
 	return &outBand{
-		OutBand: outband.New(r, i, board, ip, ipmiPort, user, password),
+		OutBand: outband.ViaRedfish(r, board),
 		log:     log,
 	}, nil
 }
