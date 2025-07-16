@@ -595,7 +595,7 @@ func GetBootOrderQualifiers(bootTarget hal.BootTarget, vendor api.Vendor) (uefiQ
 		switch vendor {
 		case api.VendorSupermicro, api.VendorNovarion:
 			bootDevQualifier = supermicroHDQualifier
-		case api.VendorLenovo, api.VendorDell, api.VendorVagrant, api.VendorUnknown:
+		case api.VendorLenovo, api.VendorDell, api.VendorVagrant, api.VendorUnknown, api.VendorGigabyte:
 			fallthrough
 		default:
 			bootDevQualifier = hdQualifier
