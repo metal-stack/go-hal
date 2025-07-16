@@ -198,6 +198,8 @@ const (
 	VendorDell
 	// VendorVagrant is a virtual machine.
 	VendorVagrant
+	// VendorGigabyte identifies alls Gigabyte servers
+	VendorGigabyte
 )
 
 var (
@@ -208,8 +210,9 @@ var (
 		VendorDell:       "Dell",
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
+		VendorGigabyte:   "Gigabyte",
 	}
-	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown}
+	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown, VendorGigabyte}
 )
 
 func (v Vendor) String() string { return vendors[v] }

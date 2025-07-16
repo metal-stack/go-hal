@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -33,6 +34,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		return supermicro.InBand(b, log)
 	case api.VendorVagrant:
 		return vagrant.InBand(b, log)
+	case api.VendorGigabyte:
+		return gigabyte.InBand(b, log)
 	case api.VendorDell, api.VendorUnknown:
 		fallthrough
 	default:
