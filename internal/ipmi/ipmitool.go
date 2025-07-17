@@ -391,11 +391,6 @@ func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
 }
 
 func (i *Ipmitool) changePassword(req bmcRequest) (string, error) {
-	err := i.setUserEnabled(req, false)
-	if err != nil {
-		return "", err
-	}
-
 	pw, err := req.setPasswordFunc()
 	if err != nil {
 		return "", fmt.Errorf("failed to set password %s for user %s with id %s %w", pw, req.username, req.uid, err)
