@@ -210,7 +210,7 @@ var (
 		VendorDell:       "Dell",
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
-		VendorGigabyte:   "Gigabyte",
+		VendorGigabyte:   "Giga Computing",
 	}
 	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown, VendorGigabyte}
 )
