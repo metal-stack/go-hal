@@ -38,7 +38,7 @@ type IpmiTool interface {
 	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
-	TestUserPassword(user api.BMCUser, passwordSize int, password string) error
+	NeedsPasswordChange(user api.BMCUser, passwordSize int, password string) (b bool, e error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
@@ -64,16 +64,19 @@ type Ipmitool struct {
 	log      logger.Logger
 }
 
-func (i *Ipmitool) TestUserPassword(user api.BMCUser, passwordSize int, password string) error {
+func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, passwordSize int, password string) (bool, error) {
 	if passwordSize != 16 && passwordSize != 20 {
-		return fmt.Errorf("expected value is either 16 or 20")
+		return false, fmt.Errorf("expected value is either 16 or 20")
 	}
 
 	_, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
 	if err != nil {
-		return fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
+		if strings.Contains(err.Error(), "Failure: password incorrect") {
+			return true, fmt.Errorf("password for user %s with id %s incorrect: %w", user.Name, user.Id, err)
+		}
+		return false, fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
 	}
-	return nil
+	return false, nil
 }
 
 // LanConfig contains the config of IPMI.
