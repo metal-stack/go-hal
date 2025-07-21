@@ -38,6 +38,7 @@ type IpmiTool interface {
 	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
+	TestUserPassword(user api.BMCUser, passwordSize int, password string) error
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
@@ -61,6 +62,18 @@ type Ipmitool struct {
 	password string
 	outband  bool
 	log      logger.Logger
+}
+
+func (i *Ipmitool) TestUserPassword(user api.BMCUser, passwordSize int, password string) error {
+	if passwordSize != 16 && passwordSize != 20 {
+		return fmt.Errorf("expected value is either 16 or 20")
+	}
+
+	_, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
+	if err != nil {
+		return fmt.Errorf("failed to test user password for user %s with id %s: %w", user.Name, user.Id, err)
+	}
+	return nil
 }
 
 // LanConfig contains the config of IPMI.
