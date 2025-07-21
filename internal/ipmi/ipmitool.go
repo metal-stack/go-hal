@@ -71,7 +71,7 @@ func (i *Ipmitool) TestUserPassword(user api.BMCUser, passwordSize int, password
 
 	_, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
 	if err != nil {
-		return fmt.Errorf("failed to test user password for user %s with id %s: %w", user.Name, user.Id, err)
+		return fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
 	}
 	return nil
 }

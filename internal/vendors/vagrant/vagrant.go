@@ -125,6 +125,10 @@ func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege
 	return nil
 }
 
+func (c *bmcConnection) TestUserPassword(user api.BMCUser, passwordSize int, password string) error {
+	return nil
+}
+
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
 	return nil
 }
