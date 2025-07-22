@@ -69,10 +69,10 @@ func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, passwordSize int, passw
 		return false, fmt.Errorf("expected value is either 16 or 20")
 	}
 
-	_, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
+	output, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
 	if err != nil {
-		if strings.Contains(err.Error(), "Failure: password incorrect") {
-			return true, fmt.Errorf("password for user %s with id %s incorrect: %w", user.Name, user.Id, err)
+		if strings.Contains(output, "Failure: password incorrect") {
+			return true, fmt.Errorf("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
 		}
 		return false, fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
 	}
