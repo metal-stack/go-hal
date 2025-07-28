@@ -205,6 +205,107 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return fmt.Errorf("failed to set power to %s %w", resetType, err)
 }
 
+// SetChassisIdentifyLEDOn turns on the chassis identify LED
+func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
+	if vendor != api.VendorGigabyte {
+		return fmt.Errorf("setChassisIdentifyLEDOn via Redfish is not yet implemented for vendor %q", vendor)
+	}
+
+	type indicatorLED struct {
+		IndicatorLED string `json:"IndicatorLED"`
+	}
+	body, err := json.Marshal(&indicatorLED{
+		IndicatorLED: "Lit",
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	//ETag is the current status of the resource to be modified, ensuring that the correct resource is modified
+	err = c.addEtagHeader(req)
+	if err != nil {
+		return err
+	}
+	// Alternatively, disable etag match
+	//c.Service.DisableEtagMatch(true)
+
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
+	}
+	return nil
+}
+
+// SetChassisIdentifyLEDOff turns off the chassis identify LED
+func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
+	if vendor != api.VendorGigabyte {
+		return fmt.Errorf("setChassisIdentifyLEDOff via Redfish is not yet implemented for vendor %q", vendor)
+	}
+
+	type indicatorLED struct {
+		IndicatorLED string `json:"IndicatorLED"`
+	}
+	body, err := json.Marshal(&indicatorLED{
+		IndicatorLED: "Off",
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	err = c.addEtagHeader(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+	}
+	return nil
+}
+
+func (c *APIClient) getEtag() (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Chassis", c.urlPrefix), nil)
+	if err != nil {
+		return "", err
+	}
+	c.addHeadersAndAuth(req)
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	type etag struct {
+		Etag string `json:"@odata.etag"`
+	}
+	e := etag{}
+	err = json.Unmarshal(buf.Bytes(), &e)
+	return e.Etag, err
+}
+
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
 	if target == hal.BootTargetBIOS {
 		return c.setNextBootBIOS()
@@ -295,6 +396,15 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Basic "+c.basicAuth)
 	req.SetBasicAuth(c.user, c.password)
+}
+
+func (c *APIClient) addEtagHeader(req *http.Request) error {
+	etag, err := c.getEtag()
+	if err != nil {
+		return fmt.Errorf("unable to retrieve etag %w", err)
+	}
+	req.Header.Add("If-Match", "W/"+etag)
+	return nil
 }
 
 func (c *APIClient) setNextBootBIOS() error {
