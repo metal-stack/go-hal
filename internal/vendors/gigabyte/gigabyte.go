@@ -197,7 +197,7 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
+	return ob.Redfish.SetChassisIdentifyLEDState(state, vendor)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
@@ -205,7 +205,7 @@ func (ob *outBand) IdentifyLEDOn() error {
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Redfish.SetChassisIdentifyLEDOff(vendor) //TODO https://github.com/metal-stack/go-hal/issues/11
+	return ob.Redfish.SetChassisIdentifyLEDOff(vendor)
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
