@@ -280,15 +280,10 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 
 	resp, err := c.Do(req)
 	if err == nil {
+		_ = resp.Body.Close()
 		bodyBytes, err := io.ReadAll(resp.Body)
-		cerr := resp.Body.Close()
 		if err != nil {
-			c.log.Warnw("error while reading body", "error", err.Error())
 			return err
-		}
-		if cerr != nil {
-			c.log.Warnw("error while closing body", "error", cerr.Error())
-			return cerr
 		}
 		c.log.Debugw("debugging response", "StatusCode", resp.StatusCode, "Body", string(bodyBytes))
 	}
