@@ -262,8 +262,6 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 		return err
 	}
 
-	c.log.Debugw("preparing request body", "body", body)
-
 	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -274,8 +272,6 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 	if err != nil {
 		return err
 	}
-
-	c.log.Debugw("preparing request", "req", req)
 
 	resp, err := c.Do(req)
 	if err == nil {
