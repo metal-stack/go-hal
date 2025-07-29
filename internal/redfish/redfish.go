@@ -247,6 +247,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
+	c.log.Debugw("SetChassisIdentifyLEDOff func", "Vendor", vendor)
 	if vendor != api.VendorGigabyte {
 		return fmt.Errorf("setChassisIdentifyLEDOff via Redfish is not yet implemented for vendor %q", vendor)
 	}
