@@ -420,7 +420,7 @@ func (c *APIClient) addEtagHeader(req *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("unable to retrieve etag %w", err)
 	}
-	req.Header.Add("If-Match", "W/"+etag)
+	req.Header.Add("If-Match", etag)
 	return nil
 }
 
