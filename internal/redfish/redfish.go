@@ -205,6 +205,24 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return fmt.Errorf("failed to set power to %s %w", resetType, err)
 }
 
+// SetChassisIdentifyLEDState sets the chassis identify LED to given state
+func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState, vendor api.Vendor) error {
+	if vendor != api.VendorGigabyte {
+		return fmt.Errorf("setChassisIdentifyLEDOn via Redfish is not yet implemented for vendor %q", vendor)
+	}
+
+	switch state {
+	case hal.IdentifyLEDStateOff:
+		return c.SetChassisIdentifyLEDOff(vendor)
+	case hal.IdentifyLEDStateOn:
+		return c.SetChassisIdentifyLEDOn(vendor)
+	case hal.IdentifyLEDStateUnknown:
+		fallthrough
+	default:
+		return fmt.Errorf("unknown identify LED state: %s", state)
+	}
+}
+
 // SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
 	if vendor != api.VendorGigabyte {
