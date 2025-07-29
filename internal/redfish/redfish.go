@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -276,18 +275,12 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 		return err
 	}
 
-	c.log.Debugw("debugging request", "Header", req.Header.Get("If-Match"), "URL", req.URL.String(), "Host", req.Host)
+	c.log.Debugw("preparing request", "req", req)
 
 	resp, err := c.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		c.log.Debugw("debugging response", "StatusCode", resp.StatusCode, "Body", string(bodyBytes))
 	}
-
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
