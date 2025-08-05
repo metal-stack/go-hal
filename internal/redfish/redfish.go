@@ -399,6 +399,8 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 			},
 		}
 		return c.setBootOrderOverride(b)
+	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
+		fallthrough
 	default:
 		return fmt.Errorf("setPersistentPXE via Redfish is not yet implemented for vendor %q", vendor)
 	}
@@ -424,6 +426,8 @@ func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
 				BootSourceOverrideTarget:  "Hdd"},
 		}
 		return c.setBootOrderOverride(b)
+	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
+		fallthrough
 	default:
 		return fmt.Errorf("setPersistentHDD via Redfish is not yet implemented for vendor %q", vendor)
 	}
