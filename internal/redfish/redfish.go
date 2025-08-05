@@ -29,6 +29,16 @@ type APIClient struct {
 	log       logger.Logger
 }
 
+type boot struct {
+	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled"`
+	BootSourceOverrideMode    string `json:"BootSourceOverrideMode"`
+	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget"`
+}
+
+type bootConfig struct {
+	BootConfig boot `json:"Boot"`
+}
+
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
@@ -325,21 +335,17 @@ func (c *APIClient) getEtag() (string, error) {
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	if target == hal.BootTargetBIOS {
+	if target == hal.BootTargetBIOS { //TODO: Implement for vendor Gigabyte
 		return c.setNextBootBIOS()
 	}
 
-	currentBootOrder, err := c.retrieveBootOrder(vendor)
-	if err != nil {
-		return err
-	}
 	switch target {
 	case hal.BootTargetDisk:
-		return c.setPersistentHDD(currentBootOrder)
+		return c.setPersistentHDD(vendor)
 	case hal.BootTargetPXE, hal.BootTargetBIOS:
 		fallthrough
 	default:
-		return c.setPersistentPXE(currentBootOrder)
+		return c.setPersistentPXE(vendor)
 	}
 }
 
@@ -371,21 +377,56 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	return b.BootOrderCurrent, err
 }
 
-func (c *APIClient) setPersistentPXE(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		if strings.ToLower(bootOrder[i]) == "network" {
-			return true
+func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
+	switch vendor {
+	case api.VendorLenovo:
+		currentBootOrder, err := c.retrieveBootOrder(vendor)
+		if err != nil {
+			return err
 		}
-		return !strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
+
+		sort.SliceStable(currentBootOrder, func(i, j int) bool {
+			if strings.ToLower(currentBootOrder[i]) == "network" {
+				return true
+			}
+			return !strings.Contains(currentBootOrder[i], "metal")
+		})
+		return c.setBootOrder(currentBootOrder)
+	case api.VendorGigabyte:
+		b := bootConfig{
+			BootConfig: boot{
+				BootSourceOverrideEnabled: "Disabled",
+			},
+		}
+		return c.setBootOrderOverride(b)
+	default:
+		return fmt.Errorf("setPersistentPXE via Redfish is not yet implemented for vendor %q", vendor)
+	}
 }
 
-func (c *APIClient) setPersistentHDD(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		return strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
+func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
+	switch vendor {
+	case api.VendorLenovo:
+		currentBootOrder, err := c.retrieveBootOrder(vendor)
+		if err != nil {
+			return err
+		}
+
+		sort.SliceStable(currentBootOrder, func(i, j int) bool {
+			return strings.Contains(currentBootOrder[i], "metal")
+		})
+		return c.setBootOrder(currentBootOrder)
+	case api.VendorGigabyte:
+		b := bootConfig{
+			boot{
+				BootSourceOverrideEnabled: "Continuous",
+				BootSourceOverrideMode:    "UEFI",
+				BootSourceOverrideTarget:  "Hdd"},
+		}
+		return c.setBootOrderOverride(b)
+	default:
+		return fmt.Errorf("setPersistentHDD via Redfish is not yet implemented for vendor %q", vendor)
+	}
 }
 
 func (c *APIClient) setBootOrder(bootOrder []string) error {
@@ -408,6 +449,33 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 		_ = resp.Body.Close()
 	}
 	return err
+}
+
+func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
+	body, err := json.Marshal(bc)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+	err = c.addEtagHeader(req)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+
+	if err != nil {
+		return fmt.Errorf("unable to override boot order %w", err)
+	}
+
+	return nil
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
