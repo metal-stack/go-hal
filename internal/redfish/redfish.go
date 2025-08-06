@@ -471,10 +471,7 @@ func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 		return err
 	}
 	bodyBytes := make([]byte, req.ContentLength)
-	_, err = req.Body.Read(bodyBytes)
-	if err != nil {
-		c.log.Warnw("unable to read", "error", err.Error())
-	}
+	req.Body.Read(bodyBytes)
 	c.log.Infow("result from req", "marshal", string(bodyBytes))
 
 	//c.addHeadersAndAuth(req)
