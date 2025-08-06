@@ -460,38 +460,32 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 	body, err := json.Marshal(bc)
 	if err != nil {
-		c.log.Warnw("unable to marshal bootConfig", "error", err.Error())
+		c.log.Warnw("unable to mashal bootConfig", "error", err.Error())
 		return err
 	}
-	c.log.Infow("result from marshal", "marshal", string(body))
-
 	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		c.log.Warnw("unable to create request", "error", err.Error())
 		return err
 	}
-	bodyBytes := make([]byte, req.ContentLength)
-	req.Body.Read(bodyBytes)
-	c.log.Infow("result from req", "marshal", string(bodyBytes))
+	c.addHeadersAndAuth(req)
+	err = c.addEtagHeader(req)
+	if err != nil {
+		c.log.Warnw("unable to add etag header", "error", err.Error())
+		return err
+	}
 
-	//c.addHeadersAndAuth(req)
-	//err = c.addEtagHeader(req)
-	//if err != nil {
-	//	c.log.Warnw("unable to add etag header", "error", err.Error())
-	//	return err
-	//}
-	//
-	//resp, err := c.Do(req)
-	//if err == nil {
-	//	_ = resp.Body.Close()
-	//}
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
 
-	//c.log.Infow("successful boot override", "error", nil)
+	c.log.Infow("successfull boot override", "error", nil)
 
-	//if err != nil {
-	//	c.log.Warnw("unable to override boot order", "error", err.Error())
-	//	return fmt.Errorf("unable to override boot order %w", err)
-	//}
+	if err != nil {
+		c.log.Warnw("unable to override boot order", "error", err.Error())
+		return fmt.Errorf("unable to override boot order %w", err)
+	}
 
 	return nil
 }
