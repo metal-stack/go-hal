@@ -379,7 +379,6 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 }
 
 func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
-	c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
 	switch vendor {
 	case api.VendorLenovo:
 		currentBootOrder, err := c.retrieveBootOrder(vendor)
@@ -395,6 +394,7 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 		})
 		return c.setBootOrder(currentBootOrder)
 	case api.VendorGigabyte:
+		c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
 		b := bootConfig{
 			BootConfig: boot{
 				BootSourceOverrideEnabled: "Disabled",
@@ -462,7 +462,7 @@ func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
