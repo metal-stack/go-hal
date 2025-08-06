@@ -30,9 +30,9 @@ type APIClient struct {
 }
 
 type boot struct {
-	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled"`
-	BootSourceOverrideMode    string `json:"BootSourceOverrideMode"`
-	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget"`
+	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
+	BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
+	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
 }
 
 type bootConfig struct {
