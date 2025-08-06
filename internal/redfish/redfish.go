@@ -460,15 +460,18 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 	body, err := json.Marshal(bc)
 	if err != nil {
+		c.log.Warnw("unable to mashal bootConfig", "error", err.Error())
 		return err
 	}
 	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
+		c.log.Warnw("unable to create request", "error", err.Error())
 		return err
 	}
 	c.addHeadersAndAuth(req)
 	err = c.addEtagHeader(req)
 	if err != nil {
+		c.log.Warnw("unable to add etag header", "error", err.Error())
 		return err
 	}
 
@@ -476,6 +479,8 @@ func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 	if err == nil {
 		_ = resp.Body.Close()
 	}
+
+	c.log.Infow("successfull boot override", "error", nil)
 
 	if err != nil {
 		c.log.Warnw("unable to override boot order", "error", err.Error())
