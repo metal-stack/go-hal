@@ -335,6 +335,7 @@ func (c *APIClient) getEtag() (string, error) {
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
+	c.log.Infow("set boot order", "target", target, "vendor", vendor, "error", nil)
 	if target == hal.BootTargetBIOS { //TODO: Implement for vendor Gigabyte
 		return c.setNextBootBIOS()
 	}
@@ -378,6 +379,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 }
 
 func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
+	c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
 	switch vendor {
 	case api.VendorLenovo:
 		currentBootOrder, err := c.retrieveBootOrder(vendor)
@@ -476,6 +478,7 @@ func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 	}
 
 	if err != nil {
+		c.log.Warnw("unable to override boot order", "error", err.Error())
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
 
