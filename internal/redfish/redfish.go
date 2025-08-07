@@ -30,16 +30,6 @@ type APIClient struct {
 	log       logger.Logger
 }
 
-type boot struct {
-	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
-	BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
-	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
-}
-
-type bootConfig struct {
-	BootConfig boot `json:"Boot"`
-}
-
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
@@ -396,12 +386,7 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 		return c.setBootOrder(currentBootOrder)
 	case api.VendorGigabyte:
 		c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
-		b := bootConfig{
-			BootConfig: boot{
-				BootSourceOverrideEnabled: "Disabled",
-			},
-		}
-		return c.setBootOrderOverride(b)
+		return c.setBootOrderOverride()
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -422,13 +407,7 @@ func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
 		})
 		return c.setBootOrder(currentBootOrder)
 	case api.VendorGigabyte:
-		b := bootConfig{
-			boot{
-				BootSourceOverrideEnabled: "Continuous",
-				BootSourceOverrideMode:    "UEFI",
-				BootSourceOverrideTarget:  "Hdd"},
-		}
-		return c.setBootOrderOverride(b)
+		return c.setBootOrderOverride()
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -458,8 +437,7 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	return err
 }
 
-func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
-	_, err := json.Marshal(bc)
+func (c *APIClient) setBootOrderOverride() error {
 	type bootSettings struct {
 		BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
 		BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
@@ -500,12 +478,7 @@ func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
 		c.log.Errorw("error while performing request", "error", err.Error())
 		return fmt.Errorf("error while performing request %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			c.log.Errorw("unable to close response body", "error", err.Error())
-		}
-	}(resp.Body)
+	defer resp.Body.Close()
 
 	c.log.Infow("successfully performed request, reading response", "status", resp.StatusCode)
 
