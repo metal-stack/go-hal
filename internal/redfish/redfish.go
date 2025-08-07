@@ -299,7 +299,6 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	c.log.Infow("set boot order", "target", target, "vendor", vendor, "error", nil)
 	if target == hal.BootTargetBIOS { //TODO: Implement for vendor Gigabyte
 		return c.setNextBootBIOS()
 	}
@@ -358,7 +357,6 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 		})
 		return c.setBootOrder(vendor, currentBootOrder)
 	case api.VendorGigabyte:
-		c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
 		payload := bootOverrideRequest{
 			Boot: bootSettings{
 				BootSourceOverrideEnabled: "Disabled",
@@ -431,25 +429,17 @@ func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverride
 	if err != nil {
 		return err
 	}
-	c.log.Infow("successfully marshal", "payload", string(body))
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
-		c.log.Errorw("unable to create request", "error", err.Error())
 		return err
 	}
 	c.addHeadersAndAuth(vendor, req)
 
-	c.log.Debugw("debugging request", "Header", req.Header.Get("If-Match"), "URL", req.URL.String(), "Host", req.Host)
-	c.log.Infow("successfully added headers, performing request to", "host", req.Host)
-
 	resp, err := c.Do(req)
 	if err != nil {
-		c.log.Errorw("error while performing request", "error", err.Error())
 		return fmt.Errorf("error while performing request %w", err)
 	}
 	defer resp.Body.Close()
-
-	c.log.Infow("successfully performed request, reading response", "status", resp.StatusCode)
 
 	response, err := io.ReadAll(resp.Body)
 	if err != nil {
