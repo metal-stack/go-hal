@@ -244,15 +244,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(req)
-
-	//ETag is the current status of the resource to be modified, ensuring that the correct resource is modified
-	err = c.addEtagHeader(req)
-	if err != nil {
-		return err
-	}
-	// Alternatively, disable etag match
-	//c.Service.DisableEtagMatch(true)
+	c.addHeadersAndAuth(vendor, req)
 
 	resp, err := c.Do(req)
 	if err == nil {
@@ -284,12 +276,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(req)
-
-	err = c.addEtagHeader(req)
-	if err != nil {
-		return err
-	}
+	c.addHeadersAndAuth(vendor, req)
 
 	resp, err := c.Do(req)
 	if err == nil {
@@ -299,30 +286,6 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
 	return nil
-}
-
-func (c *APIClient) getEtag(url string) (string, error) {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	type etag struct {
-		Etag string `json:"@odata.etag"`
-	}
-	e := etag{}
-	err = json.Unmarshal(buf.Bytes(), &e)
-	return e.Etag, err
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
@@ -350,7 +313,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
-	c.addHeadersAndAuth(req)
+	c.addHeadersAndAuth(vendor, req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -383,10 +346,10 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 			}
 			return !strings.Contains(currentBootOrder[i], "metal")
 		})
-		return c.setBootOrder(currentBootOrder)
+		return c.setBootOrder(vendor, currentBootOrder)
 	case api.VendorGigabyte:
 		c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
-		return c.setBootOrderOverride()
+		return c.setBootOrderOverride(vendor)
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -405,9 +368,9 @@ func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
 		sort.SliceStable(currentBootOrder, func(i, j int) bool {
 			return strings.Contains(currentBootOrder[i], "metal")
 		})
-		return c.setBootOrder(currentBootOrder)
+		return c.setBootOrder(vendor, currentBootOrder)
 	case api.VendorGigabyte:
-		return c.setBootOrderOverride()
+		return c.setBootOrderOverride(vendor)
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -415,7 +378,7 @@ func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
 	}
 }
 
-func (c *APIClient) setBootOrder(bootOrder []string) error {
+func (c *APIClient) setBootOrder(vendor api.Vendor, bootOrder []string) error {
 	type boot struct {
 		BootOrderNext []string `json:"BootOrderNext"`
 	}
@@ -429,7 +392,7 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(req)
+	c.addHeadersAndAuth(vendor, req)
 	resp, err := c.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
@@ -437,7 +400,7 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 	return err
 }
 
-func (c *APIClient) setBootOrderOverride() error {
+func (c *APIClient) setBootOrderOverride(vendor api.Vendor) error {
 	type bootSettings struct {
 		BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
 		BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
@@ -464,13 +427,8 @@ func (c *APIClient) setBootOrderOverride() error {
 		c.log.Errorw("unable to create request", "error", err.Error())
 		return err
 	}
-	c.addHeadersAndAuth(req)
+	c.addHeadersAndAuth(vendor, req)
 
-	err = c.addEtagHeader(req)
-	if err != nil {
-		c.log.Errorw("unable to add etag header", "error", err.Error())
-		return err
-	}
 	c.log.Debugw("debugging request", "Header", req.Header.Get("If-Match"), "URL", req.URL.String(), "Host", req.Host)
 	c.log.Infow("successfully added headers, performing request to", "host", req.Host)
 
@@ -491,19 +449,13 @@ func (c *APIClient) setBootOrderOverride() error {
 	return nil
 }
 
-func (c *APIClient) addHeadersAndAuth(req *http.Request) {
+func (c *APIClient) addHeadersAndAuth(vendor api.Vendor, req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	req.SetBasicAuth(c.user, c.password)
-}
-
-func (c *APIClient) addEtagHeader(req *http.Request) error {
-	etag, err := c.getEtag(req.URL.String())
-	if err != nil {
-		return fmt.Errorf("unable to retrieve etag %w", err)
+	if vendor == api.VendorGigabyte {
+		req.Header.Add("If-Match", "*")
 	}
-	req.Header.Add("If-Match", etag)
-	return nil
+	req.SetBasicAuth(c.user, c.password)
 }
 
 func (c *APIClient) setNextBootBIOS() error {
