@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -458,30 +459,61 @@ func (c *APIClient) setBootOrder(bootOrder []string) error {
 }
 
 func (c *APIClient) setBootOrderOverride(bc bootConfig) error {
-	body, err := json.Marshal(bc)
+	_, err := json.Marshal(bc)
+	type bootSettings struct {
+		BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
+		BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
+		BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
+	}
+
+	type bootOverrideRequest struct {
+		Boot bootSettings `json:"Boot"`
+	}
+
+	payload := bootOverrideRequest{
+		Boot: bootSettings{
+			BootSourceOverrideEnabled: "Disabled",
+		},
+	}
+
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
+	c.log.Infow("successfully marshal", "payload", string(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
+		c.log.Errorw("unable to create request", "error", err.Error())
 		return err
 	}
 	c.addHeadersAndAuth(req)
+
 	err = c.addEtagHeader(req)
 	if err != nil {
+		c.log.Errorw("unable to add etag header", "error", err.Error())
 		return err
 	}
+	c.log.Infow("successfully added headers, performing request to", "host", req.Host)
 
 	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
-
 	if err != nil {
-		c.log.Warnw("unable to override boot order", "error", err.Error())
-		return fmt.Errorf("unable to override boot order %w", err)
+		c.log.Errorw("error while performing request", "error", err.Error())
+		return fmt.Errorf("error while performing request %w", err)
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			c.log.Errorw("unable to close response body", "error", err.Error())
+		}
+	}(resp.Body)
 
+	c.log.Infow("successfully performed request, reading response", "status", resp.StatusCode)
+
+	response, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.log.Errorw("error reading response body", "error", err.Error())
+	}
+	c.log.Infow("successfully read response body", "response", string(response))
 	return nil
 }
 
