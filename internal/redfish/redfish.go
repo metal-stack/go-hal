@@ -30,6 +30,16 @@ type APIClient struct {
 	log       logger.Logger
 }
 
+type bootSettings struct {
+	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
+	BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
+	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
+}
+
+type bootOverrideRequest struct {
+	Boot bootSettings `json:"Boot"`
+}
+
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
@@ -349,7 +359,16 @@ func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
 		return c.setBootOrder(vendor, currentBootOrder)
 	case api.VendorGigabyte:
 		c.log.Infow("set pxe boot order", "vendor", vendor, "error", nil)
-		return c.setBootOrderOverride(vendor)
+		payload := bootOverrideRequest{
+			Boot: bootSettings{
+				BootSourceOverrideEnabled: "Disabled",
+				// Alternatively, set PXE override explicitly
+				//BootSourceOverrideEnabled: "Continuous",
+				//BootSourceOverrideMode:    "UEFI",
+				//BootSourceOverrideTarget:  "Pxe",
+			},
+		}
+		return c.setBootOrderOverride(vendor, payload)
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -370,7 +389,14 @@ func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
 		})
 		return c.setBootOrder(vendor, currentBootOrder)
 	case api.VendorGigabyte:
-		return c.setBootOrderOverride(vendor)
+		payload := bootOverrideRequest{
+			Boot: bootSettings{
+				BootSourceOverrideEnabled: "Continuous",
+				BootSourceOverrideMode:    "UEFI",
+				BootSourceOverrideTarget:  "Hdd",
+			},
+		}
+		return c.setBootOrderOverride(vendor, payload)
 	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
 		fallthrough
 	default:
@@ -400,23 +426,7 @@ func (c *APIClient) setBootOrder(vendor api.Vendor, bootOrder []string) error {
 	return err
 }
 
-func (c *APIClient) setBootOrderOverride(vendor api.Vendor) error {
-	type bootSettings struct {
-		BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
-		BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
-		BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
-	}
-
-	type bootOverrideRequest struct {
-		Boot bootSettings `json:"Boot"`
-	}
-
-	payload := bootOverrideRequest{
-		Boot: bootSettings{
-			BootSourceOverrideEnabled: "Disabled",
-		},
-	}
-
+func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverrideRequest) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
