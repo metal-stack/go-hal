@@ -301,8 +301,8 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 	return nil
 }
 
-func (c *APIClient) getEtag() (string, error) {
-	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Chassis", c.urlPrefix), nil)
+func (c *APIClient) getEtag(url string) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return "", err
 	}
@@ -498,7 +498,7 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 }
 
 func (c *APIClient) addEtagHeader(req *http.Request) error {
-	etag, err := c.getEtag()
+	etag, err := c.getEtag(req.URL.String())
 	if err != nil {
 		return fmt.Errorf("unable to retrieve etag %w", err)
 	}
