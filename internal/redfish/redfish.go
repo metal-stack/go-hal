@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -436,16 +435,13 @@ func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverride
 	c.addHeadersAndAuth(vendor, req)
 
 	resp, err := c.Do(req)
-	if err != nil {
-		return fmt.Errorf("error while performing request %w", err)
+	if err == nil {
+		_ = resp.Body.Close()
 	}
-	defer resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("unable to override boot order %w", err)
+	}
 
-	response, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.log.Errorw("error reading response body", "error", err.Error())
-	}
-	c.log.Infow("successfully read response body", "response", string(response))
 	return nil
 }
 
