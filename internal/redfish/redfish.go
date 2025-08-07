@@ -471,6 +471,7 @@ func (c *APIClient) setBootOrderOverride() error {
 		c.log.Errorw("unable to add etag header", "error", err.Error())
 		return err
 	}
+	c.log.Debugw("debugging request", "Header", req.Header.Get("If-Match"), "URL", req.URL.String(), "Host", req.Host)
 	c.log.Infow("successfully added headers, performing request to", "host", req.Host)
 
 	resp, err := c.Do(req)
