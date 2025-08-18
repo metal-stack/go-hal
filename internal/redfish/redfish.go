@@ -298,8 +298,8 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 }
 
 func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	if target == hal.BootTargetBIOS { //TODO: Implement for vendor Gigabyte
-		return c.setNextBootBIOS()
+	if target == hal.BootTargetBIOS {
+		return c.setNextBootBIOS(vendor)
 	}
 
 	switch target {
@@ -454,21 +454,37 @@ func (c *APIClient) addHeadersAndAuth(vendor api.Vendor, req *http.Request) {
 	req.SetBasicAuth(c.user, c.password)
 }
 
-func (c *APIClient) setNextBootBIOS() error {
-	systems, err := c.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-	for _, system := range systems {
-		boot := system.Boot
-		boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
-		boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
-		err = system.SetBoot(boot)
-		if err == nil {
-			return nil
+func (c *APIClient) setNextBootBIOS(vendor api.Vendor) error {
+	switch vendor {
+	case api.VendorLenovo:
+		systems, err := c.Service.Systems()
+		if err != nil {
+			c.log.Warnw("ignore system query", "error", err.Error())
 		}
+		for _, system := range systems {
+			boot := system.Boot
+			boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
+			boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
+			err = system.SetBoot(boot)
+			if err != nil {
+				return fmt.Errorf("failed to set next boot BIOS %w for vendor %q", err, vendor)
+			}
+		}
+		return nil
+	case api.VendorGigabyte:
+		payload := bootOverrideRequest{
+			Boot: bootSettings{
+				BootSourceOverrideEnabled: "Once",
+				BootSourceOverrideMode:    "UEFI",
+				BootSourceOverrideTarget:  "BiosSetup",
+			},
+		}
+		return c.setBootOrderOverride(vendor, payload)
+	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
+		fallthrough
+	default:
+		return fmt.Errorf("failed to set next boot BIOS for vendor %q", vendor)
 	}
-	return fmt.Errorf("failed to set next boot BIOS %w", err)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
