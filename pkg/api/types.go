@@ -96,7 +96,7 @@ type BMCConnection interface {
 	// PresentSuperUser returns the details of the already present bmc superuser
 	PresentSuperUser() BMCUser
 	// NeedsPasswordChange checks if a password change is required
-	NeedsPasswordChange(user BMCUser, passwordSize int, password string) (bool, error)
+	NeedsPasswordChange(user BMCUser, password string) (bool, error)
 	// SuperUser returns the details of the preset metal bmc superuser
 	SuperUser() BMCUser
 	// User returns the details of the preset metal bmc user

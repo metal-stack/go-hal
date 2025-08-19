@@ -141,8 +141,8 @@ func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege
 	return err
 }
 
-func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, passwordSize int, password string) (bool, error) {
-	return c.IpmiTool.NeedsPasswordChange(user, passwordSize, password)
+func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
+	return c.IpmiTool.NeedsPasswordChange(user, password)
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
