@@ -38,7 +38,7 @@ type IpmiTool interface {
 	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
-	NeedsPasswordChange(user api.BMCUser, passwordSize int, password string) (b bool, e error)
+	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
@@ -64,7 +64,8 @@ type Ipmitool struct {
 	log      logger.Logger
 }
 
-func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, passwordSize int, password string) (bool, error) {
+func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
+	passwordSize := len(password)
 	if passwordSize != 16 && passwordSize != 20 {
 		return false, fmt.Errorf("expected value is either 16 or 20")
 	}
