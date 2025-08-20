@@ -28,11 +28,11 @@ type APIClient struct {
 }
 
 type bootOverrideRequest struct {
-	Boot redfish.Boot
+	Boot redfish.Boot `json:"Boot"`
 }
 
 type indicatorLEDRequest struct {
-	IndicatorLED common.IndicatorLED
+	IndicatorLED common.IndicatorLED `json:"IndicatorLED"`
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
