@@ -197,15 +197,15 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Redfish.SetChassisIdentifyLEDState(state, vendor)
+	return ob.Redfish.SetChassisIdentifyLEDState(state)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Redfish.SetChassisIdentifyLEDOn(vendor)
+	return ob.Redfish.SetChassisIdentifyLEDOn()
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Redfish.SetChassisIdentifyLEDOff(vendor)
+	return ob.Redfish.SetChassisIdentifyLEDOff()
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {

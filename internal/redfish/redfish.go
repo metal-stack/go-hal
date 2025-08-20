@@ -216,16 +216,12 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 }
 
 // SetChassisIdentifyLEDState sets the chassis identify LED to given state
-func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState, vendor api.Vendor) error {
-	if vendor != api.VendorGigabyte {
-		return fmt.Errorf("setChassisIdentifyLEDOn via Redfish is not yet implemented for vendor %q", vendor)
-	}
-
+func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
 	switch state {
 	case hal.IdentifyLEDStateOff:
-		return c.SetChassisIdentifyLEDOff(vendor)
+		return c.SetChassisIdentifyLEDOff()
 	case hal.IdentifyLEDStateOn:
-		return c.SetChassisIdentifyLEDOn(vendor)
+		return c.SetChassisIdentifyLEDOn()
 	case hal.IdentifyLEDStateUnknown:
 		fallthrough
 	default:
@@ -234,11 +230,7 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState, vendo
 }
 
 // SetChassisIdentifyLEDOn turns on the chassis identify LED
-func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
-	if vendor != api.VendorGigabyte {
-		return fmt.Errorf("setChassisIdentifyLEDOn via Redfish is not yet implemented for vendor %q", vendor)
-	}
-
+func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	type indicatorLED struct {
 		IndicatorLED string `json:"IndicatorLED"`
 	}
@@ -253,7 +245,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(vendor, req)
+	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
 	if err == nil {
@@ -266,11 +258,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn(vendor api.Vendor) error {
 }
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
-func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
-	if vendor != api.VendorGigabyte {
-		return fmt.Errorf("setChassisIdentifyLEDOff via Redfish is not yet implemented for vendor %q", vendor)
-	}
-
+func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	type indicatorLED struct {
 		IndicatorLED string `json:"IndicatorLED"`
 	}
@@ -285,7 +273,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff(vendor api.Vendor) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(vendor, req)
+	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
 	if err == nil {
@@ -321,7 +309,7 @@ func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //T
 	if err != nil {
 		return nil, err
 	}
-	c.addHeadersAndAuth(vendor, req)
+	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -415,7 +403,7 @@ func (c *APIClient) setBootOrder(vendor api.Vendor, bootOrder []string) error {
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(vendor, req)
+	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
@@ -432,7 +420,7 @@ func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverride
 	if err != nil {
 		return err
 	}
-	c.addHeadersAndAuth(vendor, req)
+	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
 	if err == nil {
@@ -445,12 +433,10 @@ func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverride
 	return nil
 }
 
-func (c *APIClient) addHeadersAndAuth(vendor api.Vendor, req *http.Request) {
+func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	if vendor == api.VendorGigabyte {
-		req.Header.Add("If-Match", "*")
-	}
+	req.Header.Add("If-Match", "*")
 	req.SetBasicAuth(c.user, c.password)
 }
 
