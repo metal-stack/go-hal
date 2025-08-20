@@ -87,7 +87,7 @@ func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
-	return errorNotImplemented //TODO
+	return errorNotImplemented
 }
 
 func (ib *inBand) Describe() string {
@@ -159,8 +159,7 @@ func (ib *inBand) ConfigureBIOS() (bool, error) {
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
-	//return errorNotImplemented // do not throw an error to not break manual tests
-	return nil //TODO https://github.com/metal-stack/go-hal/issues/11
+	return nil
 }
 
 // OutBand
@@ -217,7 +216,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
+	return errorNotImplemented
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
