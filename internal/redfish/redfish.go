@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
-	"strings"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -285,133 +283,42 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	return nil
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	if target == hal.BootTargetBIOS {
-		return c.setNextBootBIOS(vendor)
-	}
-
+func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
 	switch target {
+	case hal.BootTargetBIOS:
+		return c.setNextBootBIOS()
 	case hal.BootTargetDisk:
-		return c.setPersistentHDD(vendor)
-	case hal.BootTargetPXE, hal.BootTargetBIOS:
+		return c.setPersistentHDD()
+	case hal.BootTargetPXE:
 		fallthrough
 	default:
-		return c.setPersistentPXE(vendor)
+		return c.setPersistentPXE()
 	}
 }
 
-func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //TODO move out
-	if vendor != api.VendorLenovo { // TODO implement also for Supermicro
-		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
+func (c *APIClient) setPersistentPXE() error {
+	payload := bootOverrideRequest{
+		Boot: bootSettings{
+			BootSourceOverrideEnabled: "Continuous",
+			BootSourceOverrideMode:    "UEFI",
+			BootSourceOverrideTarget:  "Pxe",
+		},
 	}
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
-	if err != nil {
-		return nil, err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	type boot struct {
-		BootOrderCurrent []string `json:"BootOrderCurrent"`
-	}
-	b := boot{}
-	err = json.Unmarshal(buf.Bytes(), &b)
-	return b.BootOrderCurrent, err
+	return c.setBootOrderOverride(payload)
 }
 
-func (c *APIClient) setPersistentPXE(vendor api.Vendor) error {
-	switch vendor {
-	case api.VendorLenovo:
-		currentBootOrder, err := c.retrieveBootOrder(vendor)
-		if err != nil {
-			return err
-		}
-
-		sort.SliceStable(currentBootOrder, func(i, j int) bool {
-			if strings.ToLower(currentBootOrder[i]) == "network" {
-				return true
-			}
-			return !strings.Contains(currentBootOrder[i], "metal")
-		})
-		return c.setBootOrder(vendor, currentBootOrder)
-	case api.VendorGigabyte:
-		payload := bootOverrideRequest{
-			Boot: bootSettings{
-				BootSourceOverrideEnabled: "Disabled",
-				// Alternatively, set PXE override explicitly
-				//BootSourceOverrideEnabled: "Continuous",
-				//BootSourceOverrideMode:    "UEFI",
-				//BootSourceOverrideTarget:  "Pxe",
-			},
-		}
-		return c.setBootOrderOverride(vendor, payload)
-	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
-		fallthrough
-	default:
-		return fmt.Errorf("setPersistentPXE via Redfish is not yet implemented for vendor %q", vendor)
+func (c *APIClient) setPersistentHDD() error {
+	payload := bootOverrideRequest{
+		Boot: bootSettings{
+			BootSourceOverrideEnabled: "Continuous",
+			BootSourceOverrideMode:    "UEFI",
+			BootSourceOverrideTarget:  "Hdd",
+		},
 	}
+	return c.setBootOrderOverride(payload)
 }
 
-func (c *APIClient) setPersistentHDD(vendor api.Vendor) error {
-	switch vendor {
-	case api.VendorLenovo:
-		currentBootOrder, err := c.retrieveBootOrder(vendor)
-		if err != nil {
-			return err
-		}
-
-		sort.SliceStable(currentBootOrder, func(i, j int) bool {
-			return strings.Contains(currentBootOrder[i], "metal")
-		})
-		return c.setBootOrder(vendor, currentBootOrder)
-	case api.VendorGigabyte:
-		payload := bootOverrideRequest{
-			Boot: bootSettings{
-				BootSourceOverrideEnabled: "Continuous",
-				BootSourceOverrideMode:    "UEFI",
-				BootSourceOverrideTarget:  "Hdd",
-			},
-		}
-		return c.setBootOrderOverride(vendor, payload)
-	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
-		fallthrough
-	default:
-		return fmt.Errorf("setPersistentHDD via Redfish is not yet implemented for vendor %q", vendor)
-	}
-}
-
-func (c *APIClient) setBootOrder(vendor api.Vendor, bootOrder []string) error {
-	type boot struct {
-		BootOrderNext []string `json:"BootOrderNext"`
-	}
-	body, err := json.Marshal(&boot{
-		BootOrderNext: bootOrder,
-	})
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
-	return err
-}
-
-func (c *APIClient) setBootOrderOverride(vendor api.Vendor, payload bootOverrideRequest) error {
+func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -440,37 +347,15 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.SetBasicAuth(c.user, c.password)
 }
 
-func (c *APIClient) setNextBootBIOS(vendor api.Vendor) error {
-	switch vendor {
-	case api.VendorLenovo:
-		systems, err := c.Service.Systems()
-		if err != nil {
-			c.log.Warnw("ignore system query", "error", err.Error())
-		}
-		for _, system := range systems {
-			boot := system.Boot
-			boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
-			boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
-			err = system.SetBoot(boot)
-			if err != nil {
-				return fmt.Errorf("failed to set next boot BIOS %w for vendor %q", err, vendor)
-			}
-		}
-		return nil
-	case api.VendorGigabyte:
-		payload := bootOverrideRequest{
-			Boot: bootSettings{
-				BootSourceOverrideEnabled: "Once",
-				BootSourceOverrideMode:    "UEFI",
-				BootSourceOverrideTarget:  "BiosSetup",
-			},
-		}
-		return c.setBootOrderOverride(vendor, payload)
-	case api.VendorUnknown, api.VendorSupermicro, api.VendorNovarion, api.VendorDell, api.VendorVagrant:
-		fallthrough
-	default:
-		return fmt.Errorf("failed to set next boot BIOS for vendor %q", vendor)
+func (c *APIClient) setNextBootBIOS() error {
+	payload := bootOverrideRequest{
+		Boot: bootSettings{
+			BootSourceOverrideEnabled: "Once",
+			BootSourceOverrideMode:    "UEFI",
+			BootSourceOverrideTarget:  "BiosSetup",
+		},
 	}
+	return c.setBootOrderOverride(payload)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
