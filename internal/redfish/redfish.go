@@ -27,14 +27,12 @@ type APIClient struct {
 	log       logger.Logger
 }
 
-type bootSettings struct {
-	BootSourceOverrideEnabled string `json:"BootSourceOverrideEnabled,omitempty"`
-	BootSourceOverrideMode    string `json:"BootSourceOverrideMode,omitempty"`
-	BootSourceOverrideTarget  string `json:"BootSourceOverrideTarget,omitempty"`
+type bootOverrideRequest struct {
+	Boot redfish.Boot
 }
 
-type bootOverrideRequest struct {
-	Boot bootSettings `json:"Boot"`
+type indicatorLEDRequest struct {
+	IndicatorLED common.IndicatorLED
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
@@ -229,17 +227,15 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 
 // SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn() error {
-	type indicatorLED struct {
-		IndicatorLED string `json:"IndicatorLED"`
+	payload := indicatorLEDRequest{
+		IndicatorLED: common.LitIndicatorLED,
 	}
-	body, err := json.Marshal(&indicatorLED{
-		IndicatorLED: "Lit",
-	})
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -257,17 +253,15 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
-	type indicatorLED struct {
-		IndicatorLED string `json:"IndicatorLED"`
+	payload := indicatorLEDRequest{
+		IndicatorLED: common.OffIndicatorLED,
 	}
-	body, err := json.Marshal(&indicatorLED{
-		IndicatorLED: "Off",
-	})
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -298,10 +292,10 @@ func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
 
 func (c *APIClient) setPersistentPXE() error {
 	payload := bootOverrideRequest{
-		Boot: bootSettings{
-			BootSourceOverrideEnabled: "Continuous",
-			BootSourceOverrideMode:    "UEFI",
-			BootSourceOverrideTarget:  "Pxe",
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.PxeBootSourceOverrideTarget,
 		},
 	}
 	return c.setBootOrderOverride(payload)
@@ -309,10 +303,10 @@ func (c *APIClient) setPersistentPXE() error {
 
 func (c *APIClient) setPersistentHDD() error {
 	payload := bootOverrideRequest{
-		Boot: bootSettings{
-			BootSourceOverrideEnabled: "Continuous",
-			BootSourceOverrideMode:    "UEFI",
-			BootSourceOverrideTarget:  "Hdd",
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.HddBootSourceOverrideTarget,
 		},
 	}
 	return c.setBootOrderOverride(payload)
@@ -349,10 +343,10 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 
 func (c *APIClient) setNextBootBIOS() error {
 	payload := bootOverrideRequest{
-		Boot: bootSettings{
-			BootSourceOverrideEnabled: "Once",
-			BootSourceOverrideMode:    "UEFI",
-			BootSourceOverrideTarget:  "BiosSetup",
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.OnceBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.BiosSetupBootSourceOverrideTarget,
 		},
 	}
 	return c.setBootOrderOverride(payload)
