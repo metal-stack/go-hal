@@ -39,6 +39,7 @@ type IpmiTool interface {
 	Run(arg ...string) (string, error)
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
+	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
@@ -61,6 +62,22 @@ type Ipmitool struct {
 	password string
 	outband  bool
 	log      logger.Logger
+}
+
+func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
+	passwordSize := len(password)
+	if passwordSize != 16 && passwordSize != 20 {
+		return false, fmt.Errorf("expected value is either 16 or 20")
+	}
+
+	output, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
+	if err != nil {
+		if strings.Contains(output, "Failure: password incorrect") {
+			return true, fmt.Errorf("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
+		}
+		return false, fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
+	}
+	return false, nil
 }
 
 // LanConfig contains the config of IPMI.
