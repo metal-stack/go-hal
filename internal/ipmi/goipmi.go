@@ -95,7 +95,7 @@ func (c *Client) setChassisIdentifyLED(forceOn uint8) error {
 	if err != nil {
 		return err
 	}
-	if goipmi.CompletionCode(resp.CompletionCode.Code()) != goipmi.CommandCompleted {
+	if goipmi.CompletionCode(resp.Code()) != goipmi.CommandCompleted {
 		return errors.New(resp.Error())
 	}
 	return nil

@@ -200,7 +200,7 @@ const (
 	VendorDell
 	// VendorVagrant is a virtual machine.
 	VendorVagrant
-	// VendorGigabyte identifies alls Gigabyte servers
+	// VendorGigabyte identifies all Gigabyte servers
 	VendorGigabyte
 )
 

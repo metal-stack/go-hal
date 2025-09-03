@@ -61,6 +61,9 @@ func (ob *OutBand) Goipmi(f func(*ipmi.Client) error) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() {
+		_ = client.Close()
+	}()
+
 	return f(client)
 }
