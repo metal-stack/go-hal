@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
-	"strings"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -27,6 +25,14 @@ type APIClient struct {
 	password  string
 	basicAuth string
 	log       logger.Logger
+}
+
+type bootOverrideRequest struct {
+	Boot redfish.Boot `json:"Boot"`
+}
+
+type indicatorLEDRequest struct {
+	IndicatorLED common.IndicatorLED `json:"IndicatorLED"`
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
@@ -205,113 +211,145 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 	return fmt.Errorf("failed to set power to %s %w", resetType, err)
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
-	if target == hal.BootTargetBIOS {
-		return c.setNextBootBIOS()
-	}
-
-	currentBootOrder, err := c.retrieveBootOrder(vendor)
-	if err != nil {
-		return err
-	}
-	switch target {
-	case hal.BootTargetDisk:
-		return c.setPersistentHDD(currentBootOrder)
-	case hal.BootTargetPXE, hal.BootTargetBIOS:
+// SetChassisIdentifyLEDState sets the chassis identify LED to given state
+func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
+	switch state {
+	case hal.IdentifyLEDStateOff:
+		return c.SetChassisIdentifyLEDOff()
+	case hal.IdentifyLEDStateOn:
+		return c.SetChassisIdentifyLEDOn()
+	case hal.IdentifyLEDStateUnknown:
 		fallthrough
 	default:
-		return c.setPersistentPXE(currentBootOrder)
+		return fmt.Errorf("unknown identify LED state: %s", state)
 	}
 }
 
-func (c *APIClient) retrieveBootOrder(vendor api.Vendor) ([]string, error) { //TODO move out
-	if vendor != api.VendorLenovo { // TODO implement also for Supermicro
-		return nil, fmt.Errorf("retrieveBootOrder via Redfish is not yet implemented for vendor %q", vendor)
+// SetChassisIdentifyLEDOn turns on the chassis identify LED
+func (c *APIClient) SetChassisIdentifyLEDOn() error {
+	payload := indicatorLEDRequest{
+		IndicatorLED: common.LitIndicatorLED,
 	}
-
-	req, err := http.NewRequestWithContext(context.Background(), "GET", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), nil)
-	if err != nil {
-		return nil, err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	type boot struct {
-		BootOrderCurrent []string `json:"BootOrderCurrent"`
-	}
-	b := boot{}
-	err = json.Unmarshal(buf.Bytes(), &b)
-	return b.BootOrderCurrent, err
-}
-
-func (c *APIClient) setPersistentPXE(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		if strings.ToLower(bootOrder[i]) == "network" {
-			return true
-		}
-		return !strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setPersistentHDD(bootOrder []string) error {
-	sort.SliceStable(bootOrder, func(i, j int) bool {
-		return strings.Contains(bootOrder[i], "metal")
-	})
-	return c.setBootOrder(bootOrder)
-}
-
-func (c *APIClient) setBootOrder(bootOrder []string) error {
-	type boot struct {
-		BootOrderNext []string `json:"BootOrderNext"`
-	}
-	body, err := json.Marshal(&boot{
-		BootOrderNext: bootOrder,
-	})
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), "PATCH", fmt.Sprintf("%s/Systems/1/Oem/Lenovo/BootSettings/BootOrder.BootOrder", c.urlPrefix), bytes.NewReader(body))
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
+
 	resp, err := c.Do(req)
 	if err == nil {
 		_ = resp.Body.Close()
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
+	}
+	return nil
+}
+
+// SetChassisIdentifyLEDOff turns off the chassis identify LED
+func (c *APIClient) SetChassisIdentifyLEDOff() error {
+	payload := indicatorLEDRequest{
+		IndicatorLED: common.OffIndicatorLED,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+	}
+	return nil
+}
+
+func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
+	switch target {
+	case hal.BootTargetBIOS:
+		return c.setNextBootBIOS()
+	case hal.BootTargetDisk:
+		return c.setPersistentHDD()
+	case hal.BootTargetPXE:
+		fallthrough
+	default:
+		return c.setPersistentPXE()
+	}
+}
+
+func (c *APIClient) setPersistentPXE() error {
+	payload := bootOverrideRequest{
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.PxeBootSourceOverrideTarget,
+		},
+	}
+	return c.setBootOrderOverride(payload)
+}
+
+func (c *APIClient) setPersistentHDD() error {
+	payload := bootOverrideRequest{
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.HddBootSourceOverrideTarget,
+		},
+	}
+	return c.setBootOrderOverride(payload)
+}
+
+func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err == nil {
+		_ = resp.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("unable to override boot order %w", err)
+	}
+
+	return nil
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", "Basic "+c.basicAuth)
+	req.Header.Add("If-Match", "*")
 	req.SetBasicAuth(c.user, c.password)
 }
 
 func (c *APIClient) setNextBootBIOS() error {
-	systems, err := c.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+	payload := bootOverrideRequest{
+		Boot: redfish.Boot{
+			BootSourceOverrideEnabled: redfish.OnceBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  redfish.BiosSetupBootSourceOverrideTarget,
+		},
 	}
-	for _, system := range systems {
-		boot := system.Boot
-		boot.BootSourceOverrideTarget = redfish.BiosSetupBootSourceOverrideTarget
-		boot.BootSourceOverrideEnabled = redfish.OnceBootSourceOverrideEnabled
-		err = system.SetBoot(boot)
-		if err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("failed to set next boot BIOS %w", err)
+	return c.setBootOrderOverride(payload)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {

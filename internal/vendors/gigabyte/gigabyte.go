@@ -1,10 +1,11 @@
-package lenovo
+package gigabyte
 
 import (
 	"fmt"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
+
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
@@ -20,7 +21,7 @@ var (
 )
 
 const (
-	vendor = api.VendorLenovo
+	vendor = api.VendorGigabyte
 )
 
 type (
@@ -38,7 +39,7 @@ type (
 	}
 )
 
-// InBand creates an inband connection to a Lenovo server.
+// InBand creates an inband connection to a Gigabyte server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	ib, err := inband.New(board, true, log)
 	if err != nil {
@@ -49,7 +50,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	}, nil
 }
 
-// OutBand creates an outband connection to a Lenovo server.
+// OutBand creates an outband connection to a Gigabyte server.
 func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	return &outBand{
 		OutBand: outband.ViaRedfish(r, board),
@@ -86,11 +87,11 @@ func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
 }
 
 func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
-	return errorNotImplemented //TODO
+	return errorNotImplemented
 }
 
 func (ib *inBand) Describe() string {
-	return "InBand connected to Lenovo"
+	return "InBand connected to Gigabyte"
 }
 
 func (ib *inBand) BMCConnection() api.BMCConnection {
@@ -113,7 +114,7 @@ func (c *bmcConnection) PresentSuperUser() api.BMCUser {
 
 func (c *bmcConnection) SuperUser() api.BMCUser {
 	return api.BMCUser{
-		Name:          "root",
+		Name:          "superuser",
 		Id:            "4",
 		ChannelNumber: 1,
 	}
@@ -132,24 +133,24 @@ func (c *bmcConnection) Present() bool {
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.LowLevel)
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.LowLevel)
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
 	return err
 }
 
 func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
-	return true, nil
+	return c.IpmiTool.NeedsPasswordChange(user, password)
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
-	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.LowLevel)
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.LowLevel)
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -158,8 +159,7 @@ func (ib *inBand) ConfigureBIOS() (bool, error) {
 }
 
 func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
-	//return errorNotImplemented // do not throw an error to not break manual tests
-	return nil //TODO https://github.com/metal-stack/go-hal/issues/11
+	return nil
 }
 
 // OutBand
@@ -196,27 +196,27 @@ func (ob *outBand) PowerCycle() error {
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
+	return ob.Redfish.SetChassisIdentifyLEDState(state)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
+	return ob.Redfish.SetChassisIdentifyLEDOn()
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return errorNotImplemented //TODO https://github.com/metal-stack/go-hal/issues/11
+	return ob.Redfish.SetChassisIdentifyLEDOff()
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return errorNotImplemented
+	return ob.Redfish.SetBootOrder(target)
 }
 
 func (ob *outBand) Describe() string {
-	return "OutBand connected to Lenovo"
+	return "OutBand connected to Gigabyte"
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented // https://github.com/metal-stack/go-hal/issues/11
+	return errorNotImplemented
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
