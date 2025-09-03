@@ -11,7 +11,9 @@ func TestFirmware(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer os.Remove(sysFirmware)
+	defer func() {
+		_ = os.Remove(sysFirmware)
+	}()
 
 	firmware := Firmware()
 	if firmware != EFI {
