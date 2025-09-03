@@ -162,7 +162,7 @@ func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege
 }
 
 func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
-	return c.IpmiTool.NeedsPasswordChange(user, password)
+	return true, nil
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
