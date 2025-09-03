@@ -54,7 +54,20 @@ func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) h
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.Gofish.Logout()
+}
+
 // InBand
+
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+func (ib *inBand) PowerOn() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
+
 func (ib *inBand) PowerOff() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
@@ -66,7 +79,9 @@ func (ib *inBand) PowerCycle() error {
 func (ib *inBand) PowerReset() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
 }
-
+func (o *inBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return hal.IdentifyLEDStateUnknown, nil
+}
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
 	return nil
 }
@@ -176,6 +191,10 @@ func (ob *outBand) PowerCycle() error {
 	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerCycle)
 	})
+}
+
+func (o *outBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return hal.IdentifyLEDStateUnknown, nil
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {

@@ -27,7 +27,7 @@ func New() Logger {
 	return halslog.New(log)
 }
 
-// NewSlog returns an zap instance of logger
+// NewSlog returns an slog instance of logger
 func NewSlog(logger *slog.Logger) Logger {
 	return halslog.New(logger)
 }

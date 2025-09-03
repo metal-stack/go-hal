@@ -56,17 +56,32 @@ func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.Gofish.Logout()
+}
+
 // InBand
+
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+
+func (ib *inBand) PowerOn() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
 func (ib *inBand) PowerOff() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
-
 func (ib *inBand) PowerCycle() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
 func (ib *inBand) PowerReset() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
+}
+func (o *inBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return hal.IdentifyLEDStateUnknown, nil
 }
 
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
@@ -132,7 +147,11 @@ func (c *bmcConnection) Present() bool {
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.LowLevel)
+	board, err := c.Board()
+	if err != nil {
+		return "", err
+	}
+	return c.IpmiTool.CreateUser(user, privilege, "", board.Vendor.PasswordConstraints(), ipmi.LowLevel)
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
@@ -193,6 +212,10 @@ func (ob *outBand) PowerReset() error {
 
 func (ob *outBand) PowerCycle() error {
 	return ob.Redfish.PowerReset() // PowerCycle is not supported
+}
+
+func (o *outBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return o.Redfish.GetIdentifyLED()
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {

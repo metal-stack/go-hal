@@ -45,6 +45,11 @@ type (
 	}
 )
 
+// PowerState implements hal.InBand.
+func (ib *inBand) PowerState() (hal.PowerState, error) {
+	return hal.PowerOnState, nil
+}
+
 // InBand creates an inband connection to a supermicro server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	s, err := newSum(sumBin, board.Model, log)
@@ -81,6 +86,9 @@ func OutBand(r *redfish.APIClient, board *api.Board, ip string, ipmiPort int, us
 func (ib *inBand) PowerOff() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
+func (ib *inBand) PowerOn() error {
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
 
 func (ib *inBand) PowerCycle() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
@@ -88,6 +96,10 @@ func (ib *inBand) PowerCycle() error {
 
 func (ib *inBand) PowerReset() error {
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
+}
+
+func (o *inBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return hal.IdentifyLEDStateUnknown, nil
 }
 
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
@@ -148,12 +160,20 @@ func (c *bmcConnection) User() api.BMCUser {
 	}
 }
 
+func (ob *outBand) Close() {
+	ob.Redfish.Gofish.Logout()
+}
+
 func (c *bmcConnection) Present() bool {
 	return c.IpmiTool.DevicePresent()
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+	board, err := c.Board()
+	if err != nil {
+		return "", err
+	}
+	return c.IpmiTool.CreateUser(user, privilege, "", board.Vendor.PasswordConstraints(), ipmi.HighLevel)
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
@@ -236,6 +256,10 @@ func (ob *outBand) PowerCycle() error {
 	return ob.Goipmi(func(client *ipmi.Client) error {
 		return client.Control(goipmi.ControlPowerCycle)
 	})
+}
+
+func (o *outBand) GetIdentifyLED() (hal.IdentifyLEDState, error) {
+	return o.Redfish.GetIdentifyLED()
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {

@@ -3,15 +3,15 @@ package connect
 import (
 	"fmt"
 
-	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
-	"github.com/metal-stack/go-hal/pkg/logger"
-
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
+	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 var (
@@ -45,22 +45,28 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true, log)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
+		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
-	b, err := r.BoardInfo()
+	vendor, vendorString, modelString, err := r.VendorAndModel()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to get board info via redfish for ip:%s user:%s error:%w", ip, user, err)
+		return nil, fmt.Errorf("unable to get board info via redfish for ip:%s user:%s error:%w", ip, user, err)
 	}
-	b.Vendor = api.GuessVendor(b.VendorString)
+	b := &api.Board{
+		VendorString: vendorString,
+		Vendor:       vendor,
+		Model:        modelString,
+	}
 	log.Debugw("connect", "board", b)
-	switch b.Vendor {
+	switch vendor {
 	case api.VendorLenovo:
 		return lenovo.OutBand(r, b), nil
 	case api.VendorSupermicro, api.VendorNovarion:
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.OutBand(r, b, log)
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
