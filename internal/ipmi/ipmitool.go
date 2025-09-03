@@ -40,6 +40,7 @@ type IpmiTool interface {
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
 	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
+	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
