@@ -38,7 +38,6 @@ type IpmiTool interface {
 	NewCommand(arg ...string) (*exec.Cmd, error)
 	Run(arg ...string) (string, error)
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
-	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
