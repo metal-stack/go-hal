@@ -283,7 +283,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	return nil
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
+func (c *APIClient) SetBootTarget(target hal.BootTarget) error {
 	switch target {
 	case hal.BootTargetBIOS:
 		return c.setNextBootBIOS()
@@ -304,7 +304,7 @@ func (c *APIClient) setPersistentPXE() error {
 			BootSourceOverrideTarget:  redfish.PxeBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
 func (c *APIClient) setPersistentHDD() error {
@@ -315,10 +315,10 @@ func (c *APIClient) setPersistentHDD() error {
 			BootSourceOverrideTarget:  redfish.HddBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
-func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
+func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -355,7 +355,7 @@ func (c *APIClient) setNextBootBIOS() error {
 			BootSourceOverrideTarget:  redfish.BiosSetupBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
@@ -419,8 +419,8 @@ func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
 	return nil, fmt.Errorf("failed to get boot options")
 }
 
-// SetBootOrderIDs sets the boot order to the given list of boot option IDs
-func (c *APIClient) SetBootOrderManually(entries []*redfish.BootOption) error {
+// SetBootOrder sets the boot order to the given list of boot option IDs
+func (c *APIClient) SetBootOrder(entries []*redfish.BootOption) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)

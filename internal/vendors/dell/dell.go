@@ -213,7 +213,7 @@ func (ob *outBand) IdentifyLEDOff() error {
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	if ob.Board().BiosVersion >= "2.75.75.75" {
 		// Dell fixed a bug in this BIOS version, we can use the normal way now
-		return ob.Redfish.SetBootOrder(target)
+		return ob.Redfish.SetBootTarget(target)
 	}
 	// Dell has a bug in the implementation of setting the BootSourceOverrideEnabled to "Continuous". It only survives a single reboot
 	// Mentioned here under 159467: https://www.dell.com/support/manuals/en-us/dell-dss-7500/idrac8_2.75.75.75_rn/automation-api-and-cli?guid=guid-156e2423-80df-46f9-9d00-cb1018c6e227&lang=en-us
@@ -227,7 +227,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 
 	switch target {
 	case hal.BootTargetBIOS:
-		return ob.Redfish.SetBootOrder(target)
+		return ob.Redfish.SetBootTarget(target)
 	case hal.BootTargetDisk:
 		hdOptions := []*gofish.BootOption{}
 		for _, option := range bootOptions {
@@ -238,7 +238,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 		if len(hdOptions) == 0 {
 			return fmt.Errorf("no hard disk boot option found")
 		}
-		return ob.Redfish.SetBootOrderManually(hdOptions)
+		return ob.Redfish.SetBootOrder(hdOptions)
 	case hal.BootTargetPXE:
 		fallthrough
 	default:
@@ -251,7 +251,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 		if len(nicOptions) == 0 {
 			return fmt.Errorf("no PXE boot option found")
 		}
-		return ob.Redfish.SetBootOrderManually(nicOptions)
+		return ob.Redfish.SetBootOrder(nicOptions)
 	}
 }
 
