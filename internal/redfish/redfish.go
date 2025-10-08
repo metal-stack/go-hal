@@ -31,6 +31,12 @@ type bootOverrideRequest struct {
 	Boot redfish.Boot `json:"Boot"`
 }
 
+type bootOrderSetRequest struct {
+	Boot struct {
+		BootOrder []string `json:"BootOrder"`
+	} `json:"Boot"`
+}
+
 type indicatorLEDRequest struct {
 	IndicatorLED common.IndicatorLED `json:"IndicatorLED"`
 }
@@ -385,4 +391,73 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
 
 	return bmc, nil
+}
+
+func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
+	// The curl command here would be curl -k -u <user>:<pwd> https://10.1.1.18/redfish/v1/Systems/System.Embedded.1/BootOptions
+	systems, err := c.Service.Systems()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+	for _, system := range systems {
+		bootOptions, err := system.BootOptions()
+		if err != nil {
+			c.log.Warnw("ignore boot options query", "error", err.Error())
+			continue
+		}
+		if len(bootOptions) == 0 {
+			c.log.Warnw("no boot options found", "error")
+			continue
+		}
+		if len(system.Boot.BootOrder) == 0 {
+			c.log.Warnw("no boot order found", "error")
+			continue
+		}
+		return bootOptions, nil
+	}
+
+	return nil, fmt.Errorf("failed to get boot options")
+}
+
+// SetBootOrderIDs sets the boot order to the given list of boot option IDs
+func (c *APIClient) SetBootOrderManually(entries []*redfish.BootOption) error {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return fmt.Errorf("unable to query systems: %w", err)
+	}
+
+	var bootOrder []string
+	for _, entry := range entries {
+		bootOrder = append(bootOrder, entry.ID)
+	}
+
+	for _, system := range systems {
+		if len(system.Boot.BootOrder) == 0 {
+			c.log.Warnw("no boot order found", "error")
+			continue
+		}
+
+		payload := bootOrderSetRequest{}
+		payload.Boot.BootOrder = bootOrder
+
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return err
+		}
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, system.ODataID, bytes.NewReader(body))
+		if err != nil {
+			return err
+		}
+		c.addHeadersAndAuth(req)
+		resp, err := c.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+		if err != nil {
+			return fmt.Errorf("unable to set boot order: %w", err)
+		}
+		return nil
+	}
+	return fmt.Errorf("no system found to set boot order")
 }

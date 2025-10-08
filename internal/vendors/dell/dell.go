@@ -2,6 +2,7 @@ package dell
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ import (
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
+
+	gofish "github.com/stmcginnis/gofish/redfish"
 )
 
 var (
@@ -208,7 +211,48 @@ func (ob *outBand) IdentifyLEDOff() error {
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return ob.Redfish.SetBootOrder(target)
+	if ob.Board().BiosVersion >= "2.75.75.75" {
+		// Dell fixed a bug in this BIOS version, we can use the normal way now
+		return ob.Redfish.SetBootOrder(target)
+	}
+	// Dell has a bug in the implementation of setting the BootSourceOverrideEnabled to "Continuous". It only survives a single reboot
+	// Mentioned here under 159467: https://www.dell.com/support/manuals/en-us/dell-dss-7500/idrac8_2.75.75.75_rn/automation-api-and-cli?guid=guid-156e2423-80df-46f9-9d00-cb1018c6e227&lang=en-us
+	// And in this changelog: https://www.dell.com/support/home/en-us/drivers/driversdetails?driverid=krcxx
+
+	// As a workaround we modify the BootOrder directly
+	bootOptions, err := ob.Redfish.GetBootOptions()
+	if err != nil {
+		return err
+	}
+
+	switch target {
+	case hal.BootTargetBIOS:
+		return ob.Redfish.SetBootOrder(target)
+	case hal.BootTargetDisk:
+		hdOptions := []*gofish.BootOption{}
+		for _, option := range bootOptions {
+			if strings.HasPrefix(option.DisplayName, "HD(") {
+				hdOptions = append(hdOptions, option)
+			}
+		}
+		if len(hdOptions) == 0 {
+			return fmt.Errorf("no hard disk boot option found")
+		}
+		return ob.Redfish.SetBootOrderManually(hdOptions)
+	case hal.BootTargetPXE:
+		fallthrough
+	default:
+		nicOptions := []*gofish.BootOption{}
+		for _, option := range bootOptions {
+			if strings.Contains(option.DisplayName, "NIC") || strings.Contains(option.DisplayName, "PXE") {
+				nicOptions = append(nicOptions, option)
+			}
+		}
+		if len(nicOptions) == 0 {
+			return fmt.Errorf("no PXE boot option found")
+		}
+		return ob.Redfish.SetBootOrderManually(nicOptions)
+	}
 }
 
 func (ob *outBand) Describe() string {
