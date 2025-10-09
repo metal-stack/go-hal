@@ -231,7 +231,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	case hal.BootTargetDisk:
 		hdOptions := []*gofish.BootOption{}
 		for _, option := range bootOptions {
-			if strings.HasPrefix(option.DisplayName, "HD(") {
+			if strings.HasPrefix(option.UefiDevicePath, "HD(") {
 				hdOptions = append(hdOptions, option)
 			}
 		}
