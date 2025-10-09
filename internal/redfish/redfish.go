@@ -435,45 +435,53 @@ func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
 	return nil, fmt.Errorf("failed to get boot options")
 }
 
-// SetBootOrder sets the boot order to the given list of boot option IDs
+// SetBootOrder sets the boot order to match the sequence of the boot option entries
 func (c *APIClient) SetBootOrder(entries []*redfish.BootOption) error {
 	systems, err := c.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)
 	}
 
+	if len(systems) == 0 {
+		return fmt.Errorf("no system found to set boot order")
+	}
+
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
+	}
+
+	// Assuming there's typically one primary system.
+	system := systems[0]
+
 	var bootOrder []string
 	for _, entry := range entries {
 		bootOrder = append(bootOrder, entry.ID)
 	}
 
-	for _, system := range systems {
-		if len(system.Boot.BootOrder) == 0 {
-			c.log.Warnw("no boot order found", "error")
-			continue
-		}
-
-		payload := bootOrderSetRequest{}
-		payload.Boot.BootOrder = bootOrder
-
-		body, err := json.Marshal(payload)
-		if err != nil {
-			return err
-		}
-
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, system.ODataID, bytes.NewReader(body))
-		if err != nil {
-			return err
-		}
-		c.addHeadersAndAuth(req)
-		resp, err := c.Do(req)
-		if err == nil {
-			_ = resp.Body.Close()
-		}
-		if err != nil {
-			return fmt.Errorf("unable to set boot order: %w", err)
-		}
-		return nil
+	if len(system.Boot.BootOrder) == 0 {
+		c.log.Errorw("no boot order found")
 	}
-	return fmt.Errorf("no system found to set boot order")
+
+	payload := bootOrderSetRequest{}
+	payload.Boot.BootOrder = bootOrder
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+	resp, err := c.Do(req)
+	_ = resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("unable to set boot order: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
+	}
+
+	return nil
 }
