@@ -319,24 +319,40 @@ func (c *APIClient) setPersistentHDD() error {
 }
 
 func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
+	systems, err := c.Service.Systems()
+	if err != nil {
+		return fmt.Errorf("unable to query systems: %w", err)
+	}
+
+	if len(systems) == 0 {
+		return fmt.Errorf("no system found to set boot target")
+	}
+
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
+	}
+
+	// Assuming there's typically one primary system.
+	system := systems[0]
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
+	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
-
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
+	}
 	return nil
 }
 
