@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-version"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/inband"
@@ -211,13 +211,22 @@ func (ob *outBand) IdentifyLEDOff() error {
 	return ob.Redfish.SetChassisIdentifyLEDOff()
 }
 
+func cutVersion(ver string) string {
+	parts := strings.Split(ver, ".")
+	if len(parts) > 3 {
+		return strings.Join(parts[:3], ".")
+	}
+	return ver
+}
+
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	currentBiosVersion, errVersion := version.NewVersion(ob.Board().BiosVersion)
+	// cut the version to ensure it adheres to semver
+	currentBiosVersion, errVersion := semver.NewVersion(cutVersion(ob.Board().BiosVersion))
 	if errVersion != nil {
 		logger.Infow("failed to parse BIOS version '%s': %v, falling back to legacy boot device setup", ob.Board().BiosVersion, errVersion)
 	}
 	// Dell fixed a bug in this BIOS version, we can use the normal way now
-	neededBiosVersionCheck, errConstraint := version.NewConstraint(">= 2.75.75.75")
+	neededBiosVersionCheck, errConstraint := semver.NewConstraint(">= 2.75.75")
 	if errConstraint != nil {
 		logger.Infow("failed to parse BIOS version constraint: %w, falling back to legacy boot device setup", errConstraint)
 	}
