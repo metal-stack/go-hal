@@ -238,7 +238,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	case hal.BootTargetBIOS:
 		return ob.Redfish.SetBootTarget(target)
 	case hal.BootTargetDisk:
-		hdOptions := []*gofish.BootOption{}
+		var hdOptions []*gofish.BootOption
 		for _, option := range bootOptions {
 			if strings.HasPrefix(option.UefiDevicePath, "HD(") {
 				hdOptions = append(hdOptions, option)
@@ -251,7 +251,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	case hal.BootTargetPXE:
 		fallthrough
 	default:
-		nicOptions := []*gofish.BootOption{}
+		var nicOptions []*gofish.BootOption
 		for _, option := range bootOptions {
 			if strings.Contains(option.DisplayName, "NIC") || strings.Contains(option.DisplayName, "PXE") {
 				nicOptions = append(nicOptions, option)
