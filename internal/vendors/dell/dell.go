@@ -2,6 +2,7 @@ package dell
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/gliderlabs/ssh"
@@ -210,8 +211,42 @@ func (ob *outBand) IdentifyLEDOff() error {
 	return ob.Redfish.SetChassisIdentifyLEDOff()
 }
 
+func compareSemver(ver1, ver2 string) (int, error) {
+	parts1 := strings.Split(ver1, ".")
+	parts2 := strings.Split(ver2, ".")
+
+	if len(parts1) == 0 {
+		return 1, fmt.Errorf("ver1 argument is empty")
+	}
+
+	if len(parts2) == 0 {
+		return 1, fmt.Errorf("ver2 argument is empty")
+	}
+
+	maxlen := max(len(parts1), len(parts2))
+
+	for i := range maxlen {
+		var num1, num2 int
+
+		if len(parts1) >= i {
+			num1, _ = strconv.Atoi(parts1[i])
+		}
+
+		if len(parts2) >= i {
+			num2, _ = strconv.Atoi(parts2[i])
+		}
+
+		if diff := num1 - num2; diff != 0 {
+			return diff, nil
+		}
+	}
+
+	return 0, nil
+}
+
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	if ob.Board().BiosVersion >= "2.75.75.75" {
+	check, _ := compareSemver(ob.Board().BiosVersion, "2.75.75.75")
+	if check >= 0 {
 		// Dell fixed a bug in this BIOS version, we can use the normal way now
 		return ob.Redfish.SetBootTarget(target)
 	}
