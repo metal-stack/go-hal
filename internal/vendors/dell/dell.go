@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/console"
 	"github.com/metal-stack/go-hal/internal/inband"
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/outband"
@@ -55,9 +56,9 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a Dell server.
-func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
+func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int) hal.OutBand {
 	return &outBand{
-		OutBand: outband.ViaRedfish(r, board),
+		OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
 	}
 }
 
@@ -278,7 +279,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented
+	return console.OverSSH(s, ob.GetUsername(), ob.GetPassword(), ob.GetIP(), ob.GetSSHPort())
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {

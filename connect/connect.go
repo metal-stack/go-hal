@@ -48,7 +48,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 }
 
 // OutBand will detect the board and choose the correct outband hal implementation
-func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
+func OutBand(ip string, ipmiPort int, user, password string, sshPort int, log logger.Logger) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true, log)
 	if err != nil {
 		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
@@ -69,7 +69,7 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 	case api.VendorGigabyte:
 		return gigabyte.OutBand(r, b), nil
 	case api.VendorDell:
-		return dell.OutBand(r, b), nil
+		return dell.OutBand(r, b, user, password, ip, sshPort), nil
 	case api.VendorUnknown:
 		fallthrough
 	default:
