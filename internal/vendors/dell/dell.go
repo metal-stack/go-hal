@@ -226,8 +226,9 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	if errVersion != nil {
 		logger.Infow("failed to parse BIOS version '%s': %v, falling back to legacy boot device setup", ob.Board().BiosVersion, errVersion)
 	}
-	// Dell fixed a bug in this BIOS version, we can use the normal way now
-	neededBiosVersionCheck, errConstraint := semver.NewConstraint(">= 2.75.75")
+	// Dell fixed a bug in 2.75.75.75 BIOS version, we can use the normal way now
+	// As we drop the last part of the version we need to check for strictly greater than 2.75.75
+	neededBiosVersionCheck, errConstraint := semver.NewConstraint("> 2.75.75")
 	if errConstraint != nil {
 		logger.Infow("failed to parse BIOS version constraint: %w, falling back to legacy boot device setup", errConstraint)
 	}
