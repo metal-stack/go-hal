@@ -286,11 +286,11 @@ func (ob *outBand) Console(s ssh.Session) error {
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
-	return nil
+	return ob.Redfish.UpdateFirmware(url)
 }
 
 func (ob *outBand) UpdateBMC(url string) error {
-	return nil
+	return ob.Redfish.UpdateFirmware(url)
 }
 
 func (ob *outBand) BMCConnection() api.OutBandBMCConnection {

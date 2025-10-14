@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/metal-stack/go-hal"
@@ -483,5 +484,49 @@ func (c *APIClient) SetBootOrder(entries []*redfish.BootOption) error {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 
+	return nil
+}
+
+// UpdateFirmware triggers a firmware update using the given URL
+// BMC analyzes the file and chooses the right component to update
+func (c *APIClient) UpdateFirmware(url string) error {
+	// TODO NEEDS TESTING !!!
+	updateURL := c.urlPrefix + "/UpdateService/Actions/UpdateService.SimpleUpdate"
+
+	payload := struct {
+		ImageURI string `json:"ImageURI,omitempty"`
+	}{
+		ImageURI: url,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, updateURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("unable to trigger update: %w", err)
+	}
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			c.log.Warnw("unable to close response body", "error", err)
+		}
+	}()
+
+	body, _ = io.ReadAll(resp.Body)
+	// The response code is 202 for accepted, and we normally get no body
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		c.log.Infow("Update triggered successfully: %s\n", string(body))
+	} else {
+		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
+	}
 	return nil
 }
