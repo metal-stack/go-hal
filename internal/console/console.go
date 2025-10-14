@@ -92,7 +92,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	return err
 }
 
-func OverSSH(s ssh.Session, username, password, host string, port int) error {
+func OverSSH(s ssh.Session, username, password, host string, port int, log logger.Logger) error {
 	clientConfig := &cryptossh.ClientConfig{
 		User: username,
 		Auth: []cryptossh.AuthMethod{
@@ -116,7 +116,7 @@ func OverSSH(s ssh.Session, username, password, host string, port int) error {
 	}
 	defer func() {
 		if err := client.Close(); err != nil {
-			logger.Infow("failed to close client session: %v", err)
+			log.Infow("failed to close client session: %v", err)
 		}
 	}()
 
@@ -126,7 +126,7 @@ func OverSSH(s ssh.Session, username, password, host string, port int) error {
 	}
 	defer func() {
 		if err := session.Close(); err != nil {
-			logger.Infow("failed to close server session: %v", err)
+			log.Infow("failed to close server session: %v", err)
 		}
 	}()
 

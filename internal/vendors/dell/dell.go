@@ -35,6 +35,7 @@ type (
 	}
 	outBand struct {
 		*outband.OutBand
+		log logger.Logger
 	}
 	bmcConnection struct {
 		*inBand
@@ -56,9 +57,10 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 }
 
 // OutBand creates an outband connection to a Dell server.
-func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int) hal.OutBand {
+func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int, log logger.Logger) hal.OutBand {
 	return &outBand{
 		OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
+		log:     log,
 	}
 }
 
@@ -224,13 +226,13 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	// cut the version to ensure it adheres to semver
 	currentBiosVersion, errVersion := semver.NewVersion(cutVersion(ob.Board().BiosVersion))
 	if errVersion != nil {
-		logger.Infow("failed to parse BIOS version '%s': %v, falling back to legacy boot device setup", ob.Board().BiosVersion, errVersion)
+		ob.log.Infow("failed to parse BIOS version '%s': %v, falling back to legacy boot device setup", ob.Board().BiosVersion, errVersion)
 	}
 	// Dell fixed a bug in 2.75.75.75 BIOS version, we can use the normal way now
 	// As we drop the last part of the version we need to check for strictly greater than 2.75.75
 	neededBiosVersionCheck, errConstraint := semver.NewConstraint("> 2.75.75")
 	if errConstraint != nil {
-		logger.Infow("failed to parse BIOS version constraint: %w, falling back to legacy boot device setup", errConstraint)
+		ob.log.Infow("failed to parse BIOS version constraint: %w, falling back to legacy boot device setup", errConstraint)
 	}
 	if errVersion == nil && errConstraint == nil && neededBiosVersionCheck.Check(currentBiosVersion) {
 		return ob.Redfish.SetBootTarget(target)
@@ -280,7 +282,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return console.OverSSH(s, ob.GetUsername(), ob.GetPassword(), ob.GetIP(), ob.GetSSHPort())
+	return console.OverSSH(s, ob.GetUsername(), ob.GetPassword(), ob.GetIP(), ob.GetSSHPort(), ob.log)
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
