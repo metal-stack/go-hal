@@ -13,6 +13,8 @@ import (
 	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
 	cryptossh "golang.org/x/crypto/ssh"
+
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 func Open(s ssh.Session, cmd *exec.Cmd) error {
@@ -112,13 +114,21 @@ func OverSSH(s ssh.Session, username, password, host string, port int) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to iDRAC SSH: %w", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			logger.Infow("failed to close client session: %v", err)
+		}
+	}()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return fmt.Errorf("failed to create client session: %w", err)
 	}
-	defer session.Close()
+	defer func() {
+		if err := session.Close(); err != nil {
+			logger.Infow("failed to close server session: %v", err)
+		}
+	}()
 
 	pty, _, isPty := s.Pty()
 	if !isPty {

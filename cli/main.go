@@ -112,12 +112,12 @@ func outband(log logger.Logger) {
 
 	ssh.Handle(func(s ssh.Session) {
 		if err := ob.Console(s); err != nil {
-			fmt.Fprintf(s, "console error: %v\n", err)
+			_, _ = fmt.Fprintf(s, "console error: %v\n", err)
 		}
 	})
 
 	fmt.Println("Starting SSH server at :2222")
-	ssh.ListenAndServe(":2222", nil)
+	_ = ssh.ListenAndServe(":2222", nil)
 
 	if len(uu) > 0 {
 		fmt.Println("Unexpected things:")
