@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal"
 
 	"github.com/metal-stack/go-hal/connect"
@@ -17,7 +18,8 @@ var (
 	user     = flag.String("user", "ADMIN", "bmc username")
 	password = flag.String("password", "ADMIN", "bmc password")
 	host     = flag.String("host", "localhost", "bmc host")
-	port     = flag.Int("port", 623, "bmc port")
+	ipmiPort = flag.Int("ipmi-port", 623, "bmc IPMI port")
+	sshPort  = flag.Int("ssh-port", 22, "bmc ssh port")
 
 	errHelp = errors.New("usage: -bandtype inband|outband")
 )
@@ -50,7 +52,7 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	ob, err := connect.OutBand(*host, *port, *user, *password, log)
+	ob, err := connect.OutBand(*host, *ipmiPort, *user, *password, *sshPort, log)
 	if err != nil {
 		panic(err)
 	}
@@ -105,6 +107,17 @@ func outband(log logger.Logger) {
 	//if err != nil {
 	//	ee["UpdateBMC"] = err
 	//}
+
+	// ob.BootFrom(hal.BootTargetDisk)
+
+	ssh.Handle(func(s ssh.Session) {
+		if err := ob.Console(s); err != nil {
+			fmt.Fprintf(s, "console error: %v\n", err)
+		}
+	})
+
+	fmt.Println("Starting SSH server at :2222")
+	ssh.ListenAndServe(":2222", nil)
 
 	if len(uu) > 0 {
 		fmt.Println("Unexpected things:")
