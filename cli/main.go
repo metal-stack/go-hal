@@ -19,7 +19,7 @@ var (
 	password = flag.String("password", "ADMIN", "bmc password")
 	host     = flag.String("host", "localhost", "bmc host")
 	ipmiPort = flag.Int("ipmi-port", 623, "bmc IPMI port")
-	sshPort  = flag.Int("ssh-port", 22, "bmc ssh port")
+	// sshPort  = flag.Int("ssh-port", 22, "bmc ssh port")
 
 	errHelp = errors.New("usage: -bandtype inband|outband")
 )
@@ -52,7 +52,7 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	ob, err := connect.OutBand(*host, *ipmiPort, *user, *password, *sshPort, log)
+	ob, err := connect.OutBand(*host, *ipmiPort, *user, *password, log)
 	if err != nil {
 		panic(err)
 	}
