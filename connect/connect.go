@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+
 	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
@@ -69,7 +70,8 @@ func OutBand(ip string, ipmiPort int, user, password string, sshPort int, log lo
 	case api.VendorGigabyte:
 		return gigabyte.OutBand(r, b), nil
 	case api.VendorDell:
-		return dell.OutBand(r, b, user, password, ip, sshPort, log), nil
+		// return dell.OutBand(r, b, user, password, ip, sshPort, log), nil
+		return dell.OutBand(r, b), nil
 	case api.VendorUnknown:
 		fallthrough
 	default:

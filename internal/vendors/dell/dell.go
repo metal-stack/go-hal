@@ -56,11 +56,19 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	}, nil
 }
 
+// // OutBand creates an outband connection to a Dell server.
+//
+//	func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int, log logger.Logger) hal.OutBand {
+//		return &outBand{
+//			OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
+//			log:     log,
+//		}
+//	}
+//
 // OutBand creates an outband connection to a Dell server.
-func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int, log logger.Logger) hal.OutBand {
+func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	return &outBand{
-		OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
-		log:     log,
+		OutBand: outband.ViaRedfish(r, board),
 	}
 }
 
