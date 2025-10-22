@@ -26,7 +26,8 @@ var (
 )
 
 const (
-	vendor = api.VendorDell
+	vendor  = api.VendorDell
+	sshPort = 22 // default SSH port for Dell BMCs
 )
 
 type (
@@ -56,19 +57,11 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 	}, nil
 }
 
-// // OutBand creates an outband connection to a Dell server.
-//
-//	func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int, log logger.Logger) hal.OutBand {
-//		return &outBand{
-//			OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
-//			log:     log,
-//		}
-//	}
-//
 // OutBand creates an outband connection to a Dell server.
-func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
+func OutBand(r *redfish.APIClient, board *api.Board, user, password, ip string, log logger.Logger) hal.OutBand {
 	return &outBand{
-		OutBand: outband.ViaRedfish(r, board),
+		OutBand: outband.ViaRedfishPlusSSH(r, board, user, password, ip, sshPort),
+		log:     log,
 	}
 }
 

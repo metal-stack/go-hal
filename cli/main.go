@@ -19,7 +19,6 @@ var (
 	password = flag.String("password", "ADMIN", "bmc password")
 	host     = flag.String("host", "localhost", "bmc host")
 	ipmiPort = flag.Int("ipmi-port", 623, "bmc IPMI port")
-	// sshPort  = flag.Int("ssh-port", 22, "bmc ssh port")
 
 	errHelp = errors.New("usage: -bandtype inband|outband")
 )
