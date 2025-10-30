@@ -48,7 +48,7 @@ type (
 
 // InBand creates an inband connection to a Dell server.
 func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
-	ib, err := inband.New(board, false, log)
+	ib, err := inband.New(board, true, log)
 	if err != nil {
 		return nil, err
 	}
