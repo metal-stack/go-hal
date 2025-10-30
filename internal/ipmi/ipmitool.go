@@ -233,7 +233,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 		i.log.Errorw("unable to execute ipmitool ignoring...'fru':%v %s", cmdOutput, err)
 	}
 	fruMap := i.output2Map("fru", cmdOutput)
-	from(config, fruMap)
+	from(&config, fruMap)
 	return config, nil
 }
 
@@ -246,7 +246,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 		return bmc, fmt.Errorf("unable to execute ipmitool 'bmc info':%v %w", cmdOutput, err)
 	}
 	bmcMap := i.output2Map("bmc info", cmdOutput)
-	from(bmc, bmcMap)
+	from(&bmc, bmcMap)
 	return bmc, nil
 }
 
@@ -259,7 +259,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 		return config, fmt.Errorf("unable to execute ipmitool 'lan print':%v %w", cmdOutput, err)
 	}
 	lanConfigMap := i.output2Map("lan print", cmdOutput)
-	from(config, lanConfigMap)
+	from(&config, lanConfigMap)
 	return config, nil
 }
 
@@ -272,7 +272,7 @@ func (i *Ipmitool) GetSession() (Session, error) {
 		return session, fmt.Errorf("unable to execute ipmitool 'session info all':%v %w", cmdOutput, err)
 	}
 	sessionMap := i.output2Map("session info", cmdOutput)
-	from(session, sessionMap)
+	from(&session, sessionMap)
 	return session, nil
 }
 
