@@ -39,7 +39,7 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	case api.VendorGigabyte:
 		return gigabyte.InBand(b, log)
 	case api.VendorDell:
-		return dell.InBand(api.VagrantBoard, log)
+		return dell.InBand(b, log)
 	case api.VendorUnknown:
 		fallthrough
 	default:
