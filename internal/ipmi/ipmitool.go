@@ -224,6 +224,7 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 
 // GetFru returns the Field Replaceable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
+	i.log.Debugw("getFru")
 	config := &Fru{}
 
 	cmdOutput, err := i.Run("fru")
@@ -238,6 +239,7 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 
 // GetBMCInfo returns the BMC info
 func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
+	i.log.Debugw("getBmcInfo")
 	bmc := &BMCInfo{}
 	cmdOutput, err := i.Run("bmc", "info")
 	if err != nil {
@@ -250,6 +252,7 @@ func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
 
 // GetLanConfig returns the LAN config
 func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
+	i.log.Debugw("getLanConfig")
 	config := &LanConfig{}
 	cmdOutput, err := i.Run("lan", "print")
 	if err != nil {
@@ -262,6 +265,7 @@ func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
 
 // GetSession returns the session
 func (i *Ipmitool) GetSession() (Session, error) {
+	i.log.Debugw("getSession")
 	session := &Session{}
 	cmdOutput, err := i.Run("session", "info", "all")
 	if err != nil {
@@ -586,7 +590,9 @@ func from(target any, input map[string]string) {
 		tag := typeField.Tag
 
 		ipmitoolKey := tag.Get("ipmitool")
-		valueField.SetString(input[ipmitoolKey])
+		if value, ok := input[ipmitoolKey]; ok {
+			valueField.SetString(value)
+		}
 	}
 }
 
