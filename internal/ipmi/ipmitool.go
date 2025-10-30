@@ -227,11 +227,9 @@ func (i *Ipmitool) GetFru() (Fru, error) {
 	i.log.Debugw("getFru")
 	config := Fru{}
 
-	cmdOutput, err := i.Run("fru")
-	if err != nil {
-		// FIXME
-		i.log.Errorw("unable to execute ipmitool ignoring...'fru':%v %s", cmdOutput, err)
-	}
+	// FIXME
+	cmdOutput, _ := i.Run("fru")
+
 	fruMap := i.output2Map("fru", cmdOutput)
 	from(&config, fruMap)
 	return config, nil
