@@ -154,11 +154,15 @@ func (i *Ipmitool) BMC() (*api.BMC, error) {
 	}
 	fru, err := i.GetFru()
 	if err != nil {
-		return nil, err
+		// FIXME
+		i.log.Errorw("unable to get fru:%s", err)
+		// return nil, err
 	}
 	info, err := i.GetBMCInfo()
 	if err != nil {
-		return nil, err
+		// FIXME
+		i.log.Errorw("unable to get bmcinfo:%s", err)
+		// return nil, err
 	}
 	bmc := &api.BMC{
 		IP:                  lan.IP,
