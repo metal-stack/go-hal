@@ -221,17 +221,15 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 // GetFru returns the Field Replaceable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
 	config := &Fru{}
-	// FIXME
-	return *config, nil
 
-	// cmdOutput, err := i.Run("fru")
-	// if err != nil {
-	// 	// FIXME
-	// 	i.log.Errorw("unable to execute ipmitool ignoring...'fru':%v %w", cmdOutput, err)
-	// }
-	// fruMap := i.output2Map(cmdOutput)
-	// from(config, fruMap)
-	// return *config, nil
+	cmdOutput, err := i.Run("fru")
+	if err != nil {
+		// FIXME
+		i.log.Errorw("unable to execute ipmitool ignoring...'fru':%v %w", cmdOutput, err)
+	}
+	fruMap := i.output2Map(cmdOutput)
+	from(config, fruMap)
+	return *config, nil
 }
 
 // GetBMCInfo returns the BMC info
