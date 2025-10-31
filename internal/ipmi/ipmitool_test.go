@@ -154,7 +154,7 @@ func Test_getLanConfig(t *testing.T) {
 		tt := tests[i]
 		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
-			got := i.output2Map("test", tt.cmdOutput)
+			got := i.output2Map(tt.cmdOutput)
 			for key, value := range tt.want {
 				if got[key] != value {
 					t.Errorf("getLanConfig() = %v, want %v", got[key], value)
@@ -182,7 +182,7 @@ func Test_getBmcInfog(t *testing.T) {
 		tt := tests[i]
 		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
-			got := i.output2Map("test", tt.cmdOutput)
+			got := i.output2Map(tt.cmdOutput)
 			b := &BMCInfo{}
 			from(b, got)
 			require.Equal(t, tt.want, b)
@@ -211,7 +211,7 @@ func Test_getFru(t *testing.T) {
 		tt := tests[i]
 		i := Ipmitool{log: logger.New()}
 		t.Run(tt.name, func(t *testing.T) {
-			got := i.output2Map("test", tt.cmdOutput)
+			got := i.output2Map(tt.cmdOutput)
 			b := &Fru{}
 			from(b, got)
 			require.Equal(t, tt.want, b)
@@ -261,7 +261,7 @@ func TestLanConfig_From(t *testing.T) {
 				IP:  "192.168.2.53",
 				Mac: "ac:1f:6b:73:c9:f0",
 			},
-			input: i.output2Map("test", lanPrint2),
+			input: i.output2Map(lanPrint2),
 		},
 	}
 	for i := range tests {
