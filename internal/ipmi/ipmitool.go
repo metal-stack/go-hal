@@ -224,54 +224,50 @@ func (i *Ipmitool) Run(args ...string) (string, error) {
 
 // GetFru returns the Field Replaceable Unit information
 func (i *Ipmitool) GetFru() (Fru, error) {
-	i.log.Debugw("getFru")
-	config := Fru{}
-
-	// FIXME
-	cmdOutput, _ := i.Run("fru")
-
-	fruMap := i.output2Map("fru", cmdOutput)
-	from(&config, fruMap)
-	return config, nil
+	config := &Fru{}
+	cmdOutput, err := i.Run("fru")
+	if err != nil {
+		return *config, fmt.Errorf("unable to execute ipmitool 'fru':%v %w", cmdOutput, err)
+	}
+	fruMap := i.output2Map(cmdOutput)
+	from(config, fruMap)
+	return *config, nil
 }
 
 // GetBMCInfo returns the BMC info
 func (i *Ipmitool) GetBMCInfo() (BMCInfo, error) {
-	i.log.Debugw("getBmcInfo")
-	bmc := BMCInfo{}
+	bmc := &BMCInfo{}
 	cmdOutput, err := i.Run("bmc", "info")
 	if err != nil {
-		return bmc, fmt.Errorf("unable to execute ipmitool 'bmc info':%v %w", cmdOutput, err)
+		return *bmc, fmt.Errorf("unable to execute ipmitool 'bmc info':%v %w", cmdOutput, err)
 	}
-	bmcMap := i.output2Map("bmc info", cmdOutput)
-	from(&bmc, bmcMap)
-	return bmc, nil
+	bmcMap := i.output2Map(cmdOutput)
+	from(bmc, bmcMap)
+	return *bmc, nil
 }
 
 // GetLanConfig returns the LAN config
 func (i *Ipmitool) GetLanConfig() (LanConfig, error) {
-	i.log.Debugw("getLanConfig")
-	config := LanConfig{}
+	config := &LanConfig{}
 	cmdOutput, err := i.Run("lan", "print")
 	if err != nil {
-		return config, fmt.Errorf("unable to execute ipmitool 'lan print':%v %w", cmdOutput, err)
+		return *config, fmt.Errorf("unable to execute ipmitool 'lan print':%v %w", cmdOutput, err)
 	}
-	lanConfigMap := i.output2Map("lan print", cmdOutput)
-	from(&config, lanConfigMap)
-	return config, nil
+	lanConfigMap := i.output2Map(cmdOutput)
+	from(config, lanConfigMap)
+	return *config, nil
 }
 
 // GetSession returns the session
 func (i *Ipmitool) GetSession() (Session, error) {
-	i.log.Debugw("getSession")
-	session := Session{}
+	session := &Session{}
 	cmdOutput, err := i.Run("session", "info", "all")
 	if err != nil {
-		return session, fmt.Errorf("unable to execute ipmitool 'session info all':%v %w", cmdOutput, err)
+		return *session, fmt.Errorf("unable to execute ipmitool 'session info all':%v %w", cmdOutput, err)
 	}
-	sessionMap := i.output2Map("session info", cmdOutput)
-	from(&session, sessionMap)
-	return session, nil
+	sessionMap := i.output2Map(cmdOutput)
+	from(session, sessionMap)
+	return *session, nil
 }
 
 type bmcRequest struct {
@@ -557,7 +553,7 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	return console.Open(s, cmd)
 }
 
-func (i *Ipmitool) output2Map(source, cmdOutput string) map[string]string {
+func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
 	result := make(map[string]string)
 	scanner := bufio.NewScanner(strings.NewReader(cmdOutput))
 	for scanner.Scan() {
@@ -574,7 +570,7 @@ func (i *Ipmitool) output2Map(source, cmdOutput string) map[string]string {
 		result[key] = value
 	}
 	for k, v := range result {
-		i.log.Debugw("source", source, "output", "key", k, "value", v)
+		i.log.Debugw("output", "key", k, "value", v)
 	}
 	return result
 }
@@ -588,9 +584,7 @@ func from(target any, input map[string]string) {
 		tag := typeField.Tag
 
 		ipmitoolKey := tag.Get("ipmitool")
-		if value, ok := input[ipmitoolKey]; ok {
-			valueField.SetString(value)
-		}
+		valueField.SetString(input[ipmitoolKey])
 	}
 }
 
