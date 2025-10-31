@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/metal-stack/go-hal/pkg/logger"
+	"github.com/stretchr/testify/require"
 )
 
 // Output of root@ipmitest:~# ipmitool lan print
@@ -41,6 +42,88 @@ Cipher Suite Priv Max   : XaaaXXaaaXXaaXX
 Bad Password Threshold  : Not Available
 `
 const lanPrint2 = "Set in Progress         : Set Complete\nAuth Type Support       : NONE MD2 MD5 PASSWORD \nAuth Type Enable        : Callback : MD2 MD5 PASSWORD \n                        : User     : MD2 MD5 PASSWORD \n                        : Operator : MD2 MD5 PASSWORD \n                        : Admin    : MD2 MD5 PASSWORD \n                        : OEM      : MD2 MD5 PASSWORD \nIP Address Source       : DHCP Address\nIP Address              : 192.168.2.53\nSubnet Mask             : 255.255.255.0\nMAC Address             : ac:1f:6b:73:c9:f0\nSNMP Community String   : public\nIP Header               : TTL=0x00 Flags=0x00 Precedence=0x00 TOS=0x00\nBMC ARP Control         : ARP Responses Enabled, Gratuitous ARP Disabled\nDefault Gateway IP      : 192.168.2.1\nDefault Gateway MAC     : 00:00:00:00:00:00\nBackup Gateway IP       : 0.0.0.0\nBackup Gateway MAC      : 00:00:00:00:00:00\n802.1q VLAN ID          : Disabled\n802.1q VLAN Priority    : 0\nRMCP+ Cipher Suites     : 1,2,3,6,7,8,11,12\nCipher Suite Priv Max   : XaaaXXaaaXXaaXX\n                        :     X=Cipher Suite Unused\n                        :     c=CALLBACK\n                        :     u=USER\n                        :     o=OPERATOR\n                        :     a=ADMIN\n                        :     O=OEM\nBad Password Threshold  : 0\nInvalid password disable: no\nAttempt Count Reset Int.: 0\nUser Lockout Interval   : 0\n"
+
+const bmcInfo = `
+Device ID                 : 32
+Device Revision           : 1
+Firmware Revision         : 7.00
+IPMI Version              : 2.0
+Manufacturer ID           : 674
+Manufacturer Name         : Dell Inc.
+Product ID                : 256 (0x0100)
+Product Name              : Unknown (0x100)
+Device Available          : yes
+Provides Device SDRs      : yes
+Additional Device Support :
+    Sensor Device
+    SDR Repository Device
+    SEL Device
+    FRU Inventory Device
+    IPMB Event Receiver
+    Bridge
+    Chassis Device
+Aux Firmware Rev Info     : 
+    0x00
+    0x03
+    0x00
+    0xb7
+`
+
+const fru = `
+FRU Device Description : Builtin FRU Device (ID 0)                                                                                                                                                                                              
+ Board Mfg Date        : Fri 15 Dec 2017 09:34:00 PM CET CET                                                                                                                                                                                    
+ Board Mfg             : DELL                                                                                                                                                                                                                   
+ Board Product         : PowerEdge R540                                                                                                                                                                                                         
+ Board Serial          : CNFCP007CE00WG                                                                                                                                                                                                         
+ Board Part Number     : 0N28XXA02                                                                                                                                                                                                              
+ Product Manufacturer  : DELL                                                                                                                                                                                                                   
+ Product Name          : PowerEdge R540                                                                                                                                                                                                         
+ Product Version       : 01                                                                                                                                                                                                                     
+ Product Serial        : DR8L3N2                                                                                                                                                                                                                
+ Product Asset Tag     :                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                
+FRU Device Description : PS1 (ID 1)                                                                                                                                                                                                             
+ Board Mfg Date        : Tue 14 Nov 2017 12:56:00 PM CET CET                                                                                                                                                                                    
+ Board Mfg             : DELL                                                                                                                                                                                                                   
+ Board Product         : PWR SPLY,750W,RDNT,DELTA                                                                                                                                                                                               
+ Board Serial          : CNDED007BE9YEX                                                                                                                                                                                                         
+ Board Part Number     : 05RHVVA02                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                
+FRU Device Description : PS2 (ID 2)                                                                                                                                                                                                             
+ Board Mfg Date        : Tue 14 Nov 2017 12:46:00 PM CET CET                                                                                                                                                                                    
+ Board Mfg             : DELL                                                                                                                                                                                                                   
+ Board Product         : PWR SPLY,750W,RDNT,DELTA                                                                                                                                                                                               
+ Board Serial          : CNDED007BE9YEV                                                                                                                                                                                                         
+ Board Part Number     : 05RHVVA02                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                
+FRU Device Description : BP1 (ID 13)                                                                                                                                                                                                            
+ Board Mfg Date        : Sat 29 Jul 2017 05:28:00 PM CEST CEST                                                                                                                                                                                  
+ Board Mfg             : DELL                                                                                                                                                                                                                   
+ Board Product         : DRIVE BACKPLANE                                                                                                                                                                                                        
+ Board Serial          : CNIVC0077T0039                                                                                                                                                                                                         
+ Board Part Number     : 08N0NGA00                                                                                                                                                                                                              
+
+FRU Device Description : NDC (ID 4)                                                                                     
+ Device not present (Timeout)                                                                                           
+
+FRU Device Description : PERC1 (ID 10)                                                                                  
+ Board Mfg Date        : Sun 24 Dec 2017 05:27:00 AM CET CET                                                            
+ Board Mfg             : DELL                                                                                           
+ Board Product         : Dell Storage Cntlr. H730P - Adp.                                                               
+ Board Serial          : CNFCP007CL004R                                                                                 
+ Board Part Number     : 0J14DCA03                                                                                      
+
+FRU Device Description : OEM fru (ID 17)                                                                                
+
+FRU Device Description : BP0 (ID 12)                                                                                    
+ Device not present (Timeout)                                                                                           
+
+FRU Device Description : OCP Mezz (ID 7)                                                                                
+ Device not present (Timeout)                                                                                           
+
+FRU Device Description : PERC2 (ID 11)                                                                                  
+ Device not present (Parameter out of range)                                                                            
+`
 
 func Test_getLanConfig(t *testing.T) {
 	tests := []struct {
@@ -80,6 +163,62 @@ func Test_getLanConfig(t *testing.T) {
 		})
 	}
 }
+
+func Test_getBmcInfog(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmdOutput string
+		want      *BMCInfo
+	}{
+		{
+			name:      "simple",
+			cmdOutput: bmcInfo,
+			want: &BMCInfo{
+				FirmwareRevision: "7.00",
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		i := Ipmitool{log: logger.New()}
+		t.Run(tt.name, func(t *testing.T) {
+			got := i.output2Map("test", tt.cmdOutput)
+			b := &BMCInfo{}
+			from(b, got)
+			require.Equal(t, tt.want, b)
+		})
+	}
+}
+
+func Test_getFru(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmdOutput string
+		want      *Fru
+	}{
+		{
+			name:      "simple",
+			cmdOutput: fru,
+			want: &Fru{
+				BoardMfg:            "DELL",
+				BoardPartNumber:     "0J14DCA03",
+				ProductManufacturer: "DELL",
+				ProductSerial:       "DR8L3N2",
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		i := Ipmitool{log: logger.New()}
+		t.Run(tt.name, func(t *testing.T) {
+			got := i.output2Map("test", tt.cmdOutput)
+			b := &Fru{}
+			from(b, got)
+			require.Equal(t, tt.want, b)
+		})
+	}
+}
+
 func TestGetLanConfig(t *testing.T) {
 	tests := []struct {
 		name    string
