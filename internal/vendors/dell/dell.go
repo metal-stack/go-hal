@@ -122,7 +122,7 @@ func (c *bmcConnection) PresentSuperUser() api.BMCUser {
 
 func (c *bmcConnection) SuperUser() api.BMCUser {
 	return api.BMCUser{
-		Name:          "superuser",
+		Name:          "root",
 		Id:            "4",
 		ChannelNumber: 1,
 	}
