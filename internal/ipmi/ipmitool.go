@@ -446,7 +446,7 @@ func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
 
 	out, err := i.Run(req.disableUserArgs...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to disable user %s with id %s: %s %w", req.username, req.uid, out, err)
 	}
 
 	return nil
