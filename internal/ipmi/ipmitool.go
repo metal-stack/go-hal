@@ -427,7 +427,7 @@ func (i *Ipmitool) changePassword(req bmcRequest) (string, error) {
 
 func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
 	if enabled {
-		retry.Do(
+		err := retry.Do(
 			func() error {
 				out, err := i.Run(req.enableUserArgs...)
 				if err != nil {
@@ -441,7 +441,7 @@ func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
 			retry.Delay(1*time.Second),
 			retry.Attempts(30),
 		)
-		return nil
+		return err
 	}
 
 	out, err := i.Run(req.disableUserArgs...)
