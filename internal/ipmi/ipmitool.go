@@ -426,13 +426,23 @@ func (i *Ipmitool) changePassword(req bmcRequest) (string, error) {
 }
 
 func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
-	if enabled {
-		out, err := i.Run(req.enableUserArgs...)
-		if err != nil {
-			return fmt.Errorf("failed to enable user %s with id %s: %s %w", req.username, req.uid, out, err)
-		}
-		return nil
-	}
+	err := retry.Do(
+		func() error {
+			if enabled {
+				out, err := i.Run(req.enableUserArgs...)
+				if err != nil {
+					return fmt.Errorf("failed to enable user %s with id %s: %s %w", req.username, req.uid, out, err)
+				}
+				return nil
+			}
+			return nil
+		},
+		retry.OnRetry(func(n uint, err error) {
+			i.log.Infow("retry ipmi password creation", "user", req.username, "id", req.uid, "retry", n, "cause", err)
+		}),
+		retry.Delay(1*time.Second),
+		retry.Attempts(30),
+	)
 
 	out, err := i.Run(req.disableUserArgs...)
 	if err != nil {
