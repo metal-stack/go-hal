@@ -443,6 +443,9 @@ func (i *Ipmitool) setUserEnabled(req bmcRequest, enabled bool) error {
 		retry.Delay(1*time.Second),
 		retry.Attempts(30),
 	)
+	if err != nil {
+		return err
+	}
 
 	out, err := i.Run(req.disableUserArgs...)
 	if err != nil {
