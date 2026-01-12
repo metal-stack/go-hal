@@ -8,9 +8,13 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/gliderlabs/ssh"
+	cryptossh "golang.org/x/crypto/ssh"
+
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 func Open(s ssh.Session, cmd *exec.Cmd) error {
@@ -86,4 +90,64 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	}
 
 	return err
+}
+
+func OverSSH(s ssh.Session, username, password, host string, port int, log logger.Logger) error {
+	clientConfig := &cryptossh.ClientConfig{
+		User: username,
+		Auth: []cryptossh.AuthMethod{
+			cryptossh.KeyboardInteractive( // For some reason KeyboardInteractive is needed instead of Password
+				cryptossh.KeyboardInteractiveChallenge(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
+					answers := make([]string, len(questions))
+					for i := range questions {
+						answers[i] = password // respond with password for all prompts
+					}
+					return answers, nil
+				}),
+			),
+		},
+		HostKeyCallback: cryptossh.InsecureIgnoreHostKey(), // TODO: replace with proper host key verification
+		Timeout:         10 * time.Second,                  // TODO put a reasonable timeout? Make configurable?
+	}
+
+	client, err := cryptossh.Dial("tcp", fmt.Sprintf("%s:%d", host, port), clientConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to iDRAC SSH: %w", err)
+	}
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Infow("failed to close client session: %v", err)
+		}
+	}()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("failed to create client session: %w", err)
+	}
+	defer func() {
+		if err := session.Close(); err != nil {
+			log.Infow("failed to close server session: %v", err)
+		}
+	}()
+
+	pty, _, isPty := s.Pty()
+	if !isPty {
+		return fmt.Errorf("server failed to allocate a PTY")
+	}
+	modes := cryptossh.TerminalModes{
+		cryptossh.ECHO: 1, // enable echoing to see the command while typing
+	}
+	err = session.RequestPty(pty.Term, pty.Window.Height, pty.Window.Width, modes)
+	if err != nil {
+		return fmt.Errorf("request for pty failed: %w", err)
+	}
+
+	session.Stdin = s
+	session.Stdout = s
+	session.Stderr = s
+
+	if err := session.Shell(); err != nil {
+		return fmt.Errorf("failed to start shell: %w", err)
+	}
+	return session.Wait()
 }
