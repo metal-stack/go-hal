@@ -36,6 +36,8 @@ const (
 	X13SCD_F
 	// Newer Microclouds
 	H13SRD_F
+	// AMD Workstation Board
+	H13SRH
 )
 
 var (
@@ -56,6 +58,8 @@ var (
 		"X13SCD-F": X13SCD_F,
 		// Newer Microclouds
 		"H13SRD-F": H13SRD_F,
+		// AMD Workstation Board
+		"H13SRH": H13SRH,
 	}
 
 	// SUM does not complain or fail if more boot options are given than actually available
@@ -273,8 +277,12 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	s.log.Infow("firmware", "is", firmware, "board", s.boardModel, "boardname", s.boardName)
 
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
-	if firmware == kernel.EFI && (s.boardModel == X11SDV_8C_TP8F || s.boardModel == X11SDD_8C_F || s.boardModel == X12DPT_B6 || s.boardModel == X13DDW_A || s.boardModel == X13SCD_F || s.boardModel == H13SRD_F) {
-		return false, nil
+	if firmware == kernel.EFI {
+		switch s.boardModel {
+		case X11SDV_8C_TP8F, X11SDD_8C_F, X12DPT_B6, X13DDW_A, X13SCD_F, H13SRD_F, H13SRH:
+			s.log.Infow("UEFI only board detected, skip bios configuration", "board", s.boardName, "model", s.boardModel)
+			return false, nil
+		}
 	}
 
 	err := s.prepare()
@@ -301,7 +309,9 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 // EnsureBootOrder ensures BIOS boot order so that boot from the given allocated OS image is attempted before PXE boot.
 func (s *sum) EnsureBootOrder(bootloaderID string) error {
 	s.bootloaderID = bootloaderID
-	if s.boardModel == X13DDW_A || s.boardModel == X12DPT_B6 || s.boardModel == X13SCD_F || s.boardModel == H13SRD_F {
+
+	switch s.boardModel {
+	case X13DDW_A, X12DPT_B6, X13SCD_F, H13SRD_F, H13SRH:
 		s.log.Infow("GPU board detected, skip bios modification", "board", s.boardName)
 		return nil
 	}
