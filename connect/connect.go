@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
@@ -23,6 +24,9 @@ var (
 func InBand(log logger.Logger) (hal.InBand, error) {
 	b, err := dmi.BoardInfo()
 	if err != nil {
+		b = api.VagrantBoard
+	}
+	if b.Vendor == 0 {
 		b = api.VagrantBoard
 	}
 	b.Vendor = api.GuessVendor(b.VendorString)
