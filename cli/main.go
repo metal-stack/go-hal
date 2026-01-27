@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/metal-lib/pkg/pointer"
 
 	"github.com/metal-stack/go-hal/connect"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -50,7 +52,7 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	ob, err := connect.OutBand(*host, *port, *user, *password, log)
+	ob, err := connect.OutBand(*host, *port, *user, *password, log, pointer.Pointer(10*time.Second))
 	if err != nil {
 		panic(err)
 	}
