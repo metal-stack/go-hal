@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/pkg/logger"
+	"github.com/metal-stack/metal-lib/pkg/pointer"
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
@@ -19,13 +21,14 @@ import (
 )
 
 type APIClient struct {
-	*gofish.APIClient
+	client *gofish.APIClient
 	*http.Client
-	urlPrefix string
-	user      string
-	password  string
-	basicAuth string
-	log       logger.Logger
+	urlPrefix         string
+	user              string
+	password          string
+	basicAuth         string
+	log               logger.Logger
+	connectionTimeout time.Duration
 }
 
 type bootOverrideRequest struct {
@@ -42,7 +45,7 @@ type indicatorLEDRequest struct {
 	IndicatorLED common.IndicatorLED `json:"IndicatorLED"`
 }
 
-func New(url, user, password string, insecure bool, log logger.Logger) (*APIClient, error) {
+func New(url, user, password string, insecure bool, log logger.Logger, connectionTimeout *time.Duration) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
 	config := gofish.ClientConfig{
 		Endpoint: url,
@@ -50,24 +53,37 @@ func New(url, user, password string, insecure bool, log logger.Logger) (*APIClie
 		Password: password,
 		Insecure: insecure,
 	}
-	c, err := gofish.Connect(config)
+
+	timeout := 10 * time.Second
+	if connectionTimeout != nil {
+		timeout = *connectionTimeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	c, err := gofish.ConnectContext(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 	return &APIClient{
-		APIClient: c,
-		Client:    c.HTTPClient,
-		user:      user,
-		password:  password,
-		basicAuth: base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
-		urlPrefix: fmt.Sprintf("%s/redfish/v1", url),
-		log:       log,
+		client:            c,
+		Client:            c.HTTPClient,
+		user:              user,
+		password:          password,
+		basicAuth:         base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
+		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
+		log:               log,
+		connectionTimeout: timeout,
 	}, nil
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
 	// Query the chassis data using the session token
-	if c.Service == nil {
+	if g.Service == nil {
 		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
 	}
 
@@ -75,7 +91,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	manufacturer := ""
 	model := ""
 
-	systems, err := c.Service.Systems()
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -98,7 +114,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		}
 	}
 
-	chassis, err := c.Service.Chassis()
+	chassis, err := g.Service.Chassis()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -110,11 +126,15 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				c.log.Warnw("ignoring power detection", "error", err)
 			} else {
 				for _, pc := range power.PowerControl {
+					if pc.PowerMetrics == nil {
+						continue
+					}
+					pm := *pc.PowerMetrics
 					powerMetric = &api.PowerMetric{
-						AverageConsumedWatts: pc.PowerMetrics.AverageConsumedWatts,
-						IntervalInMin:        pc.PowerMetrics.IntervalInMin,
-						MaxConsumedWatts:     pc.PowerMetrics.MaxConsumedWatts,
-						MinConsumedWatts:     pc.PowerMetrics.MinConsumedWatts,
+						AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
+						IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
+						MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
+						MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
 					}
 					c.log.Debugw("power consumption", "metrics", powerMetric)
 					break
@@ -162,7 +182,10 @@ func toMetalLEDState(state common.IndicatorLED) string {
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Errorw("error during system query, unable to detect uuid", "error", err.Error())
 		return "", err
@@ -176,7 +199,10 @@ func (c *APIClient) MachineUUID() (string, error) {
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -205,7 +231,10 @@ func (c *APIClient) PowerCycle() error {
 }
 
 func (c *APIClient) setPower(resetType redfish.ResetType) error {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -320,7 +349,10 @@ func (c *APIClient) setPersistentHDD() error {
 }
 
 func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)
 	}
@@ -376,12 +408,15 @@ func (c *APIClient) setNextBootBIOS() error {
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 
-	chassis, err := c.Service.Chassis()
+	chassis, err := g.Service.Chassis()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -412,7 +447,10 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 
 func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
 	// The curl command here would be curl -k -u <user>:<pwd> https://10.1.1.18/redfish/v1/Systems/System.Embedded.1/BootOptions
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
@@ -438,7 +476,10 @@ func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
 
 // SetBootOrder sets the boot order to match the sequence of the boot option entries
 func (c *APIClient) SetBootOrder(entries []*redfish.BootOption) error {
-	systems, err := c.Service.Systems()
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)
 	}

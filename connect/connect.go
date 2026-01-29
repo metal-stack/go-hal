@@ -2,6 +2,7 @@ package connect
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
@@ -49,8 +50,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 }
 
 // OutBand will detect the board and choose the correct outband hal implementation
-func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	r, err := redfish.New("https://"+ip, user, password, true, log)
+func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, connectionTimeout *time.Duration) (hal.OutBand, error) {
+	r, err := redfish.New("https://"+ip, user, password, true, log, connectionTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
