@@ -12,7 +12,6 @@ import (
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/dmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
-	"github.com/metal-stack/go-hal/internal/vendors/lenovo"
 	"github.com/metal-stack/go-hal/internal/vendors/supermicro"
 	"github.com/metal-stack/go-hal/pkg/api"
 )
@@ -30,8 +29,6 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	b.Vendor = api.GuessVendor(b.VendorString)
 	log.Debugw("connect", "vendor", b)
 	switch b.Vendor {
-	case api.VendorLenovo:
-		return lenovo.InBand(b, log)
 	case api.VendorSupermicro, api.VendorNovarion:
 		return supermicro.InBand(b, log)
 	case api.VendorVagrant:
@@ -59,8 +56,6 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, 
 	b.Vendor = api.GuessVendor(b.VendorString)
 	log.Debugw("connect", "board", b)
 	switch b.Vendor {
-	case api.VendorLenovo:
-		return lenovo.OutBand(r, b), nil
 	case api.VendorSupermicro, api.VendorNovarion:
 		return supermicro.OutBand(r, b, ip, ipmiPort, user, password, log)
 	case api.VendorVagrant:

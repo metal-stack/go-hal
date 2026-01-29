@@ -12,7 +12,6 @@ func TestVendor_String(t *testing.T) {
 	}{
 		{name: "smc", v: VendorSupermicro, want: "Supermicro"},
 		{name: "dell", v: VendorDell, want: "Dell"},
-		{name: "lenovo", v: VendorLenovo, want: "Lenovo"},
 		{name: "unknown", v: VendorUnknown, want: "UNKNOWN"},
 	}
 	for i := range tests {
@@ -33,8 +32,6 @@ func TestGuessVendor(t *testing.T) {
 	}{
 		{name: "smc", vendor: "Supermicro", want: VendorSupermicro},
 		{name: "smc with space", vendor: " Supermicro ", want: VendorSupermicro},
-		{name: "lenovo", vendor: "Lenovo", want: VendorLenovo},
-		{name: "lenovolower", vendor: "lenovo", want: VendorLenovo},
 		{name: "empty", vendor: "", want: VendorUnknown},
 		{name: "unknown", vendor: "unknown", want: VendorUnknown},
 		{name: "vagrant", vendor: "vagrant", want: VendorVagrant},
