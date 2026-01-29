@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -32,6 +33,12 @@ type APIClient struct {
 
 type bootOverrideRequest struct {
 	Boot redfish.Boot `json:"Boot"`
+}
+
+type bootOrderSetRequest struct {
+	Boot struct {
+		BootOrder []string `json:"BootOrder"`
+	} `json:"Boot"`
 }
 
 type indicatorLEDRequest struct {
@@ -306,7 +313,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	return nil
 }
 
-func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
+func (c *APIClient) SetBootTarget(target hal.BootTarget) error {
 	switch target {
 	case hal.BootTargetBIOS:
 		return c.setNextBootBIOS()
@@ -327,7 +334,7 @@ func (c *APIClient) setPersistentPXE() error {
 			BootSourceOverrideTarget:  redfish.PxeBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
 func (c *APIClient) setPersistentHDD() error {
@@ -338,28 +345,47 @@ func (c *APIClient) setPersistentHDD() error {
 			BootSourceOverrideTarget:  redfish.HddBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
-func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
+func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
+	if err != nil {
+		return fmt.Errorf("unable to query systems: %w", err)
+	}
+
+	if len(systems) == 0 {
+		return fmt.Errorf("no system found to set boot target")
+	}
+
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
+	}
+
+	// Assuming there's typically one primary system.
+	system := systems[0]
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
+	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
-
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
+	}
 	return nil
 }
 
@@ -378,7 +404,7 @@ func (c *APIClient) setNextBootBIOS() error {
 			BootSourceOverrideTarget:  redfish.BiosSetupBootSourceOverrideTarget,
 		},
 	}
-	return c.setBootOrderOverride(payload)
+	return c.setBootTargetOverride(payload)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
@@ -417,4 +443,131 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
 
 	return bmc, nil
+}
+
+func (c *APIClient) GetBootOptions() ([]*redfish.BootOption, error) {
+	// The curl command here would be curl -k -u <user>:<pwd> https://10.1.1.18/redfish/v1/Systems/System.Embedded.1/BootOptions
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+	for _, system := range systems {
+		bootOptions, err := system.BootOptions()
+		if err != nil {
+			c.log.Warnw("ignore boot options query", "error", err.Error())
+			continue
+		}
+		if len(bootOptions) == 0 {
+			c.log.Warnw("no boot options found", "error")
+			continue
+		}
+		if len(system.Boot.BootOrder) == 0 {
+			c.log.Warnw("no boot order found", "error")
+			continue
+		}
+		return bootOptions, nil
+	}
+
+	return nil, fmt.Errorf("failed to get boot options")
+}
+
+// SetBootOrder sets the boot order to match the sequence of the boot option entries
+func (c *APIClient) SetBootOrder(entries []*redfish.BootOption) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
+	if err != nil {
+		return fmt.Errorf("unable to query systems: %w", err)
+	}
+
+	if len(systems) == 0 {
+		return fmt.Errorf("no system found to set boot order")
+	}
+
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
+	}
+
+	// Assuming there's typically one primary system.
+	system := systems[0]
+
+	var bootOrder []string
+	for _, entry := range entries {
+		bootOrder = append(bootOrder, entry.ID)
+	}
+
+	if len(system.Boot.BootOrder) == 0 {
+		c.log.Errorw("no boot order found")
+	}
+
+	payload := bootOrderSetRequest{}
+	payload.Boot.BootOrder = bootOrder
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+	resp, err := c.Do(req)
+	_ = resp.Body.Close()
+	if err != nil {
+		return fmt.Errorf("unable to set boot order: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
+	}
+
+	return nil
+}
+
+// UpdateFirmware triggers a firmware update using the given URL
+// BMC analyzes the file and chooses the right component to update
+func (c *APIClient) UpdateFirmware(url string) error {
+	// TODO NEEDS TESTING !!!
+	updateURL := c.urlPrefix + "/UpdateService/Actions/UpdateService.SimpleUpdate"
+
+	payload := struct {
+		ImageURI string `json:"ImageURI,omitempty"`
+	}{
+		ImageURI: url,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, updateURL, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return fmt.Errorf("unable to trigger update: %w", err)
+	}
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			c.log.Warnw("unable to close response body", "error", err)
+		}
+	}()
+
+	body, _ = io.ReadAll(resp.Body)
+	// The response code is 202 for accepted, and we normally get no body
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		c.log.Infow("Update triggered successfully: %s\n", string(body))
+	} else {
+		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
 }

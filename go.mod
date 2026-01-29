@@ -3,6 +3,7 @@ module github.com/metal-stack/go-hal
 go 1.25
 
 require (
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/avast/retry-go/v4 v4.7.0
 	github.com/creack/pty v1.1.24
 	github.com/gliderlabs/ssh v0.3.8
@@ -14,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
+	golang.org/x/crypto v0.47.0
 	golang.org/x/net v0.49.0
 )
 
@@ -67,7 +69,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect

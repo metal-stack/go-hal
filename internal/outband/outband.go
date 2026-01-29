@@ -14,6 +14,7 @@ type OutBand struct {
 	ipmiPort int
 	user     string
 	password string
+	sshPort  int
 }
 
 // ViaRedfish returns an out-band connection that uses the given redfish client
@@ -21,6 +22,18 @@ func ViaRedfish(r *redfish.APIClient, board *api.Board) *OutBand {
 	return &OutBand{
 		Redfish: r,
 		board:   board,
+	}
+}
+
+// ViaRedfishPlusSSH returns an out-band connection that uses the given redfish client plus saves ssh connection data
+func ViaRedfishPlusSSH(r *redfish.APIClient, board *api.Board, user, password, ip string, sshPort int) *OutBand {
+	return &OutBand{
+		Redfish:  r,
+		board:    board,
+		user:     user,
+		password: password,
+		ip:       ip,
+		sshPort:  sshPort,
 	}
 }
 
@@ -66,4 +79,20 @@ func (ob *OutBand) Goipmi(f func(*ipmi.Client) error) error {
 	}()
 
 	return f(client)
+}
+
+func (ob *OutBand) GetUsername() string {
+	return ob.user
+}
+
+func (ob *OutBand) GetPassword() string {
+	return ob.password
+}
+
+func (ob *OutBand) GetIP() string {
+	return ob.ip
+}
+
+func (ob *OutBand) GetSSHPort() int {
+	return ob.sshPort
 }
