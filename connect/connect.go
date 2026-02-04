@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/metal-stack/go-hal/internal/vendors/fujitsu"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
@@ -38,6 +39,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		return vagrant.InBand(b, log)
 	case api.VendorGigabyte:
 		return gigabyte.InBand(b, log)
+	case api.VendorFujitsu:
+		return fujitsu.InBand(b, log)
 	case api.VendorDell, api.VendorUnknown:
 		fallthrough
 	default:
@@ -67,6 +70,8 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, 
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	case api.VendorGigabyte:
 		return gigabyte.OutBand(r, b), nil
+	case api.VendorFujitsu:
+		return fujitsu.OutBand(r, b), nil
 	case api.VendorDell, api.VendorUnknown:
 		fallthrough
 	default:

@@ -1,0 +1,265 @@
+package fujitsu
+
+import (
+	"fmt"
+
+	"github.com/gliderlabs/ssh"
+	"github.com/google/uuid"
+
+	"github.com/metal-stack/go-hal"
+	"github.com/metal-stack/go-hal/internal/inband"
+	"github.com/metal-stack/go-hal/internal/ipmi"
+	"github.com/metal-stack/go-hal/internal/outband"
+	"github.com/metal-stack/go-hal/internal/redfish"
+	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
+)
+
+var (
+	// errorNotImplemented for all functions that are not implemented yet
+	errorNotImplemented = fmt.Errorf("not implemented yet")
+)
+
+const (
+	vendor = api.VendorFujitsu
+)
+
+type (
+	inBand struct {
+		*inband.InBand
+	}
+	outBand struct {
+		*outband.OutBand
+	}
+	bmcConnection struct {
+		*inBand
+	}
+	bmcConnectionOutBand struct {
+		*outBand
+	}
+)
+
+// InBand creates an inband connection to a Fujitsu server.
+func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
+	ib, err := inband.New(board, true, log)
+	if err != nil {
+		return nil, err
+	}
+	return &inBand{
+		InBand: ib,
+	}, nil
+}
+
+// OutBand creates an outband connection to a Fujitsu server.
+func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
+	return &outBand{
+		OutBand: outband.ViaRedfish(r, board),
+	}
+}
+
+// InBand
+func (ib *inBand) PowerOff() error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
+}
+
+func (ib *inBand) PowerCycle() error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
+}
+
+func (ib *inBand) PowerReset() error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
+}
+
+func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisIdentifyLEDState(state)
+}
+
+func (ib *inBand) IdentifyLEDOn() error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisIdentifyLEDOn()
+}
+
+func (ib *inBand) IdentifyLEDOff() error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetChassisIdentifyLEDOff()
+}
+
+func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
+	return errorNotImplemented
+	return ib.IpmiTool.SetBootOrder(bootTarget, vendor)
+}
+
+func (ib *inBand) SetFirmware(hal.FirmwareMode) error {
+	return errorNotImplemented
+}
+
+func (ib *inBand) Describe() string {
+	return "InBand connected to Fujitsu"
+}
+
+func (ib *inBand) BMCConnection() api.BMCConnection {
+	return &bmcConnection{
+		inBand: ib,
+	}
+}
+
+func (c *bmcConnection) BMC() (*api.BMC, error) {
+	// return errorNotImplemented
+	return c.IpmiTool.BMC()
+}
+
+func (c *bmcConnection) PresentSuperUser() api.BMCUser {
+	// return errorNotImplemented
+	return api.BMCUser{
+		Name:          "USERID",
+		Id:            "2",
+		ChannelNumber: 1,
+	}
+}
+
+func (c *bmcConnection) SuperUser() api.BMCUser {
+	// return errorNotImplemented
+	return api.BMCUser{
+		Name:          "superuser",
+		Id:            "4",
+		ChannelNumber: 1,
+	}
+}
+
+func (c *bmcConnection) User() api.BMCUser {
+	// return errorNotImplemented
+	return api.BMCUser{
+		Name:          "metal",
+		Id:            "3",
+		ChannelNumber: 1,
+	}
+}
+
+func (c *bmcConnection) Present() bool {
+	// return errorNotImplemented
+	return c.IpmiTool.DevicePresent()
+}
+
+func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
+	// return errorNotImplemented
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+}
+
+func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
+	return errorNotImplemented
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
+	return err
+}
+
+func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
+	// return errorNotImplemented
+	return c.IpmiTool.NeedsPasswordChange(user, password)
+}
+
+func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
+	return errorNotImplemented
+	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+}
+
+func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
+	return errorNotImplemented
+	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+}
+
+func (ib *inBand) ConfigureBIOS() (bool, error) {
+	// return errorNotImplemented
+	//return false, errorNotImplemented // do not throw an error to not break manual tests
+	return false, nil //TODO https://github.com/metal-stack/go-hal/issues/11
+}
+
+func (ib *inBand) EnsureBootOrder(bootloaderID string) error {
+	return nil
+}
+
+// OutBand
+func (ob *outBand) UUID() (*uuid.UUID, error) {
+	u, err := ob.Redfish.MachineUUID()
+	if err != nil {
+		return nil, err
+	}
+	us, err := uuid.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+	return &us, nil
+}
+
+func (ob *outBand) PowerState() (hal.PowerState, error) {
+	// return errorNotImplemented
+	return ob.Redfish.PowerState()
+}
+
+func (ob *outBand) PowerOff() error {
+	return errorNotImplemented
+	return ob.Redfish.PowerOff()
+}
+
+func (ob *outBand) PowerOn() error {
+	return errorNotImplemented
+	return ob.Redfish.PowerReset()
+}
+
+func (ob *outBand) PowerReset() error {
+	return errorNotImplemented
+	return ob.Redfish.PowerReset()
+}
+
+func (ob *outBand) PowerCycle() error {
+	return errorNotImplemented
+	return ob.Redfish.PowerReset()
+}
+
+func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
+	// return errorNotImplemented
+	return ob.Redfish.SetChassisIdentifyLEDState(state)
+}
+
+func (ob *outBand) IdentifyLEDOn() error {
+	// return errorNotImplemented
+	return ob.Redfish.SetChassisIdentifyLEDOn()
+}
+
+func (ob *outBand) IdentifyLEDOff() error {
+	// return errorNotImplemented
+	return ob.Redfish.SetChassisIdentifyLEDOff()
+}
+
+func (ob *outBand) BootFrom(target hal.BootTarget) error {
+	return errorNotImplemented
+	return ob.Redfish.SetBootOrder(target)
+}
+
+func (ob *outBand) Describe() string {
+	return "OutBand connected to Fujitsu"
+}
+
+func (ob *outBand) Console(s ssh.Session) error {
+	return errorNotImplemented
+}
+
+func (ob *outBand) UpdateBIOS(url string) error {
+	return nil
+}
+
+func (ob *outBand) UpdateBMC(url string) error {
+	return nil
+}
+
+func (ob *outBand) BMCConnection() api.OutBandBMCConnection {
+	return &bmcConnectionOutBand{
+		outBand: ob,
+	}
+}
+
+func (c *bmcConnectionOutBand) BMC() (*api.BMC, error) {
+	return c.Redfish.BMC()
+}

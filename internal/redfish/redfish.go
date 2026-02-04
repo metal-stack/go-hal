@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -264,13 +265,13 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/0", c.urlPrefix), bytes.NewReader(body)) // TODO Chassis number
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err == nil {
 		_ = resp.Body.Close()
 	}
@@ -290,19 +291,20 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/0", c.urlPrefix), bytes.NewReader(body)) // TODO Chassis number
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err == nil {
 		_ = resp.Body.Close()
 	}
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
+	// TODO http error handling
 	return nil
 }
 
@@ -365,8 +367,8 @@ func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	req.Header.Add("If-Match", "*")
+	req.Header.Add("Authorization", "Basic "+c.basicAuth) // TODO why do we neeed this if setBasicAuth is called below?
+	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(c.user, c.password)
 }
 
@@ -417,4 +419,43 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
 
 	return bmc, nil
+}
+
+func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return "", err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	fmt.Println("ETag response body:", resp.Body) // TODO remove debug
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	// Drain the body to ensure the connection can be reused
+	_, _ = io.Copy(io.Discard, resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)
+		return "*", nil
+	}
+
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		return "*", nil
+	}
+	return etag, nil
+}
+
+func (c *APIClient) doWithETag(req *http.Request) (*http.Response, error) {
+	etag, err := c.getETag(req.Context(), req.URL.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ETag: %w", err)
+	}
+
+	req.Header.Set("If-Match", etag)
+	return c.Do(req)
 }
