@@ -26,9 +26,10 @@ type APIClient struct {
 	urlPrefix         string
 	user              string
 	password          string
-	basicAuth         string
+	basicAuth         string // TODO Why do we need this? Seems to be never used
 	log               logger.Logger
 	connectionTimeout time.Duration
+	chassisID         int
 }
 
 type bootOverrideRequest struct {
@@ -69,7 +70,12 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
+		chassisID:         1, // TODO should there be a default chassis ID?
 	}, nil
+}
+
+func (c *APIClient) SetChassisID(id int) {
+	c.chassisID = id
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
@@ -265,7 +271,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/0", c.urlPrefix), bytes.NewReader(body)) // TODO Chassis number
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%d", c.urlPrefix, c.chassisID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -294,7 +300,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/0", c.urlPrefix), bytes.NewReader(body)) // TODO Chassis number
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%d", c.urlPrefix, c.chassisID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
