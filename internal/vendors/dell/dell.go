@@ -7,6 +7,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
+	"github.com/stmcginnis/gofish/schemas"
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/console"
@@ -16,8 +17,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
-
-	gofish "github.com/stmcginnis/gofish/redfish"
 )
 
 var (
@@ -252,7 +251,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	case hal.BootTargetBIOS:
 		return ob.Redfish.SetBootTarget(target)
 	case hal.BootTargetDisk:
-		var hdOptions []*gofish.BootOption
+		var hdOptions []*schemas.BootOption
 		for _, option := range bootOptions {
 			if strings.HasPrefix(option.UefiDevicePath, "HD(") {
 				hdOptions = append(hdOptions, option)
@@ -265,7 +264,7 @@ func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	case hal.BootTargetPXE:
 		fallthrough
 	default:
-		var nicOptions []*gofish.BootOption
+		var nicOptions []*schemas.BootOption
 		for _, option := range bootOptions {
 			if strings.Contains(option.DisplayName, "NIC") || strings.Contains(option.DisplayName, "PXE") {
 				nicOptions = append(nicOptions, option)
