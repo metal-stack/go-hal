@@ -278,6 +278,9 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	if err != nil {
 		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
 	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to turn on the chassis identify LED, status code: %d", resp.StatusCode)
+	}
 	return nil
 }
 
@@ -304,7 +307,9 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
-	// TODO http error handling
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to turn off the chassis identify LED, status code: %d", resp.StatusCode)
+	}
 	return nil
 }
 
@@ -367,7 +372,6 @@ func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.basicAuth) // TODO why do we neeed this if setBasicAuth is called below?
 	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(c.user, c.password)
 }
@@ -422,14 +426,13 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 }
 
 func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
-	fmt.Println("ETag response body:", resp.Body) // TODO remove debug
 	if err != nil {
 		return "", err
 	}
