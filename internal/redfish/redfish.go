@@ -28,7 +28,7 @@ type APIClient struct {
 	basicAuth         string // TODO Why do we need this? Seems to be never used
 	log               logger.Logger
 	connectionTimeout time.Duration
-	chassisID         int
+	chassisID         string
 	systemID          string
 }
 
@@ -62,9 +62,7 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		return nil, err
 	}
 
-	// TODO do we want systemID and chassisID autodiscovery here?
-
-	return &APIClient{
+	apiClient := &APIClient{
 		client:            c,
 		Client:            c.HTTPClient,
 		user:              user,
@@ -73,12 +71,85 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
-		chassisID:         1,      // TODO should there be a default chassis ID?
-		systemID:          "Self", // TODO should there be a default system ID?
-	}, nil
+		chassisID:         "",
+		systemID:          "",
+	}
+
+	// Discover systemID and chassisID
+	if err := apiClient.discoverIDs(ctx); err != nil {
+		log.Warnw("failed to auto-discover system/chassis ID, using defaults", "error", err)
+	}
+
+	if apiClient.systemID == "" {
+		apiClient.systemID = "Self" // Default SystemID to ensure backwards compatibility
+	}
+	if apiClient.chassisID == "" {
+		apiClient.chassisID = "1" // Default ChassisID to ensure backwards compatibility
+	}
+
+	return apiClient, nil
 }
 
-func (c *APIClient) SetChassisID(id int) {
+// discoverIDs attempts to automatically discover the systemID and chassisID
+func (c *APIClient) discoverIDs(ctx context.Context) error {
+	g := c.client.WithContext(ctx)
+
+	if g.Service == nil {
+		return fmt.Errorf("gofish service root is not available")
+	}
+
+	// Discover System ID
+	systems, err := g.Service.Systems()
+	if err != nil {
+		return fmt.Errorf("failed to query systems: %w", err)
+	}
+
+	if len(systems) > 0 {
+		// Use the ID from the first system
+		c.systemID = systems[0].ID
+		c.log.Debugw("discovered system ID", "systemID", c.systemID)
+	} else {
+		c.log.Warnw("no systems found during discovery")
+	}
+
+	// Discover Chassis ID
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		return fmt.Errorf("failed to query chassis: %w", err)
+	}
+
+	// Prefer RackMount chassis, but fall back to any chassis if none found
+	var selectedChassis *schemas.Chassis
+	for _, chass := range chassis {
+		if chass.ChassisType == schemas.RackMountChassisType {
+			selectedChassis = chass
+			break
+		}
+	}
+
+	// If no RackMount chassis found, use the first available
+	if selectedChassis == nil && len(chassis) > 0 {
+		selectedChassis = chassis[0]
+		c.log.Debugw("no RackMount chassis found, using first available",
+			"chassisType", selectedChassis.ChassisType)
+	}
+
+	if selectedChassis != nil {
+		c.chassisID = selectedChassis.ID
+		c.log.Debugw("discovered chassis ID", "chassisID", c.chassisID, "chassisType", selectedChassis.ChassisType)
+	} else {
+		c.log.Warnw("no chassis found during discovery")
+	}
+
+	// Error if we couldn't find either ID
+	if c.systemID == "" || c.chassisID == "" {
+		return fmt.Errorf("failed to discover any system or chassis IDs")
+	}
+
+	return nil
+}
+
+func (c *APIClient) SetChassisID(id string) {
 	c.chassisID = id
 }
 
@@ -278,7 +349,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%d", c.urlPrefix, c.chassisID), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, c.chassisID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -307,7 +378,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%d", c.urlPrefix, c.chassisID), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, c.chassisID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
