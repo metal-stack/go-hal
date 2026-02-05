@@ -54,6 +54,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 // OutBand creates an outband connection to a Fujitsu server.
 func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 	r.SetChassisID(chassisID)
+	r.SetSystemID("0")
 	return &outBand{
 		OutBand: outband.ViaRedfish(r, board),
 	}
@@ -196,47 +197,38 @@ func (ob *outBand) UUID() (*uuid.UUID, error) {
 }
 
 func (ob *outBand) PowerState() (hal.PowerState, error) {
-	// return errorNotImplemented
 	return ob.Redfish.PowerState()
 }
 
 func (ob *outBand) PowerOff() error {
-	return errorNotImplemented
 	return ob.Redfish.PowerOff()
 }
 
 func (ob *outBand) PowerOn() error {
-	return errorNotImplemented
-	return ob.Redfish.PowerReset()
+	return ob.Redfish.PowerOn()
 }
 
 func (ob *outBand) PowerReset() error {
-	return errorNotImplemented
 	return ob.Redfish.PowerReset()
 }
 
 func (ob *outBand) PowerCycle() error {
-	return errorNotImplemented
-	return ob.Redfish.PowerReset()
+	return ob.Redfish.PowerCycle()
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	// return errorNotImplemented
 	return ob.Redfish.SetChassisIdentifyLEDState(state)
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	// return errorNotImplemented
 	return ob.Redfish.SetChassisIdentifyLEDOn()
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	// return errorNotImplemented
 	return ob.Redfish.SetChassisIdentifyLEDOff()
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
-	return errorNotImplemented
 	return ob.Redfish.SetBootOrder(target)
 }
 
@@ -245,7 +237,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented
+	return errorNotImplemented // TODO use the same implementation as for dell after it's merged
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {

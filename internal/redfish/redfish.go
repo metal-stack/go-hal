@@ -30,6 +30,7 @@ type APIClient struct {
 	log               logger.Logger
 	connectionTimeout time.Duration
 	chassisID         int
+	systemID          string
 }
 
 type bootOverrideRequest struct {
@@ -61,6 +62,9 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO do we want systemID and chassisID autodiscovery here?
+
 	return &APIClient{
 		client:            c,
 		Client:            c.HTTPClient,
@@ -70,12 +74,17 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
-		chassisID:         1, // TODO should there be a default chassis ID?
+		chassisID:         1,      // TODO should there be a default chassis ID?
+		systemID:          "Self", // TODO should there be a default system ID?
 	}, nil
 }
 
 func (c *APIClient) SetChassisID(id int) {
 	c.chassisID = id
+}
+
+func (c *APIClient) SetSystemID(id string) {
+	c.systemID = id
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
@@ -359,18 +368,22 @@ func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/Self", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, c.systemID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err == nil {
+		// TODO drain body?
 		_ = resp.Body.Close()
 	}
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to override boot order, status code: %d", resp.StatusCode)
 	}
 
 	return nil
@@ -431,6 +444,7 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	return bmc, nil
 }
 
+// TODO should we cache this?
 func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
