@@ -28,6 +28,7 @@ type APIClient struct {
 	connectionTimeout time.Duration
 	chassisID         string
 	systemID          string
+	ETagRequired      bool
 }
 
 type bootOverrideRequest struct {
@@ -70,6 +71,7 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		connectionTimeout: timeout,
 		chassisID:         "",
 		systemID:          "",
+		ETagRequired:      false,
 	}
 
 	// Discover systemID and chassisID
@@ -85,6 +87,10 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 	}
 
 	return apiClient, nil
+}
+
+func (c *APIClient) SetETagRequired(required bool) {
+	c.ETagRequired = required
 }
 
 // discoverIDs attempts to automatically discover the systemID and chassisID
@@ -510,7 +516,6 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	return bmc, nil
 }
 
-// TODO should we cache this?
 func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -542,11 +547,23 @@ func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 }
 
 func (c *APIClient) doWithETag(req *http.Request) (*http.Response, error) {
-	etag, err := c.getETag(req.Context(), req.URL.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ETag: %w", err)
-	}
+	if c.ETagRequired {
+		// Create a context with timeout for the ETag fetch
+		ctx := req.Context()
+		if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, c.connectionTimeout)
+			defer cancel()
+		}
 
-	req.Header.Set("If-Match", etag)
+		etag, err := c.getETag(ctx, req.URL.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ETag: %w", err)
+		}
+
+		req.Header.Set("If-Match", etag)
+	} else {
+		req.Header.Set("If-Match", "*")
+	}
 	return c.Do(req)
 }

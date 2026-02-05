@@ -52,6 +52,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 
 // OutBand creates an outband connection to a Fujitsu server.
 func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
+	r.SetETagRequired(true)
 	return &outBand{
 		OutBand: outband.ViaRedfish(r, board),
 	}
