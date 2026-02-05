@@ -62,37 +62,30 @@ func OutBand(r *redfish.APIClient, board *api.Board) hal.OutBand {
 
 // InBand
 func (ib *inBand) PowerOff() error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerDown)
 }
 
 func (ib *inBand) PowerCycle() error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlPowerCycle)
 }
 
 func (ib *inBand) PowerReset() error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisControl(ipmi.ChassisControlHardReset)
 }
 
 func (ib *inBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisIdentifyLEDState(state)
 }
 
 func (ib *inBand) IdentifyLEDOn() error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisIdentifyLEDOn()
 }
 
 func (ib *inBand) IdentifyLEDOff() error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetChassisIdentifyLEDOff()
 }
 
 func (ib *inBand) BootFrom(bootTarget hal.BootTarget) error {
-	return errorNotImplemented
 	return ib.IpmiTool.SetBootOrder(bootTarget, vendor)
 }
 
@@ -111,12 +104,10 @@ func (ib *inBand) BMCConnection() api.BMCConnection {
 }
 
 func (c *bmcConnection) BMC() (*api.BMC, error) {
-	// return errorNotImplemented
 	return c.IpmiTool.BMC()
 }
 
 func (c *bmcConnection) PresentSuperUser() api.BMCUser {
-	// return errorNotImplemented
 	return api.BMCUser{
 		Name:          "USERID",
 		Id:            "2",
@@ -125,7 +116,6 @@ func (c *bmcConnection) PresentSuperUser() api.BMCUser {
 }
 
 func (c *bmcConnection) SuperUser() api.BMCUser {
-	// return errorNotImplemented
 	return api.BMCUser{
 		Name:          "superuser",
 		Id:            "4",
@@ -134,7 +124,6 @@ func (c *bmcConnection) SuperUser() api.BMCUser {
 }
 
 func (c *bmcConnection) User() api.BMCUser {
-	// return errorNotImplemented
 	return api.BMCUser{
 		Name:          "metal",
 		Id:            "3",
@@ -143,33 +132,27 @@ func (c *bmcConnection) User() api.BMCUser {
 }
 
 func (c *bmcConnection) Present() bool {
-	// return errorNotImplemented
 	return c.IpmiTool.DevicePresent()
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	// return errorNotImplemented
 	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	return errorNotImplemented
 	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
 	return err
 }
 
 func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
-	// return errorNotImplemented
 	return c.IpmiTool.NeedsPasswordChange(user, password)
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
-	return errorNotImplemented
 	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return errorNotImplemented
 	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
 }
 
@@ -229,6 +212,7 @@ func (ob *outBand) IdentifyLEDOff() error {
 }
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
+	// On Fujitsu for BootSourceOverrideTarget = "BiosSetup" BootSourceOverrideEnabled is restricted to "Once"
 	return ob.Redfish.SetBootOrder(target)
 }
 
