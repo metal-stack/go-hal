@@ -16,8 +16,7 @@ import (
 
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/stmcginnis/gofish"
-	"github.com/stmcginnis/gofish/common"
-	"github.com/stmcginnis/gofish/redfish"
+	"github.com/stmcginnis/gofish/schemas"
 )
 
 type APIClient struct {
@@ -34,11 +33,11 @@ type APIClient struct {
 }
 
 type bootOverrideRequest struct {
-	Boot redfish.Boot `json:"Boot"`
+	Boot schemas.Boot `json:"Boot"`
 }
 
 type indicatorLEDRequest struct {
-	IndicatorLED common.IndicatorLED `json:"IndicatorLED"`
+	IndicatorLED schemas.IndicatorLED `json:"IndicatorLED"`
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger, connectionTimeout *time.Duration) (*APIClient, error) {
@@ -105,8 +104,8 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
-		if system.BIOSVersion != "" {
-			biosVersion = system.BIOSVersion
+		if system.BiosVersion != "" {
+			biosVersion = system.BiosVersion
 			break
 		}
 	}
@@ -128,17 +127,17 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, chass := range chassis {
-		if chass.ChassisType == redfish.RackMountChassisType {
+		if chass.ChassisType == schemas.RackMountChassisType {
 			power, err := chass.Power()
 			var powerMetric *api.PowerMetric
 			if err != nil {
 				c.log.Warnw("ignoring power detection", "error", err)
 			} else {
 				for _, pc := range power.PowerControl {
-					if pc.PowerMetrics == nil {
+					pm := pc.PowerMetrics
+					if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
 						continue
 					}
-					pm := *pc.PowerMetrics
 					powerMetric = &api.PowerMetric{
 						AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
 						IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
@@ -162,14 +161,14 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
-				"BiosVersion", biosVersion, "led", chass.IndicatorLED)
+				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
 			return &api.Board{
 				VendorString:  manufacturer,
 				Model:         model,
 				PartNumber:    chass.PartNumber,
 				SerialNumber:  chass.SerialNumber,
 				BiosVersion:   biosVersion,
-				IndicatorLED:  toMetalLEDState(chass.IndicatorLED),
+				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
 				PowerMetric:   powerMetric,
 				PowerSupplies: powerSupplies,
 			}, nil
@@ -178,11 +177,11 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
 }
 
-func toMetalLEDState(state common.IndicatorLED) string {
+func toMetalLEDState(state schemas.IndicatorLED) string {
 	switch state {
-	case common.BlinkingIndicatorLED, common.LitIndicatorLED:
+	case schemas.BlinkingIndicatorLED, schemas.LitIndicatorLED:
 		return "LED-ON"
-	case common.OffIndicatorLED, common.UnknownIndicatorLED:
+	case schemas.OffIndicatorLED, schemas.UnknownIndicatorLED:
 		return "LED-OFF"
 	default:
 		return "LED-OFF"
@@ -224,22 +223,22 @@ func (c *APIClient) PowerState() (hal.PowerState, error) {
 }
 
 func (c *APIClient) PowerOn() error {
-	return c.setPower(redfish.ForceOnResetType)
+	return c.setPower(schemas.ForceOnResetType)
 }
 
 func (c *APIClient) PowerOff() error {
-	return c.setPower(redfish.ForceOffResetType)
+	return c.setPower(schemas.ForceOffResetType)
 }
 
 func (c *APIClient) PowerReset() error {
-	return c.setPower(redfish.ForceRestartResetType)
+	return c.setPower(schemas.ForceRestartResetType)
 }
 
 func (c *APIClient) PowerCycle() error {
-	return c.setPower(redfish.PowerCycleResetType)
+	return c.setPower(schemas.PowerCycleResetType)
 }
 
-func (c *APIClient) setPower(resetType redfish.ResetType) error {
+func (c *APIClient) setPower(resetType schemas.ResetType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
@@ -248,8 +247,7 @@ func (c *APIClient) setPower(resetType redfish.ResetType) error {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, system := range systems {
-		err = system.Reset(resetType)
-		if err == nil {
+		if _, err = system.Reset(resetType); err == nil {
 			return nil
 		}
 	}
@@ -273,7 +271,7 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 // SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	payload := indicatorLEDRequest{
-		IndicatorLED: common.LitIndicatorLED,
+		IndicatorLED: schemas.LitIndicatorLED,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -302,7 +300,7 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	payload := indicatorLEDRequest{
-		IndicatorLED: common.OffIndicatorLED,
+		IndicatorLED: schemas.OffIndicatorLED,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -343,10 +341,10 @@ func (c *APIClient) SetBootOrder(target hal.BootTarget) error {
 
 func (c *APIClient) setPersistentPXE() error {
 	payload := bootOverrideRequest{
-		Boot: redfish.Boot{
-			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
-			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  redfish.PxeBootSourceOverrideTarget,
+		Boot: schemas.Boot{
+			BootSourceOverrideEnabled: schemas.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  schemas.PxeBootSource,
 		},
 	}
 	return c.setBootOrderOverride(payload)
@@ -354,10 +352,10 @@ func (c *APIClient) setPersistentPXE() error {
 
 func (c *APIClient) setPersistentHDD() error {
 	payload := bootOverrideRequest{
-		Boot: redfish.Boot{
-			BootSourceOverrideEnabled: redfish.ContinuousBootSourceOverrideEnabled,
-			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  redfish.HddBootSourceOverrideTarget,
+		Boot: schemas.Boot{
+			BootSourceOverrideEnabled: schemas.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  schemas.HddBootSource,
 		},
 	}
 	return c.setBootOrderOverride(payload)
@@ -397,10 +395,10 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 
 func (c *APIClient) setNextBootBIOS() error {
 	payload := bootOverrideRequest{
-		Boot: redfish.Boot{
-			BootSourceOverrideEnabled: redfish.OnceBootSourceOverrideEnabled,
-			BootSourceOverrideMode:    redfish.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  redfish.BiosSetupBootSourceOverrideTarget,
+		Boot: schemas.Boot{
+			BootSourceOverrideEnabled: schemas.OnceBootSourceOverrideEnabled,
+			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
+			BootSourceOverrideTarget:  schemas.BiosSetupBootSource,
 		},
 	}
 	return c.setBootOrderOverride(payload)
@@ -429,7 +427,7 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	}
 
 	for _, chass := range chassis {
-		if chass.ChassisType != redfish.RackMountChassisType {
+		if chass.ChassisType != schemas.RackMountChassisType {
 			continue
 		}
 
