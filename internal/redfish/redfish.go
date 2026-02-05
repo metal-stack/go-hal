@@ -3,7 +3,6 @@ package redfish
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,7 +24,6 @@ type APIClient struct {
 	urlPrefix         string
 	user              string
 	password          string
-	basicAuth         string // TODO Why do we need this? Seems to be never used
 	log               logger.Logger
 	connectionTimeout time.Duration
 	chassisID         string
@@ -67,7 +65,6 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		Client:            c.HTTPClient,
 		user:              user,
 		password:          password,
-		basicAuth:         base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
