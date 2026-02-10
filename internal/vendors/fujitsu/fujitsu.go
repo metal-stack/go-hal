@@ -134,7 +134,9 @@ func (c *bmcConnection) Present() bool {
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+	password_constraints := c.Board().Vendor.PasswordConstraints()
+	password_constraints.Length = 12
+	return c.IpmiTool.CreateUser(user, privilege, "", password_constraints, ipmi.HighLevel)
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
