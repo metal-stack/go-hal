@@ -109,7 +109,7 @@ func (c *bmcConnection) PresentSuperUser() api.BMCUser {
 	return api.BMCUser{
 		Name:          "USERID",
 		Id:            "2",
-		ChannelNumber: 1,
+		ChannelNumber: 2,
 	}
 }
 
@@ -117,7 +117,7 @@ func (c *bmcConnection) SuperUser() api.BMCUser {
 	return api.BMCUser{
 		Name:          "root",
 		Id:            "4",
-		ChannelNumber: 1,
+		ChannelNumber: 2,
 	}
 }
 
@@ -125,7 +125,7 @@ func (c *bmcConnection) User() api.BMCUser {
 	return api.BMCUser{
 		Name:          "metal",
 		Id:            "3",
-		ChannelNumber: 1,
+		ChannelNumber: 2,
 	}
 }
 
