@@ -469,7 +469,8 @@ func (c *APIClient) setBootOrderOverride(payload bootOverrideRequest) error {
 
 	resp, err := c.doWithETag(req)
 	if err == nil {
-		// TODO drain body?
+		// Drain the body to ensure the connection can be reused
+		_, _ = io.Copy(io.Discard, resp.Body)
 		_ = resp.Body.Close()
 	}
 	if err != nil {
