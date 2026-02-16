@@ -196,7 +196,20 @@ func (ob *outBand) PowerReset() error {
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.Redfish.PowerCycle()
+	system, err := ob.Redfish.GetSystem()
+	if err != nil {
+		return err
+	}
+
+	// Construct OEM action path
+	oemPath := fmt.Sprintf("%s/Actions/Oem/FTSComputerSystem.Reset", system.ODataID)
+
+	body := map[string]interface{}{
+		"FTSResetType": "PowerCycle",
+	}
+
+	err = system.Post(oemPath, body)
+	return err
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {

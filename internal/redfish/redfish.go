@@ -89,6 +89,27 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 	return apiClient, nil
 }
 
+func (r *APIClient) GetSystem() (*schemas.ComputerSystem, error) {
+	g := r.client.WithContext(context.Background())
+
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	service := g.Service
+
+	systems, err := service.Systems()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range systems {
+		if s.ID == r.systemID {
+			return s, nil
+		}
+	}
+	return nil, fmt.Errorf("system with ID %q not found", r.systemID)
+}
+
 func (c *APIClient) SetETagRequired(required bool) {
 	c.ETagRequired = required
 }
