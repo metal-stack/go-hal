@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/metal-stack/metal-lib v0.23.5
 	github.com/sethvargo/go-password v0.3.1
-	github.com/stmcginnis/gofish v0.20.1-0.20260203173523-22b2013b7c28
+	github.com/stmcginnis/gofish v0.21.1
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.40.0
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702
@@ -73,5 +73,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/stmcginnis/gofish => github.com/izvyk/gofish v0.0.0-20260217135108-fb92da3e96ac
