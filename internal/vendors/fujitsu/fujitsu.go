@@ -2,6 +2,7 @@ package fujitsu
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -136,12 +137,24 @@ func (c *bmcConnection) Present() bool {
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
 	password_constraints := c.Board().Vendor.PasswordConstraints()
 	password_constraints.Length = 12
-	return c.IpmiTool.CreateUser(user, privilege, "", password_constraints, ipmi.HighLevel)
+	s, err := c.IpmiTool.CreateUser(user, privilege, "", password_constraints, ipmi.HighLevel)
+	if err != nil {
+		return "", err
+	}
+
+	err_perm := c.syncRedfishPermissions(user, privilege)
+	if err_perm != nil {
+		return "", err_perm
+	}
+	return s, nil
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
 	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
-	return err
+	if err != nil {
+		return err
+	}
+	return c.syncRedfishPermissions(user, privilege)
 }
 
 func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (bool, error) {
@@ -153,7 +166,72 @@ func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) err
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+	err := c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+	if err != nil {
+		return err
+	}
+	return c.syncRedfishPermissions(user, api.UserPrivilege)
+}
+
+func (c *bmcConnection) syncRedfishPermissions(user api.BMCUser, privilege api.IpmiPrivilege) error {
+	// 1. Parse the User ID
+	if user.Id == "" {
+		return fmt.Errorf("user ID is empty, cannot set Redfish permissions")
+	}
+
+	userIDInt, err := strconv.Atoi(user.Id)
+	if err != nil {
+		return fmt.Errorf("failed to parse user ID %q: %w", user.Id, err)
+	}
+
+	// IPMI raw userID = <Redfish UserID> - 1
+	targetUserID := userIDInt - 1
+	userIDHex := fmt.Sprintf("0x%02x", targetUserID)
+
+	// 2. Map standard IPMI Privileges to Fujitsu OEM Redfish Role values
+	var roleHex string
+	enabled := "0x01" // Enabled
+	switch privilege {
+	case api.AdministratorPrivilege:
+		roleHex = "0x02" // Administrator
+	case api.OperatorPrivilege:
+		roleHex = "0x01" // Operator
+	case api.UserPrivilege:
+		roleHex = "0x03" // Read-Only
+	default:
+		roleHex = "0x00" // No Access
+		enabled = "0x00" // Disabled
+	}
+
+	// 3. Set Role (0x81 0x1D feature code)
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 <userID> 0x81 0x1D 0x01 <RoleValue>
+	// Example for user ID 3 (which becomes 2 in hex) and Administrator role (0x02):
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 0x02 0x81 0x1D 0x01 0x02
+	setRoleCmd := []string{
+		"raw", "0x2e", "0xe0", "0x80", "0x28", "0x00",
+		"0x02", userIDHex, "0x81", "0x1D", "0x01", roleHex,
+	}
+
+	_, err = c.IpmiTool.Run(setRoleCmd...)
+	if err != nil {
+		return fmt.Errorf("failed to set fujitsu redfish role for user %d: %w", userIDInt, err)
+	}
+
+	// 4. Enable Access (0x81 0x1D feature code)
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 <userID> 0x81 0x1D 0x01 <0x01 for enable, 0x00 for disable>
+	// Example to enable access for user ID 3:
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 0x02 0x81 0x1D 0x01 0x01
+	enableAccessCmd := []string{
+		"raw", "0x2e", "0xe0", "0x80", "0x28", "0x00",
+		"0x02", userIDHex, "0x80", "0x1D", "0x01", enabled,
+	}
+
+	_, err = c.IpmiTool.Run(enableAccessCmd...)
+	if err != nil {
+		return fmt.Errorf("failed to enable fujitsu redfish access for user %d: %w", userIDInt, err)
+	}
+
+	return nil
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
