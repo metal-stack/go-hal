@@ -312,7 +312,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return errorNotImplemented // TODO use the same implementation as for dell after it's merged
+	return ob.IpmiTool.OpenConsole(s)
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
