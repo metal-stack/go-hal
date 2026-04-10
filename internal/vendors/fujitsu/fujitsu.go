@@ -304,7 +304,7 @@ func (ob *outBand) IdentifyLEDOff() error {
 
 func (ob *outBand) BootFrom(target hal.BootTarget) error {
 	// On Fujitsu for BootSourceOverrideTarget = "BiosSetup" BootSourceOverrideEnabled is restricted to "Once"
-	return ob.Redfish.SetBootOrder(target)
+	return ob.Redfish.SetBootTarget(target)
 }
 
 func (ob *outBand) Describe() string {
