@@ -133,92 +133,71 @@ func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	// Query the chassis data using the session token
-	if g.Service == nil {
-		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
+
+	system, err := c.getSystem(ctx)
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err)
 	}
 
 	biosVersion := ""
 	manufacturer := ""
 	model := ""
-
-	systems, err := g.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-	for _, system := range systems {
-		if system.BiosVersion != "" {
-			biosVersion = system.BiosVersion
-			break
-		}
-	}
-	for _, system := range systems {
-		if system.Manufacturer != "" {
-			manufacturer = system.Manufacturer
-			break
-		}
-	}
-	for _, system := range systems {
-		if system.Model != "" {
-			model = system.Model
-			break
-		}
+	if system != nil {
+		biosVersion = system.BiosVersion
+		manufacturer = system.Manufacturer
+		model = system.Model
 	}
 
-	chassis, err := g.Service.Chassis()
+	chass, err := c.getChassis(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		return nil, fmt.Errorf("no board detected: %w", err)
 	}
-	for _, chass := range chassis {
-		if chass.ChassisType == schemas.RackMountChassisType {
-			power, err := chass.Power()
-			var powerMetric *api.PowerMetric
-			if err != nil {
-				c.log.Warnw("ignoring power detection", "error", err)
-			} else {
-				for _, pc := range power.PowerControl {
-					pm := pc.PowerMetrics
-					if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
-						continue
-					}
-					powerMetric = &api.PowerMetric{
-						AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
-						IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
-						MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
-						MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
-					}
-					c.log.Debugw("power consumption", "metrics", powerMetric)
-					break
-				}
+
+	power, err := chass.Power()
+	var powerMetric *api.PowerMetric
+	var powerSupplies []api.PowerSupply
+	if err != nil {
+		c.log.Warnw("ignoring power detection", "error", err)
+	} else {
+		for _, pc := range power.PowerControl {
+			pm := pc.PowerMetrics
+			if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
+				continue
 			}
-			var powerSupplies []api.PowerSupply
-			for _, ps := range power.PowerSupplies {
-				powerSupplies = append(powerSupplies, api.PowerSupply{
-					Status: api.Status{
-						Health: string(ps.Status.Health),
-						State:  string(ps.Status.State),
-					},
-				})
-				c.log.Debugw("powersupplies", "powersupply", ps)
+			powerMetric = &api.PowerMetric{
+				AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
+				IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
+				MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
+				MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
 			}
-			c.log.Debugw("got chassis",
-				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
-				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
-				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
-			return &api.Board{
-				VendorString:  manufacturer,
-				Model:         model,
-				PartNumber:    chass.PartNumber,
-				SerialNumber:  chass.SerialNumber,
-				BiosVersion:   biosVersion,
-				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
-				PowerMetric:   powerMetric,
-				PowerSupplies: powerSupplies,
-			}, nil
+			c.log.Debugw("power consumption", "metrics", powerMetric)
+			break
+		}
+		for _, ps := range power.PowerSupplies {
+			powerSupplies = append(powerSupplies, api.PowerSupply{
+				Status: api.Status{
+					Health: string(ps.Status.Health),
+					State:  string(ps.Status.State),
+				},
+			})
+			c.log.Debugw("powersupplies", "powersupply", ps)
 		}
 	}
-	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
+
+	c.log.Debugw("got chassis",
+		"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
+		"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
+		"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
+	return &api.Board{
+		VendorString:  manufacturer,
+		Model:         model,
+		PartNumber:    chass.PartNumber,
+		SerialNumber:  chass.SerialNumber,
+		BiosVersion:   biosVersion,
+		IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
+		PowerMetric:   powerMetric,
+		PowerSupplies: powerSupplies,
+	}, nil
 }
 
 func toMetalLEDState(state schemas.IndicatorLED) string {
@@ -280,17 +259,15 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType schemas.ResetType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		return fmt.Errorf("failed to get system for power action %s: %w", resetType, err)
 	}
-	for _, system := range systems {
-		if _, err = system.Reset(resetType); err == nil {
-			return nil
-		}
+	if _, err = system.Reset(resetType); err != nil {
+		return fmt.Errorf("failed to set power to %s: %w", resetType, err)
 	}
-	return fmt.Errorf("failed to set power to %s %w", resetType, err)
+	return nil
 }
 
 // SetChassisIdentifyLEDState sets the chassis identify LED to given state
@@ -309,41 +286,16 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 
 // SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn() error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
-	defer cancel()
-
-	chassis, err := c.getChassis(ctx)
-	if err != nil {
-		return err
-	}
-
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.LitIndicatorLED,
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-
-	resp, err := c.doWithETag(req)
-	if err != nil {
-		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
-	}
-	_ = resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("unable to turn on the chassis identify LED, status code: %d", resp.StatusCode)
-	}
-	return nil
+	return c.setChassisIndicatorLED(schemas.LitIndicatorLED)
 }
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
+	return c.setChassisIndicatorLED(schemas.OffIndicatorLED)
+}
+
+// setChassisIndicatorLED is the shared implementation for setting the chassis indicator LED state.
+func (c *APIClient) setChassisIndicatorLED(state schemas.IndicatorLED) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 
@@ -352,9 +304,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.OffIndicatorLED,
-	}
+	payload := indicatorLEDRequest{IndicatorLED: state}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
@@ -368,11 +318,12 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 
 	resp, err := c.doWithETag(req)
 	if err != nil {
-		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+		return fmt.Errorf("unable to set chassis identify LED to %s: %w", state, err)
 	}
+	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("unable to turn off the chassis identify LED, status code: %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to set chassis identify LED to %s, status code: %d", state, resp.StatusCode)
 	}
 	return nil
 }
@@ -445,7 +396,7 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(c.user, c.password)
 }
@@ -464,33 +415,24 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-
-	chassis, err := g.Service.Chassis()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
 
 	bmc := &api.BMC{}
 
-	for _, system := range systems {
+	system, err := c.getSystem(ctx)
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err)
+	} else {
 		bmc.ProductManufacturer = system.Manufacturer
 		bmc.ProductPartNumber = system.PartNumber
 		bmc.ProductSerial = system.SerialNumber
 	}
 
-	for _, chass := range chassis {
-		if chass.ChassisType != schemas.RackMountChassisType {
-			continue
-		}
-
+	chass, err := c.getChassis(ctx)
+	if err != nil {
+		c.log.Warnw("ignore chassis query", "error", err)
+	} else {
 		bmc.ChassisPartNumber = chass.PartNumber
 		bmc.ChassisPartSerial = chass.SerialNumber
-
 		bmc.BoardMfg = chass.Manufacturer
 	}
 
@@ -524,6 +466,10 @@ func (c *APIClient) GetBootOptions() ([]*schemas.BootOption, error) {
 
 // SetBootOrder sets the boot order to match the sequence of the boot option entries
 func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
+	if len(entries) == 0 {
+		return fmt.Errorf("cannot set boot order: no boot entries provided")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 
@@ -554,10 +500,11 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
+	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
@@ -588,7 +535,7 @@ func (c *APIClient) UpdateFirmware(url string) error {
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to trigger update: %w", err)
 	}
@@ -618,12 +565,9 @@ func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	// Drain the body to ensure the connection can be reused
+	// Drain and close the body to ensure the connection can be reused
 	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)

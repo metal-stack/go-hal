@@ -170,7 +170,11 @@ func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
 	if err != nil {
 		return err
 	}
-	return c.syncRedfishPermissions(user, api.UserPrivilege)
+	privilege := api.UserPrivilege
+	if !enabled {
+		privilege = api.NoAccessPrivilege
+	}
+	return c.syncRedfishPermissions(user, privilege)
 }
 
 func (c *bmcConnection) syncRedfishPermissions(user api.BMCUser, privilege api.IpmiPrivilege) error {
@@ -217,10 +221,10 @@ func (c *bmcConnection) syncRedfishPermissions(user api.BMCUser, privilege api.I
 		return fmt.Errorf("failed to set fujitsu redfish role for user %d: %w", userIDInt, err)
 	}
 
-	// 4. Enable Access (0x81 0x1D feature code)
-	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 <userID> 0x81 0x1D 0x01 <0x01 for enable, 0x00 for disable>
+	// 4. Enable/disable Redfish access (0x80 0x1D feature code)
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 <userID> 0x80 0x1D 0x01 <0x01 for enable, 0x00 for disable>
 	// Example to enable access for user ID 3:
-	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 0x02 0x81 0x1D 0x01 0x01
+	// ipmitool raw 0x2e 0xe0 0x80 0x28 0x00 0x02 0x02 0x80 0x1D 0x01 0x01
 	enableAccessCmd := []string{
 		"raw", "0x2e", "0xe0", "0x80", "0x28", "0x00",
 		"0x02", userIDHex, "0x80", "0x1D", "0x01", enabled,
