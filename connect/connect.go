@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/fujitsu"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
@@ -41,7 +42,9 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		return gigabyte.InBand(b, log)
 	case api.VendorFujitsu:
 		return fujitsu.InBand(b, log)
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.InBand(b, log)
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
@@ -72,7 +75,9 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, 
 		return gigabyte.OutBand(r, b), nil
 	case api.VendorFujitsu:
 		return fujitsu.OutBand(r, b), nil
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.OutBand(r, b, user, password, ip, log), nil
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
