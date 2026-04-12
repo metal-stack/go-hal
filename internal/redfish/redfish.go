@@ -322,7 +322,7 @@ func (c *APIClient) setChassisIndicatorLED(state schemas.IndicatorLED) error {
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set chassis identify LED to %s, status code: %d", state, resp.StatusCode)
 	}
 	return nil
@@ -389,7 +389,7 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	// Drain the body to ensure the connection can be reused
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
 	return nil
@@ -506,7 +506,7 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 	return nil
@@ -569,7 +569,7 @@ func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)
 		return "*", nil
 	}
