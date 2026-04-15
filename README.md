@@ -11,22 +11,22 @@ package main
 
 import (
     "fmt"
-    "github.com/metal-stack/go-hal/detect"
+    "github.com/metal-stack/go-hal/connect"
 )
 
 func main() {
-    smcInBand, err := detect.ConnectInBand()
+    ib, err := connect.InBand()
     if err != nil {
         panic(err)
     }
 
-    firmware, err := smcInBand.Firmware()
+    firmware, err := ib.Firmware()
     if err != nil {
         panic(err)
     }
     fmt.Println(firmware)
     // UEFI
 
-    err = smcInBand.PowerOff()
+    err = ib.PowerOff()
 }
 ```

@@ -2,6 +2,9 @@ package connect
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/metal-stack/go-hal/internal/vendors/dell"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
@@ -33,7 +36,9 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 		return vagrant.InBand(b, log)
 	case api.VendorGigabyte:
 		return gigabyte.InBand(b, log)
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.InBand(b, log)
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
@@ -42,8 +47,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 }
 
 // OutBand will detect the board and choose the correct outband hal implementation
-func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) (hal.OutBand, error) {
-	r, err := redfish.New("https://"+ip, user, password, true, log)
+func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, connectionTimeout *time.Duration) (hal.OutBand, error) {
+	r, err := redfish.New("https://"+ip, user, password, true, log, connectionTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
 	}
@@ -60,7 +65,9 @@ func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger) 
 		return vagrant.OutBand(b, ip, ipmiPort, user, password), nil
 	case api.VendorGigabyte:
 		return gigabyte.OutBand(r, b), nil
-	case api.VendorDell, api.VendorUnknown:
+	case api.VendorDell:
+		return dell.OutBand(r, b, user, password, ip, log), nil
+	case api.VendorUnknown:
 		fallthrough
 	default:
 		log.Errorw("connect", "unknown vendor", b.Vendor)
