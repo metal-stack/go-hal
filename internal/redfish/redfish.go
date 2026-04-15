@@ -3,7 +3,6 @@ package redfish
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,9 +24,9 @@ type APIClient struct {
 	urlPrefix         string
 	user              string
 	password          string
-	basicAuth         string
 	log               logger.Logger
 	connectionTimeout time.Duration
+	ETagRequired      bool
 }
 
 type bootOverrideRequest struct {
@@ -65,107 +64,134 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 	if err != nil {
 		return nil, err
 	}
+
 	return &APIClient{
 		client:            c,
 		Client:            c.HTTPClient,
 		user:              user,
 		password:          password,
-		basicAuth:         base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
+		ETagRequired:      false,
 	}, nil
+}
+
+func (c *APIClient) SetETagRequired(required bool) {
+	c.ETagRequired = required
+}
+
+func (c *APIClient) GetSystem() (*schemas.ComputerSystem, error) {
+	return c.getSystem(context.Background())
+
+}
+
+func (c *APIClient) getSystem(ctx context.Context) (*schemas.ComputerSystem, error) {
+	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	systems, err := g.Service.Systems()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query systems: %w", err)
+	}
+	if len(systems) == 0 {
+		return nil, fmt.Errorf("no system found")
+	}
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, using first one", "count", len(systems))
+	}
+	return systems[0], nil
+}
+
+func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
+	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query chassis: %w", err)
+	}
+	for _, chass := range chassis {
+		if chass.ChassisType == schemas.RackMountChassisType {
+			return chass, nil
+		}
+	}
+	if len(chassis) > 0 {
+		return chassis[0], nil
+	}
+	return nil, fmt.Errorf("no chassis found")
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	// Query the chassis data using the session token
-	if g.Service == nil {
-		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
+
+	system, err := c.getSystem(ctx)
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err)
 	}
 
 	biosVersion := ""
 	manufacturer := ""
 	model := ""
-
-	systems, err := g.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-	for _, system := range systems {
-		if system.BiosVersion != "" {
-			biosVersion = system.BiosVersion
-			break
-		}
-	}
-	for _, system := range systems {
-		if system.Manufacturer != "" {
-			manufacturer = system.Manufacturer
-			break
-		}
-	}
-	for _, system := range systems {
-		if system.Model != "" {
-			model = system.Model
-			break
-		}
+	if system != nil {
+		biosVersion = system.BiosVersion
+		manufacturer = system.Manufacturer
+		model = system.Model
 	}
 
-	chassis, err := g.Service.Chassis()
+	chass, err := c.getChassis(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		return nil, fmt.Errorf("no board detected: %w", err)
 	}
-	for _, chass := range chassis {
-		if chass.ChassisType == schemas.RackMountChassisType {
-			power, err := chass.Power()
-			var powerMetric *api.PowerMetric
-			if err != nil {
-				c.log.Warnw("ignoring power detection", "error", err)
-			} else {
-				for _, pc := range power.PowerControl {
-					pm := pc.PowerMetrics
-					if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
-						continue
-					}
-					powerMetric = &api.PowerMetric{
-						AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
-						IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
-						MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
-						MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
-					}
-					c.log.Debugw("power consumption", "metrics", powerMetric)
-					break
-				}
+
+	power, err := chass.Power()
+	var powerMetric *api.PowerMetric
+	var powerSupplies []api.PowerSupply
+	if err != nil {
+		c.log.Warnw("ignoring power detection", "error", err)
+	} else {
+		for _, pc := range power.PowerControl {
+			pm := pc.PowerMetrics
+			if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
+				continue
 			}
-			var powerSupplies []api.PowerSupply
-			for _, ps := range power.PowerSupplies {
-				powerSupplies = append(powerSupplies, api.PowerSupply{
-					Status: api.Status{
-						Health: string(ps.Status.Health),
-						State:  string(ps.Status.State),
-					},
-				})
-				c.log.Debugw("powersupplies", "powersupply", ps)
+			powerMetric = &api.PowerMetric{
+				AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
+				IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
+				MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
+				MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
 			}
-			c.log.Debugw("got chassis",
-				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
-				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
-				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
-			return &api.Board{
-				VendorString:  manufacturer,
-				Model:         model,
-				PartNumber:    chass.PartNumber,
-				SerialNumber:  chass.SerialNumber,
-				BiosVersion:   biosVersion,
-				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
-				PowerMetric:   powerMetric,
-				PowerSupplies: powerSupplies,
-			}, nil
+			c.log.Debugw("power consumption", "metrics", powerMetric)
+			break
+		}
+		for _, ps := range power.PowerSupplies {
+			powerSupplies = append(powerSupplies, api.PowerSupply{
+				Status: api.Status{
+					Health: string(ps.Status.Health),
+					State:  string(ps.Status.State),
+				},
+			})
+			c.log.Debugw("powersupplies", "powersupply", ps)
 		}
 	}
-	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
+
+	c.log.Debugw("got chassis",
+		"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
+		"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
+		"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
+	return &api.Board{
+		VendorString:  manufacturer,
+		Model:         model,
+		PartNumber:    chass.PartNumber,
+		SerialNumber:  chass.SerialNumber,
+		BiosVersion:   biosVersion,
+		IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
+		PowerMetric:   powerMetric,
+		PowerSupplies: powerSupplies,
+	}, nil
 }
 
 func toMetalLEDState(state schemas.IndicatorLED) string {
@@ -179,38 +205,33 @@ func toMetalLEDState(state schemas.IndicatorLED) string {
 	}
 }
 
-// MachineUUID retrieves a unique uuid for this (hardware) machine
 func (c *APIClient) MachineUUID() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		c.log.Errorw("error during system query, unable to detect uuid", "error", err.Error())
-		return "", err
+		return "", fmt.Errorf("unable to detect machine UUID: %w", err)
 	}
-	for _, system := range systems {
-		if system.UUID != "" {
-			return system.UUID, nil
-		}
+	if system.UUID == "" {
+		return "", fmt.Errorf("machine UUID is empty")
 	}
-	return "", fmt.Errorf("failed to detect machine UUID")
+	return system.UUID, nil
 }
 
 func (c *APIClient) PowerState() (hal.PowerState, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		c.log.Warnw("ignore system query", "error", err)
+		return hal.PowerUnknownState, nil
 	}
-	for _, system := range systems {
-		if system.PowerState != "" {
-			return hal.GuessPowerState(string(system.PowerState)), nil
-		}
+	if system.PowerState == "" {
+		return hal.PowerUnknownState, nil
 	}
-	return hal.PowerUnknownState, nil
+	return hal.GuessPowerState(string(system.PowerState)), nil
 }
 
 func (c *APIClient) PowerOn() error {
@@ -232,17 +253,15 @@ func (c *APIClient) PowerCycle() error {
 func (c *APIClient) setPower(resetType schemas.ResetType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		return fmt.Errorf("failed to get system for power action %s: %w", resetType, err)
 	}
-	for _, system := range systems {
-		if _, err = system.Reset(resetType); err == nil {
-			return nil
-		}
+	if _, err = system.Reset(resetType); err != nil {
+		return fmt.Errorf("failed to set power to %s: %w", resetType, err)
 	}
-	return fmt.Errorf("failed to set power to %s %w", resetType, err)
+	return nil
 }
 
 // SetChassisIdentifyLEDState sets the chassis identify LED to given state
@@ -259,54 +278,43 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 	}
 }
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn() error {
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.LitIndicatorLED,
-	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
-	if err != nil {
-		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
-	}
-	return nil
+	return c.setChassisIndicatorLED(schemas.LitIndicatorLED)
 }
 
-// SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.OffIndicatorLED,
+	return c.setChassisIndicatorLED(schemas.OffIndicatorLED)
+}
+
+func (c *APIClient) setChassisIndicatorLED(state schemas.IndicatorLED) error {
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+
+	chassis, err := c.getChassis(ctx)
+	if err != nil {
+		return err
 	}
+
+	payload := indicatorLEDRequest{IndicatorLED: state}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
+	resp, err := c.doWithETag(req)
 	if err != nil {
-		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+		return fmt.Errorf("unable to set chassis identify LED to %s: %w", state, err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to set chassis identify LED to %s, status code: %d", state, resp.StatusCode)
 	}
 	return nil
 }
@@ -349,48 +357,38 @@ func (c *APIClient) setPersistentHDD() error {
 func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		return fmt.Errorf("unable to query systems: %w", err)
+		return err
 	}
-
-	if len(systems) == 0 {
-		return fmt.Errorf("no system found to set boot target")
-	}
-
-	if len(systems) > 1 {
-		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
-	}
-
-	// Assuming there's typically one primary system.
-	system := systems[0]
 
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
-	_ = resp.Body.Close()
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	// Drain the body to ensure the connection can be reused
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
 	return nil
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	req.Header.Add("If-Match", "*")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(c.user, c.password)
 }
 
@@ -408,33 +406,24 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-
-	chassis, err := g.Service.Chassis()
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
 
 	bmc := &api.BMC{}
 
-	for _, system := range systems {
+	system, err := c.getSystem(ctx)
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err)
+	} else {
 		bmc.ProductManufacturer = system.Manufacturer
 		bmc.ProductPartNumber = system.PartNumber
 		bmc.ProductSerial = system.SerialNumber
 	}
 
-	for _, chass := range chassis {
-		if chass.ChassisType != schemas.RackMountChassisType {
-			continue
-		}
-
+	chass, err := c.getChassis(ctx)
+	if err != nil {
+		c.log.Warnw("ignore chassis query", "error", err)
+	} else {
 		bmc.ChassisPartNumber = chass.PartNumber
 		bmc.ChassisPartSerial = chass.SerialNumber
-
 		bmc.BoardMfg = chass.Manufacturer
 	}
 
@@ -447,59 +436,46 @@ func (c *APIClient) GetBootOptions() ([]*schemas.BootOption, error) {
 	// The curl command here would be curl -k -u <user>:<pwd> https://10.1.1.18/redfish/v1/Systems/System.Embedded.1/BootOptions
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
-	}
-	for _, system := range systems {
-		bootOptions, err := system.BootOptions()
-		if err != nil {
-			c.log.Warnw("ignore boot options query", "error", err.Error())
-			continue
-		}
-		if len(bootOptions) == 0 {
-			c.log.Warnw("no boot options found", "error")
-			continue
-		}
-		if len(system.Boot.BootOrder) == 0 {
-			c.log.Warnw("no boot order found", "error")
-			continue
-		}
-		return bootOptions, nil
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("failed to get boot options")
+	bootOptions, err := system.BootOptions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get boot options: %w", err)
+	}
+	if len(bootOptions) == 0 {
+		return nil, fmt.Errorf("no boot options found")
+	}
+	if len(system.Boot.BootOrder) == 0 {
+		c.log.Warnw("no boot order found")
+	}
+	return bootOptions, nil
 }
 
 // SetBootOrder sets the boot order to match the sequence of the boot option entries
 func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
+	if len(entries) == 0 {
+		return fmt.Errorf("cannot set boot order: no boot entries provided")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+
+	system, err := c.getSystem(ctx)
 	if err != nil {
-		return fmt.Errorf("unable to query systems: %w", err)
-	}
-
-	if len(systems) == 0 {
-		return fmt.Errorf("no system found to set boot order")
-	}
-
-	if len(systems) > 1 {
-		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
-	}
-
-	// Assuming there's typically one primary system.
-	system := systems[0]
-
-	var bootOrder []string
-	for _, entry := range entries {
-		bootOrder = append(bootOrder, entry.ID)
+		return err
 	}
 
 	if len(system.Boot.BootOrder) == 0 {
 		c.log.Errorw("no boot order found")
+	}
+
+	var bootOrder []string
+	for _, entry := range entries {
+		bootOrder = append(bootOrder, entry.ID)
 	}
 
 	payload := bootOrderSetRequest{}
@@ -509,20 +485,21 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	_ = resp.Body.Close()
+
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
-
 	return nil
 }
 
@@ -549,23 +526,70 @@ func (c *APIClient) UpdateFirmware(url string) error {
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to trigger update: %w", err)
 	}
 	defer func() {
-		err = resp.Body.Close()
-		if err != nil {
-			c.log.Warnw("unable to close response body", "error", err)
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			c.log.Warnw("unable to close response body", "error", closeErr)
 		}
 	}()
 
 	body, _ = io.ReadAll(resp.Body)
 	// The response code is 202 for accepted, and we normally get no body
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		c.log.Infow("Update triggered successfully: %s\n", string(body))
-	} else {
-		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
+	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("update failed with status %s: %s", resp.Status, string(body))
 	}
+	c.log.Infow("update triggered successfully", "response", string(body))
 	return nil
+}
+
+func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", err
+	}
+	// Drain and close the body to ensure the connection can be reused
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)
+		return "*", nil
+	}
+
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		return "*", nil
+	}
+	return etag, nil
+}
+
+func (c *APIClient) doWithETag(req *http.Request) (*http.Response, error) {
+	if c.ETagRequired {
+		// Create a context with timeout for the ETag fetch
+		ctx := req.Context()
+		if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, c.connectionTimeout)
+			defer cancel()
+		}
+
+		etag, err := c.getETag(ctx, req.URL.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ETag: %w", err)
+		}
+
+		req.Header.Set("If-Match", etag)
+	} else {
+		req.Header.Set("If-Match", "*")
+	}
+	return c.Do(req)
 }
