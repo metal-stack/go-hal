@@ -81,15 +81,11 @@ func (c *APIClient) SetETagRequired(required bool) {
 	c.ETagRequired = required
 }
 
-// GetSystem returns the single managed ComputerSystem.
-// Servers are expected to expose exactly one system via Redfish.
 func (c *APIClient) GetSystem() (*schemas.ComputerSystem, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
-	defer cancel()
-	return c.getSystem(ctx)
+	return c.getSystem(context.Background())
+
 }
 
-// getSystem is the internal implementation of GetSystem, accepting an existing context.
 func (c *APIClient) getSystem(ctx context.Context) (*schemas.ComputerSystem, error) {
 	g := c.client.WithContext(ctx)
 	if g.Service == nil {
@@ -108,8 +104,6 @@ func (c *APIClient) getSystem(ctx context.Context) (*schemas.ComputerSystem, err
 	return systems[0], nil
 }
 
-// getChassis returns the primary chassis, preferring RackMount type.
-// Servers are expected to expose exactly one chassis via Redfish.
 func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
 	g := c.client.WithContext(ctx)
 	if g.Service == nil {
@@ -284,17 +278,14 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 	}
 }
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	return c.setChassisIndicatorLED(schemas.LitIndicatorLED)
 }
 
-// SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	return c.setChassisIndicatorLED(schemas.OffIndicatorLED)
 }
 
-// setChassisIndicatorLED is the shared implementation for setting the chassis indicator LED state.
 func (c *APIClient) setChassisIndicatorLED(state schemas.IndicatorLED) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
