@@ -282,7 +282,7 @@ func (ob *outBand) Describe() string {
 }
 
 func (ob *outBand) Console(s ssh.Session) error {
-	return console.OverSSH(s, ob.GetUsername(), ob.GetPassword(), ob.GetIP(), ob.GetSSHPort(), ob.log)
+	return console.OverSSH(ob.log, s, ob.GetUsername(), ob.GetPassword(), ob.GetIP(), ob.GetSSHPort(), "console com2")
 }
 
 func (ob *outBand) UpdateBIOS(url string) error {
