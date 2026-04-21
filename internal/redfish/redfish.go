@@ -118,7 +118,8 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		c.log.Warnw("ignore system query", "error", err.Error())
 	}
 	for _, chass := range chassis {
-		if chass.ChassisType == schemas.RackMountChassisType {
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
 			power, err := chass.Power()
 			var powerMetric *api.PowerMetric
 			if err != nil {
@@ -163,6 +164,8 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				PowerMetric:   powerMetric,
 				PowerSupplies: powerSupplies,
 			}, nil
+		default:
+			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
 		}
 	}
 	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
@@ -428,14 +431,16 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	}
 
 	for _, chass := range chassis {
-		if chass.ChassisType != schemas.RackMountChassisType {
-			continue
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			bmc.ChassisPartNumber = chass.PartNumber
+			bmc.ChassisPartSerial = chass.SerialNumber
+
+			bmc.BoardMfg = chass.Manufacturer
+		default:
+			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
+
 		}
-
-		bmc.ChassisPartNumber = chass.PartNumber
-		bmc.ChassisPartSerial = chass.SerialNumber
-
-		bmc.BoardMfg = chass.Manufacturer
 	}
 
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
