@@ -92,7 +92,7 @@ func Open(s ssh.Session, cmd *exec.Cmd) error {
 	return err
 }
 
-func OverSSH(s ssh.Session, username, password, host string, port int, log logger.Logger) error {
+func OverSSH(log logger.Logger, s ssh.Session, username, password, host string, port int, command string) error {
 	clientConfig := &cryptossh.ClientConfig{
 		User: username,
 		Auth: []cryptossh.AuthMethod{
@@ -145,6 +145,10 @@ func OverSSH(s ssh.Session, username, password, host string, port int, log logge
 	session.Stdin = s
 	session.Stdout = s
 	session.Stderr = s
+
+	if err := session.Run(command); err != nil {
+		log.Infow("failed to run command", "command", command, "error", err)
+	}
 
 	if err := session.Shell(); err != nil {
 		return fmt.Errorf("failed to start shell: %w", err)
