@@ -9,7 +9,6 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/metal-stack/go-hal"
-	"github.com/metal-stack/metal-lib/pkg/pointer"
 
 	"github.com/metal-stack/go-hal/connect"
 	"github.com/metal-stack/go-hal/pkg/logger"
@@ -53,7 +52,7 @@ func inband(log logger.Logger) {
 }
 
 func outband(log logger.Logger) {
-	ob, err := connect.OutBand(*host, *ipmiPort, *user, *password, log, pointer.Pointer(10*time.Second))
+	ob, err := connect.OutBand(*host, *ipmiPort, *user, *password, log, new(10*time.Second))
 	if err != nil {
 		panic(err)
 	}

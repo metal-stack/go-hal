@@ -127,71 +127,95 @@ func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-
-	system, err := c.getSystem(ctx)
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err)
+	g := c.client.WithContext(ctx)
+	// Query the chassis data using the session token
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available most likely due to missing username")
 	}
 
 	biosVersion := ""
 	manufacturer := ""
 	model := ""
-	if system != nil {
-		biosVersion = system.BiosVersion
-		manufacturer = system.Manufacturer
-		model = system.Model
-	}
 
-	chass, err := c.getChassis(ctx)
+	systems, err := g.Service.Systems()
 	if err != nil {
-		return nil, fmt.Errorf("no board detected: %w", err)
+		c.log.Warnw("ignore system query", "error", err.Error())
 	}
-
-	power, err := chass.Power()
-	var powerMetric *api.PowerMetric
-	var powerSupplies []api.PowerSupply
-	if err != nil {
-		c.log.Warnw("ignoring power detection", "error", err)
-	} else {
-		for _, pc := range power.PowerControl {
-			pm := pc.PowerMetrics
-			if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
-				continue
-			}
-			powerMetric = &api.PowerMetric{
-				AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
-				IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
-				MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
-				MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
-			}
-			c.log.Debugw("power consumption", "metrics", powerMetric)
+	for _, system := range systems {
+		if system.BiosVersion != "" {
+			biosVersion = system.BiosVersion
 			break
 		}
-		for _, ps := range power.PowerSupplies {
-			powerSupplies = append(powerSupplies, api.PowerSupply{
-				Status: api.Status{
-					Health: string(ps.Status.Health),
-					State:  string(ps.Status.State),
-				},
-			})
-			c.log.Debugw("powersupplies", "powersupply", ps)
+	}
+	for _, system := range systems {
+		if system.Manufacturer != "" {
+			manufacturer = system.Manufacturer
+			break
+		}
+	}
+	for _, system := range systems {
+		if system.Model != "" {
+			model = system.Model
+			break
 		}
 	}
 
-	c.log.Debugw("got chassis",
-		"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
-		"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
-		"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
-	return &api.Board{
-		VendorString:  manufacturer,
-		Model:         model,
-		PartNumber:    chass.PartNumber,
-		SerialNumber:  chass.SerialNumber,
-		BiosVersion:   biosVersion,
-		IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
-		PowerMetric:   powerMetric,
-		PowerSupplies: powerSupplies,
-	}, nil
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+	for _, chass := range chassis {
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			power, err := chass.Power()
+			var powerMetric *api.PowerMetric
+			if err != nil {
+				c.log.Warnw("ignoring power detection", "error", err)
+			} else {
+				for _, pc := range power.PowerControl {
+					pm := pc.PowerMetrics
+					if pm.AverageConsumedWatts == nil && pm.IntervalInMin == nil {
+						continue
+					}
+					powerMetric = &api.PowerMetric{
+						AverageConsumedWatts: pointer.SafeDeref(pm.AverageConsumedWatts),
+						IntervalInMin:        float32(pointer.SafeDeref(pm.IntervalInMin)),
+						MaxConsumedWatts:     pointer.SafeDeref(pm.MaxConsumedWatts),
+						MinConsumedWatts:     pointer.SafeDeref(pm.MinConsumedWatts),
+					}
+					c.log.Debugw("power consumption", "metrics", powerMetric)
+					break
+				}
+			}
+			var powerSupplies []api.PowerSupply
+			for _, ps := range power.PowerSupplies {
+				powerSupplies = append(powerSupplies, api.PowerSupply{
+					Status: api.Status{
+						Health: string(ps.Status.Health),
+						State:  string(ps.Status.State),
+					},
+				})
+				c.log.Debugw("powersupplies", "powersupply", ps)
+			}
+			c.log.Debugw("got chassis",
+				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
+				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
+				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
+			return &api.Board{
+				VendorString:  manufacturer,
+				Model:         model,
+				PartNumber:    chass.PartNumber,
+				SerialNumber:  chass.SerialNumber,
+				BiosVersion:   biosVersion,
+				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
+				PowerMetric:   powerMetric,
+				PowerSupplies: powerSupplies,
+			}, nil
+		default:
+			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
+		}
+	}
+	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
 }
 
 func toMetalLEDState(state schemas.IndicatorLED) string {
@@ -406,25 +430,36 @@ func (c *APIClient) setNextBootBIOS() error {
 func (c *APIClient) BMC() (*api.BMC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
+	g := c.client.WithContext(ctx)
+	systems, err := g.Service.Systems()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
+
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		c.log.Warnw("ignore system query", "error", err.Error())
+	}
 
 	bmc := &api.BMC{}
 
-	system, err := c.getSystem(ctx)
-	if err != nil {
-		c.log.Warnw("ignore system query", "error", err)
-	} else {
+	for _, system := range systems {
 		bmc.ProductManufacturer = system.Manufacturer
 		bmc.ProductPartNumber = system.PartNumber
 		bmc.ProductSerial = system.SerialNumber
 	}
 
-	chass, err := c.getChassis(ctx)
-	if err != nil {
-		c.log.Warnw("ignore chassis query", "error", err)
-	} else {
-		bmc.ChassisPartNumber = chass.PartNumber
-		bmc.ChassisPartSerial = chass.SerialNumber
-		bmc.BoardMfg = chass.Manufacturer
+	for _, chass := range chassis {
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			bmc.ChassisPartNumber = chass.PartNumber
+			bmc.ChassisPartSerial = chass.SerialNumber
+
+			bmc.BoardMfg = chass.Manufacturer
+		default:
+			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
+
+		}
 	}
 
 	//TODO find bmc.BoardMfgSerial and bmc.BoardPartNumber
