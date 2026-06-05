@@ -103,6 +103,29 @@ func (c *APIClient) getSystem(ctx context.Context) (*schemas.ComputerSystem, err
 	return systems[0], nil
 }
 
+func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
+	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query chassis: %w", err)
+	}
+	if len(chassis) == 0 {
+		return nil, fmt.Errorf("no chassis found")
+	}
+	for _, chass := range chassis {
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			return chass, nil
+		default:
+			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
+		}
+	}
+	return nil, fmt.Errorf("no chassis detected: #chassis:%d", len(chassis))
+}
+
 func (c *APIClient) BoardInfo() (*api.Board, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
@@ -298,7 +321,11 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	chassis, err := c.getChassis(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chassis for identify LED control: %w", err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -310,6 +337,9 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	}
 	if err != nil {
 		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to turn on the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -324,7 +354,11 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	chassis, err := c.getChassis(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chassis for identify LED control: %w", err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -336,6 +370,9 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	}
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unable to turn off the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -549,7 +586,7 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 
