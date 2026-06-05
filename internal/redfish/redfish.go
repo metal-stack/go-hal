@@ -332,12 +332,10 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.doWithETag(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
 	if err != nil {
 		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to turn on the chassis identify LED, http status: %s", resp.Status)
 	}
@@ -365,12 +363,10 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.doWithETag(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unable to turn off the chassis identify LED, http status: %s", resp.Status)
 	}
@@ -443,10 +439,10 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.doWithETag(req)
-	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
@@ -582,10 +578,10 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	}
 	c.addHeadersAndAuth(req)
 	resp, err := c.doWithETag(req)
-	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
