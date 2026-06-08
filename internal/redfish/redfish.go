@@ -367,7 +367,7 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
 	}
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to turn off the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
