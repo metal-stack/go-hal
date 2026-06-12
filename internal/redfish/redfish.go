@@ -122,6 +122,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
 			power, err := chass.Power()
 			var powerMetric *api.PowerMetric
+			var powerSupplies []api.PowerSupply
 			if err != nil {
 				c.log.Warnw("ignoring power detection", "error", err)
 			} else {
@@ -139,16 +140,15 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 					c.log.Debugw("power consumption", "metrics", powerMetric)
 					break
 				}
-			}
-			var powerSupplies []api.PowerSupply
-			for _, ps := range power.PowerSupplies {
-				powerSupplies = append(powerSupplies, api.PowerSupply{
-					Status: api.Status{
-						Health: string(ps.Status.Health),
-						State:  string(ps.Status.State),
-					},
-				})
-				c.log.Debugw("powersupplies", "powersupply", ps)
+				for _, ps := range power.PowerSupplies {
+					powerSupplies = append(powerSupplies, api.PowerSupply{
+						Status: api.Status{
+							Health: string(ps.Status.Health),
+							State:  string(ps.Status.State),
+						},
+					})
+					c.log.Debugw("powersupplies", "powersupply", ps)
+				}
 			}
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
