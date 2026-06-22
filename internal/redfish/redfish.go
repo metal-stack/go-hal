@@ -3,7 +3,6 @@ package redfish
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,9 +24,9 @@ type APIClient struct {
 	urlPrefix         string
 	user              string
 	password          string
-	basicAuth         string
 	log               logger.Logger
 	connectionTimeout time.Duration
+	ETagRequired      bool
 }
 
 type bootOverrideRequest struct {
@@ -70,11 +69,62 @@ func New(url, user, password string, insecure bool, log logger.Logger, connectio
 		Client:            c.HTTPClient,
 		user:              user,
 		password:          password,
-		basicAuth:         base64.StdEncoding.EncodeToString([]byte(user + ":" + password)),
 		urlPrefix:         fmt.Sprintf("%s/redfish/v1", url),
 		log:               log,
 		connectionTimeout: timeout,
+		ETagRequired:      false,
 	}, nil
+}
+
+func (c *APIClient) SetETagRequired(required bool) {
+	c.ETagRequired = required
+}
+
+func (c *APIClient) GetSystem() (*schemas.ComputerSystem, error) {
+	return c.getSystem(context.Background())
+
+}
+
+func (c *APIClient) getSystem(ctx context.Context) (*schemas.ComputerSystem, error) {
+	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	systems, err := g.Service.Systems()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query systems: %w", err)
+	}
+	if len(systems) == 0 {
+		return nil, fmt.Errorf("no system found")
+	}
+	if len(systems) > 1 {
+		c.log.Warnw("multiple systems found, using first one", "count", len(systems))
+	}
+	return systems[0], nil
+}
+
+func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
+	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
+	chassis, err := g.Service.Chassis()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query chassis: %w", err)
+	}
+	if len(chassis) == 0 {
+		return nil, fmt.Errorf("no chassis found")
+	}
+	for _, chass := range chassis {
+		switch chass.ChassisType {
+		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			c.log.Infow("found supported chassis type", "type", chass.ChassisType)
+			return chass, nil
+		default:
+			c.log.Infow("ignoring unsupported chassis type", "type", chass.ChassisType)
+		}
+	}
+	return nil, fmt.Errorf("no chassis detected: #chassis:%d", len(chassis))
 }
 
 func (c *APIClient) BoardInfo() (*api.Board, error) {
@@ -272,18 +322,23 @@ func (c *APIClient) SetChassisIdentifyLEDOn() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	chassis, err := c.getChassis(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chassis for identify LED control: %w", err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to turn on the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -298,18 +353,23 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	chassis, err := c.getChassis(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get chassis for identify LED control: %w", err)
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/%s", c.urlPrefix, chassis.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("unable to turn off the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -379,11 +439,11 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
-	_ = resp.Body.Close()
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
@@ -391,9 +451,8 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 }
 
 func (c *APIClient) addHeadersAndAuth(req *http.Request) {
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+c.basicAuth)
-	req.Header.Add("If-Match", "*")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	req.SetBasicAuth(c.user, c.password)
 }
 
@@ -519,12 +578,12 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 		return err
 	}
 	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	_ = resp.Body.Close()
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	_ = resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 
@@ -554,7 +613,7 @@ func (c *APIClient) UpdateFirmware(url string) error {
 	}
 	c.addHeadersAndAuth(req)
 
-	resp, err := c.Do(req)
+	resp, err := c.doWithETag(req)
 	if err != nil {
 		return fmt.Errorf("unable to trigger update: %w", err)
 	}
@@ -573,4 +632,53 @@ func (c *APIClient) UpdateFirmware(url string) error {
 		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
 	}
 	return nil
+}
+
+func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	c.addHeadersAndAuth(req)
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", err
+	}
+	// Drain and close the body to ensure the connection can be reused
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)
+		return "*", nil
+	}
+
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		return "*", nil
+	}
+	return etag, nil
+}
+
+func (c *APIClient) doWithETag(req *http.Request) (*http.Response, error) {
+	if c.ETagRequired {
+		// Create a context with timeout for the ETag fetch
+		ctx := req.Context()
+		if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, c.connectionTimeout)
+			defer cancel()
+		}
+
+		etag, err := c.getETag(ctx, req.URL.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ETag: %w", err)
+		}
+
+		req.Header.Set("If-Match", etag)
+	} else {
+		req.Header.Set("If-Match", "*")
+	}
+	return c.Do(req)
 }
