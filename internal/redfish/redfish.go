@@ -118,9 +118,10 @@ func (c *APIClient) getChassis(ctx context.Context) (*schemas.Chassis, error) {
 	for _, chass := range chassis {
 		switch chass.ChassisType {
 		case schemas.RackMountChassisType, schemas.SledChassisType, schemas.BladeChassisType:
+			c.log.Infow("found supported chassis type", "type", chass.ChassisType)
 			return chass, nil
 		default:
-			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
+			c.log.Infow("ignoring unsupported chassis type", "type", chass.ChassisType)
 		}
 	}
 	return nil, fmt.Errorf("no chassis detected: #chassis:%d", len(chassis))
