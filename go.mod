@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/metal-stack/metal-lib v0.24.1
 	github.com/sethvargo/go-password v0.3.1
-	github.com/stmcginnis/gofish v0.21.6
+	github.com/stmcginnis/gofish v0.22.1-0.20260706163244-043850d8b875
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/vmware/goipmi v0.0.0-20181114221114-2333cd82d702

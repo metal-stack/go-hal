@@ -38,6 +38,8 @@ const (
 	H13SRD_F
 	// AMD Workstation Board
 	H13SRH
+	// New storage machines
+	H13SSH
 )
 
 var (
@@ -60,6 +62,8 @@ var (
 		"H13SRD-F": H13SRD_F,
 		// AMD Workstation Board
 		"H13SRH": H13SRH,
+		// New storage machines
+		"H13SSH": H13SSH,
 	}
 
 	// SUM does not complain or fail if more boot options are given than actually available
@@ -279,7 +283,7 @@ func (s *sum) ConfigureBIOS() (bool, error) {
 	// We must not configure the Bios if UEFI is already activated and the board is one of the following.
 	if firmware == kernel.EFI {
 		switch s.boardModel {
-		case X11SDV_8C_TP8F, X11SDD_8C_F, X12DPT_B6, X13DDW_A, X13SCD_F, H13SRD_F, H13SRH:
+		case X11SDV_8C_TP8F, X11SDD_8C_F, X12DPT_B6, X13DDW_A, X13SCD_F, H13SRD_F, H13SRH, H13SSH:
 			s.log.Infow("UEFI only board detected, skip bios configuration", "board", s.boardName, "model", s.boardModel)
 			return false, nil
 		}
@@ -311,7 +315,7 @@ func (s *sum) EnsureBootOrder(bootloaderID string) error {
 	s.bootloaderID = bootloaderID
 
 	switch s.boardModel {
-	case X13DDW_A, X12DPT_B6, X13SCD_F, H13SRD_F, H13SRH:
+	case X13DDW_A, X12DPT_B6, X13SCD_F, H13SRD_F, H13SRH, H13SSH:
 		s.log.Infow("GPU board detected, skip bios modification", "board", s.boardName)
 		return nil
 	}
