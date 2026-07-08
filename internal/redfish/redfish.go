@@ -41,7 +41,8 @@ type bootOrderSetRequest struct {
 }
 
 type indicatorLEDRequest struct {
-	IndicatorLED schemas.IndicatorLED `json:"IndicatorLED"`
+	IndicatorLED            schemas.IndicatorLED `json:"IndicatorLED,omitempty"`
+	LocationIndicatorActive *bool                `json:"LocationIndicatorActive,omitempty"`
 }
 
 func New(url, user, password string, insecure bool, log logger.Logger, connectionTimeout *time.Duration) (*APIClient, error) {
@@ -150,17 +151,29 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 					c.log.Debugw("powersupplies", "powersupply", ps)
 				}
 			}
+
+			var ledState string
+			if chass.LocationIndicatorActive != nil {
+				if *chass.LocationIndicatorActive {
+					ledState = string(schemas.LitIndicatorLED) // On
+				} else {
+					ledState = string(schemas.OffIndicatorLED) // Off
+				}
+			} else {
+				ledState = toMetalLEDState(chass.IndicatorLED) //nolint:staticcheck
+			}
+
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
-				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
+				"BiosVersion", biosVersion, "led", ledState)
 			return &api.Board{
 				VendorString:  manufacturer,
 				Model:         model,
 				PartNumber:    chass.PartNumber,
 				SerialNumber:  chass.SerialNumber,
 				BiosVersion:   biosVersion,
-				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
+				IndicatorLED:  ledState,
 				PowerMetric:   powerMetric,
 				PowerSupplies: powerSupplies,
 			}, nil
@@ -169,6 +182,21 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 		}
 	}
 	return nil, fmt.Errorf("no board detected: #chassis:%d", len(chassis))
+}
+
+func (c *APIClient) locationIndicatorActiveSupported(path string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+
+	chassis, err := schemas.GetChassis(c.client.WithContext(ctx), path)
+	if err != nil {
+		return false, fmt.Errorf("unable to query chassis: %w", err)
+	}
+	if chassis == nil {
+		return false, fmt.Errorf("got empty chassis object for path %q", path)
+	}
+
+	return chassis.LocationIndicatorActive != nil, nil
 }
 
 func toMetalLEDState(state schemas.IndicatorLED) string {
@@ -180,6 +208,13 @@ func toMetalLEDState(state schemas.IndicatorLED) string {
 	default:
 		return "LED-OFF"
 	}
+}
+
+func boolToIndicatorLED(state bool) schemas.IndicatorLED {
+	if state {
+		return schemas.LitIndicatorLED
+	}
+	return schemas.OffIndicatorLED
 }
 
 // MachineUUID retrieves a unique uuid for this (hardware) machine
@@ -250,66 +285,67 @@ func (c *APIClient) setPower(resetType schemas.ResetType) error {
 
 // SetChassisIdentifyLEDState sets the chassis identify LED to given state
 func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error {
+	var stateBool bool
 	switch state {
 	case hal.IdentifyLEDStateOff:
-		return c.SetChassisIdentifyLEDOff()
+		stateBool = false
 	case hal.IdentifyLEDStateOn:
-		return c.SetChassisIdentifyLEDOn()
+		stateBool = true
 	case hal.IdentifyLEDStateUnknown:
 		fallthrough
 	default:
 		return fmt.Errorf("unknown identify LED state: %s", state)
 	}
-}
 
-// SetChassisIdentifyLEDOn turns on the chassis identify LED
-func (c *APIClient) SetChassisIdentifyLEDOn() error {
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.LitIndicatorLED,
+	chassisPath := fmt.Sprintf("%s/Chassis/1", c.urlPrefix)
+
+	supported, err := c.locationIndicatorActiveSupported(chassisPath)
+	if err != nil {
+		return fmt.Errorf("cannot determine if LocationIndicatorActive is supported: %w", err)
+	}
+
+	payload := indicatorLEDRequest{}
+	if supported {
+		payload.LocationIndicatorActive = &stateBool
+	} else {
+		payload.IndicatorLED = boolToIndicatorLED(stateBool)
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, chassisPath, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
 	if err != nil {
-		return fmt.Errorf("unable to turn on the chassis identify LED %w", err)
+		return err
+	}
+	_ = resp.Body.Close()
+	return nil
+}
+
+// SetChassisIdentifyLEDOn turns on the chassis identify LED
+func (c *APIClient) SetChassisIdentifyLEDOn() error {
+	err := c.SetChassisIdentifyLEDState(hal.IdentifyLEDStateOn)
+	if err != nil {
+		return fmt.Errorf("unable to turn on the chassis identify LED: %w", err)
 	}
 	return nil
 }
 
 // SetChassisIdentifyLEDOff turns off the chassis identify LED
 func (c *APIClient) SetChassisIdentifyLEDOff() error {
-	payload := indicatorLEDRequest{
-		IndicatorLED: schemas.OffIndicatorLED,
-	}
-	body, err := json.Marshal(payload)
+	err := c.SetChassisIdentifyLEDState(hal.IdentifyLEDStateOff)
 	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Chassis/1", c.urlPrefix), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-
-	resp, err := c.Do(req)
-	if err == nil {
-		_ = resp.Body.Close()
-	}
-	if err != nil {
-		return fmt.Errorf("unable to turn off the chassis identify LED %w", err)
+		return fmt.Errorf("unable to turn off the chassis identify LED: %w", err)
 	}
 	return nil
 }
