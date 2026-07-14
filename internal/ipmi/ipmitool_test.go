@@ -125,6 +125,19 @@ FRU Device Description : PERC2 (ID 11)
  Device not present (Parameter out of range)                                                                            
 `
 
+const userList = `
+1,,true,false,false,Unknown (0x00)
+2,ADMIN,false,false,true,ADMINISTRATOR
+3,,true,false,false,Unknown (0x00)
+4,root,true,true,true,ADMINISTRATOR
+5,,true,false,false,Unknown (0x00)
+6,,true,false,false,Unknown (0x00)
+7,,true,false,false,Unknown (0x00)
+8,,true,false,false,Unknown (0x00)
+9,,true,false,false,Unknown (0x00)
+10,metal,true,true,true,ADMINISTRATOR
+`
+
 func Test_getLanConfig(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -215,6 +228,47 @@ func Test_getFru(t *testing.T) {
 			b := &Fru{}
 			from(b, got)
 			require.Equal(t, tt.want, b)
+		})
+	}
+}
+
+func Test_listUsers(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmdOutput string
+		want      []User
+	}{
+		{
+			name:      "get users from table",
+			cmdOutput: userList,
+			want: []User{
+				{
+					ID:                    2,
+					Name:                  "ADMIN",
+					ChannelPrivilegeLevel: "ADMINISTRATOR",
+				},
+				{
+					ID:                    4,
+					Name:                  "root",
+					ChannelPrivilegeLevel: "ADMINISTRATOR",
+				},
+				{
+					ID:                    10,
+					Name:                  "metal",
+					ChannelPrivilegeLevel: "ADMINISTRATOR",
+				},
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		i := Ipmitool{log: logger.New()}
+		t.Run(tt.name, func(t *testing.T) {
+			users, error := i.listUsers(tt.cmdOutput)
+			if error != nil {
+				t.Errorf("userList() error: %v", error)
+			}
+			require.Equal(t, tt.want, users)
 		})
 	}
 }

@@ -116,6 +116,13 @@ type BMCInfo struct {
 	FirmwareRevision string `ipmitool:"Firmware Revision"`
 }
 
+// User holds information, retrieved with 'ipmitool list users'
+type User struct {
+	ID                    int
+	Name                  string
+	ChannelPrivilegeLevel string
+}
+
 // New creates a new IpmiTool with the default command
 func New(log logger.Logger) (IpmiTool, error) {
 	ipmitoolBin := "ipmitool"
@@ -562,6 +569,67 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 		return err
 	}
 	return console.Open(s, cmd)
+}
+
+func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
+	output, err := i.Run("-c", "user", "list", strconv.Itoa(user.ChannelNumber))
+	if err != nil {
+		return false, fmt.Errorf("ipmitool user list failed: %w", err)
+	}
+
+	users, err := i.listUsers(output)
+	if err != nil {
+		return false, fmt.Errorf("error listing users: %w", err)
+	}
+
+	userID, err := strconv.Atoi(user.Id)
+	if err != nil {
+		return false, fmt.Errorf("user ID conversion failed: %w", err)
+	}
+
+	for _, u := range users {
+		if u.Name == user.Name && u.ID == userID {
+			return true, nil
+		}
+	}
+
+	return false, fmt.Errorf("failed to check if user exists: %w", err)
+}
+
+func (i *Ipmitool) listUsers(cmdOutput string) ([]User, error) {
+	var users []User
+	scanner := bufio.NewScanner(strings.NewReader(string(cmdOutput)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, ",")
+		if len(fields) < 6 {
+			continue
+		}
+
+		id, err := strconv.Atoi(strings.TrimSpace(fields[0]))
+		if err != nil {
+			continue
+		}
+
+		name := strings.TrimSpace(fields[1])
+		if name == "" {
+			continue
+		}
+
+		users = append(users, User{
+			ID:                    id,
+			Name:                  name,
+			ChannelPrivilegeLevel: strings.TrimSpace(fields[5]),
+		})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("parsing ipmitool user list output: %w", err)
+	}
+	return users, nil
 }
 
 func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
