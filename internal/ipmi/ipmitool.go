@@ -51,6 +51,7 @@ type IpmiTool interface {
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
 	OpenConsole(s ssh.Session) error
+	UserExist(user api.BMCUser) (b bool, e error)
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
