@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/stretchr/testify/require"
 )
@@ -236,22 +237,22 @@ func Test_listUsers(t *testing.T) {
 	tests := []struct {
 		name      string
 		cmdOutput string
-		want      []User
+		want      []api.BMCUser
 	}{
 		{
 			name:      "get users from table",
 			cmdOutput: userList,
-			want: []User{
+			want: []api.BMCUser{
 				{
-					ID:   2,
+					Id:   "2",
 					Name: "ADMIN",
 				},
 				{
-					ID:   4,
+					Id:   "4",
 					Name: "root",
 				},
 				{
-					ID:   10,
+					Id:   "10",
 					Name: "metal",
 				},
 			},

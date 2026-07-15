@@ -40,6 +40,7 @@ type IpmiTool interface {
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
+	UserExist(user api.BMCUser) (b bool, e error)
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
@@ -51,7 +52,6 @@ type IpmiTool interface {
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
 	OpenConsole(s ssh.Session) error
-	UserExist(user api.BMCUser) (b bool, e error)
 }
 
 // Ipmitool is used to query and modify the IPMI based BMC from the host os
@@ -115,12 +115,6 @@ type Fru struct {
 // BMCInfo contains the parsed output of 'ipmitool bmc info'
 type BMCInfo struct {
 	FirmwareRevision string `ipmitool:"Firmware Revision"`
-}
-
-// User holds information, retrieved with 'ipmitool list users'
-type User struct {
-	ID   int
-	Name string
 }
 
 // New creates a new IpmiTool with the default command
@@ -582,23 +576,18 @@ func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
 		return false, fmt.Errorf("error listing users: %w", err)
 	}
 
-	userID, err := strconv.Atoi(user.Id)
-	if err != nil {
-		return false, fmt.Errorf("user ID conversion failed: %w", err)
-	}
-
 	for _, u := range users {
-		if u.Name == user.Name && u.ID == userID {
-			i.log.Infow("superuser already present", "user", user.Name, "id", user.Id)
+		if u.Name == user.Name {
+			i.log.Infow("user already present", "user", user.Name)
 			return true, nil
 		}
 	}
-	i.log.Infow("superuser does not exist yet", "user", user.Name, "id", user.Id)
+	i.log.Infow("user does not exist yet", "user", user.Name)
 	return false, nil
 }
 
-func (i *Ipmitool) listUsers(cmdOutput string) ([]User, error) {
-	var users []User
+func (i *Ipmitool) listUsers(cmdOutput string) ([]api.BMCUser, error) {
+	var users []api.BMCUser
 	scanner := bufio.NewScanner(strings.NewReader(string(cmdOutput)))
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -611,18 +600,13 @@ func (i *Ipmitool) listUsers(cmdOutput string) ([]User, error) {
 			continue
 		}
 
-		id, err := strconv.Atoi(strings.TrimSpace(fields[0]))
-		if err != nil {
-			continue
-		}
-
 		name := strings.TrimSpace(fields[1])
 		if name == "" {
 			continue
 		}
 
-		users = append(users, User{
-			ID:   id,
+		users = append(users, api.BMCUser{
+			Id:   strings.TrimSpace(fields[0]),
 			Name: name,
 		})
 	}
