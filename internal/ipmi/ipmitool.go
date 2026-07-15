@@ -118,9 +118,8 @@ type BMCInfo struct {
 
 // User holds information, retrieved with 'ipmitool list users'
 type User struct {
-	ID                    int
-	Name                  string
-	ChannelPrivilegeLevel string
+	ID   int
+	Name string
 }
 
 // New creates a new IpmiTool with the default command
@@ -593,7 +592,7 @@ func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
 		}
 	}
 
-	return false, fmt.Errorf("failed to check if user exists: %w", err)
+	return false, nil
 }
 
 func (i *Ipmitool) listUsers(cmdOutput string) ([]User, error) {
@@ -621,9 +620,8 @@ func (i *Ipmitool) listUsers(cmdOutput string) ([]User, error) {
 		}
 
 		users = append(users, User{
-			ID:                    id,
-			Name:                  name,
-			ChannelPrivilegeLevel: strings.TrimSpace(fields[5]),
+			ID:   id,
+			Name: name,
 		})
 	}
 	if err := scanner.Err(); err != nil {

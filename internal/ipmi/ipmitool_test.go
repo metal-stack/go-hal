@@ -243,19 +243,16 @@ func Test_listUsers(t *testing.T) {
 			cmdOutput: userList,
 			want: []User{
 				{
-					ID:                    2,
-					Name:                  "ADMIN",
-					ChannelPrivilegeLevel: "ADMINISTRATOR",
+					ID:   2,
+					Name: "ADMIN",
 				},
 				{
-					ID:                    4,
-					Name:                  "root",
-					ChannelPrivilegeLevel: "ADMINISTRATOR",
+					ID:   4,
+					Name: "root",
 				},
 				{
-					ID:                    10,
-					Name:                  "metal",
-					ChannelPrivilegeLevel: "ADMINISTRATOR",
+					ID:   10,
+					Name: "metal",
 				},
 			},
 		},
