@@ -588,10 +588,11 @@ func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
 
 	for _, u := range users {
 		if u.Name == user.Name && u.ID == userID {
+			i.log.Infow("superuser already present", "user", user.Name, "id", user.Id)
 			return true, nil
 		}
 	}
-
+	i.log.Infow("superuser does not exist yet", "user", user.Name, "id", user.Id)
 	return false, nil
 }
 
