@@ -602,14 +602,16 @@ func (i *Ipmitool) listUsers(cmdOutput string) ([]api.BMCUser, error) {
 		}
 
 		name := strings.TrimSpace(fields[1])
-		if name == "" {
+		if name == "" { // username is empty for unused slots
 			continue
 		}
 
-		users = append(users, api.BMCUser{
+		userFound := api.BMCUser{
 			Id:   strings.TrimSpace(fields[0]),
 			Name: name,
-		})
+		}
+		i.log.Debugw("user found", "id", userFound.Id, "username", userFound.Name)
+		users = append(users, userFound)
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("parsing ipmitool user list output: %w", err)
