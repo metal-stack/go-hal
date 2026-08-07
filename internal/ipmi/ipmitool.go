@@ -75,7 +75,8 @@ func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, password string) (bool,
 	if err != nil {
 		if strings.Contains(strings.ToLower(output), "password incorrect") {
 			// Note: this is also the case if the user does not exist yet but both cases are handled equally
-			return true, fmt.Errorf("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
+			i.log.Infow("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
+			return true, nil
 		}
 		return false, fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
 	}
