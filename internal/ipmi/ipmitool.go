@@ -40,6 +40,7 @@ type IpmiTool interface {
 	CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string, constraints *api.PasswordConstraints, apiType ApiType) (pwd string, err error)
 	ChangePassword(user api.BMCUser, newPassword string, apiType ApiType) error
 	NeedsPasswordChange(user api.BMCUser, password string) (b bool, e error)
+	UserExist(user api.BMCUser) (b bool, e error)
 	SetUserEnabled(user api.BMCUser, enabled bool, apiType ApiType) error
 	GetLanConfig() (LanConfig, error)
 	SetBootOrder(target hal.BootTarget, vendor api.Vendor) error
@@ -72,8 +73,10 @@ func (i *Ipmitool) NeedsPasswordChange(user api.BMCUser, password string) (bool,
 
 	output, err := i.Run("user", "test", user.Id, strconv.Itoa(passwordSize), password)
 	if err != nil {
-		if strings.Contains(output, "Failure: password incorrect") {
-			return true, fmt.Errorf("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
+		if strings.Contains(strings.ToLower(output), "password incorrect") {
+			// Note: this is also the case if the user does not exist yet but both cases are handled equally
+			i.log.Infow("password for user %s with id %s incorrect: %w change necessary", user.Name, user.Id, err)
+			return true, nil
 		}
 		return false, fmt.Errorf("error while testing user password for user %s with id %s: %w", user.Name, user.Id, err)
 	}
@@ -561,6 +564,59 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 		return err
 	}
 	return console.Open(s, cmd)
+}
+
+func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
+	output, err := i.Run("-c", "user", "list", strconv.Itoa(user.ChannelNumber))
+	if err != nil {
+		return false, fmt.Errorf("ipmitool user list failed: %w", err)
+	}
+
+	users, err := i.listUsers(output)
+	if err != nil {
+		return false, fmt.Errorf("error listing users: %w", err)
+	}
+
+	for _, u := range users {
+		if u.Name == user.Name {
+			i.log.Infow("user already present", "user", user.Name)
+			return true, nil
+		}
+	}
+	i.log.Infow("user does not exist yet", "user", user.Name)
+	return false, nil
+}
+
+func (i *Ipmitool) listUsers(cmdOutput string) ([]api.BMCUser, error) {
+	var users []api.BMCUser
+	scanner := bufio.NewScanner(strings.NewReader(string(cmdOutput)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, ",")
+		if len(fields) < 6 {
+			continue
+		}
+
+		name := strings.TrimSpace(fields[1])
+		if name == "" { // username is empty for unused slots
+			continue
+		}
+
+		userFound := api.BMCUser{
+			Id:   strings.TrimSpace(fields[0]),
+			Name: name,
+		}
+		i.log.Debugw("user found", "id", userFound.Id, "username", userFound.Name)
+		users = append(users, userFound)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("parsing ipmitool user list output: %w", err)
+	}
+	return users, nil
 }
 
 func (i *Ipmitool) output2Map(cmdOutput string) map[string]string {
