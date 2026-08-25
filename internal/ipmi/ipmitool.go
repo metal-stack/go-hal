@@ -16,6 +16,7 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/console"
+	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/logger"
 
 	"github.com/sethvargo/go-password/password"
@@ -50,6 +51,7 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
+	MachineUUID() (string, error)
 	OpenConsole(s ssh.Session) error
 }
 
@@ -268,6 +270,29 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	sessionMap := i.output2Map(cmdOutput)
 	from(session, sessionMap)
 	return *session, nil
+}
+
+// MachineUUID returns the system GUID of the machine, queried via the IPMI 'mc guid' command.
+// ipmitool auto-detects the GUID encoding and reports it in the "GUID Encoding" line. The GUID is
+// converted from that encoding to the canonical RFC4122 form.
+func (i *Ipmitool) MachineUUID() (string, error) {
+	cmdOutput, err := i.Run("mc", "guid")
+	if err != nil {
+		return "", fmt.Errorf("unable to execute ipmitool 'mc guid':%v %w", cmdOutput, err)
+	}
+
+	var (
+		m = i.output2Map(cmdOutput)
+
+		guid = strings.TrimSpace(m["System GUID"])
+		enc  = uuidendian.Encoding(strings.TrimSpace(m["GUID Encoding"]))
+	)
+
+	if guid == "" {
+		return "", fmt.Errorf("unable to parse system guid from ipmitool 'mc guid'")
+	}
+
+	return uuidendian.ConvertByEncoding(guid, enc)
 }
 
 type bmcRequest struct {

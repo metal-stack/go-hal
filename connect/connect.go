@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/metal-stack/go-hal/internal/vendors/dell"
+	"github.com/metal-stack/go-hal/internal/vendors/generic"
 	"github.com/metal-stack/go-hal/internal/vendors/gigabyte"
 
 	"github.com/metal-stack/go-hal/internal/vendors/vagrant"
@@ -53,7 +54,12 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 func OutBand(ip string, ipmiPort int, user, password string, log logger.Logger, connectionTimeout *time.Duration) (hal.OutBand, error) {
 	r, err := redfish.New("https://"+ip, user, password, true, log, connectionTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("unable to establish redfish connection for ip:%s user:%s error:%w", ip, user, err)
+		log.Warnw("connect", "redfish not available, falling back to generic ipmi", "ip", ip, "error", err)
+		return generic.OutBand(&api.Board{
+			Vendor:       api.VendorUnknown,
+			VendorString: "generic",
+			Model:        "generic",
+		}, ip, ipmiPort, user, password, log)
 	}
 	b, err := r.BoardInfo()
 	if err != nil {
