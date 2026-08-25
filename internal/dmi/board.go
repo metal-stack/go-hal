@@ -27,32 +27,17 @@ const (
 // left empty if they are not present.
 func BoardInfo() (*api.Board, error) {
 	var (
-		vendor     = ""
-		name       = ""
-		serial     = ""
-		partNumber = ""
-		version    = ""
-
-		err error
+		name, _       = dmi(productName)
+		serial, _     = dmi(boardSerial)
+		partNumber, _ = dmi(productSerial)
+		version, _    = dmi(biosVersion)
 	)
 
-	if vendor, err = dmi(boardVendor); err != nil {
+	vendor, err := dmi(boardVendor)
+	if err != nil {
 		if vendor, err = dmi(sysVendor); err != nil {
 			return nil, err
 		}
-	}
-
-	if name, err = dmi(boardName); err != nil {
-		name, _ = dmi(productName)
-	}
-	if serial, err = dmi(boardSerial); err != nil {
-		serial = ""
-	}
-	if partNumber, err = dmi(productSerial); err != nil {
-		partNumber = ""
-	}
-	if version, err = dmi(biosVersion); err != nil {
-		version = ""
 	}
 
 	return &api.Board{
