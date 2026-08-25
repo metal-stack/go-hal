@@ -45,8 +45,8 @@ func InBand(log logger.Logger) (hal.InBand, error) {
 	case api.VendorUnknown:
 		fallthrough
 	default:
-		log.Errorw("connect", "unknown vendor", b.Vendor)
-		return nil, errorUnknownVendor
+		log.Warnw("connect", "unknown vendor, falling back to generic inband ipmi", b.Vendor)
+		return generic.InBand(b, log)
 	}
 }
 
