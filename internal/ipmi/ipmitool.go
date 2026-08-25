@@ -273,14 +273,19 @@ func (i *Ipmitool) GetSession() (Session, error) {
 }
 
 // MachineUUID returns the system GUID of the machine, queried via the IPMI 'mc guid' command.
-// ipmitool auto-detects the GUID encoding and reports it in the "GUID Encoding" line. The GUID is
-// converted from that encoding to the canonical RFC4122 form.
 func (i *Ipmitool) MachineUUID() (string, error) {
 	cmdOutput, err := i.Run("mc", "guid")
 	if err != nil {
 		return "", fmt.Errorf("unable to execute ipmitool 'mc guid':%v %w", cmdOutput, err)
 	}
+	return i.machineUUID(cmdOutput)
+}
 
+// machineUUID parses the output of 'ipmitool mc guid' and returns the canonical machine UUID.
+// Newer ipmitool (>= 1.8.19) reports the detected GUID encoding in a "GUID Encoding" line which is
+// used to convert the GUID. Older ipmitool omits this line, in which case the GUID is converted via
+// heuristic detection.
+func (i *Ipmitool) machineUUID(cmdOutput string) (string, error) {
 	var (
 		m = i.output2Map(cmdOutput)
 
@@ -290,6 +295,10 @@ func (i *Ipmitool) MachineUUID() (string, error) {
 
 	if guid == "" {
 		return "", fmt.Errorf("unable to parse system guid from ipmitool 'mc guid'")
+	}
+
+	if enc == "" {
+		return uuidendian.Convert(guid)
 	}
 
 	return uuidendian.ConvertByEncoding(guid, enc)
