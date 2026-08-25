@@ -114,3 +114,50 @@ func fromBytes(buf []byte) (uid, error) {
 
 	return u, err
 }
+
+// Encoding is a GUID encoding as detected and reported by 'ipmitool mc guid'.
+type Encoding string
+
+const (
+	// EncodingIPMI encodes all GUID fields little-endian (LSB first).
+	EncodingIPMI Encoding = "IPMI"
+	// EncodingRFC4122 encodes all GUID fields in network byte order (MSB first).
+	EncodingRFC4122 Encoding = "RFC4122"
+	// EncodingSMBIOS encodes the time fields little-endian and the rest in network byte order.
+	EncodingSMBIOS Encoding = "SMBIOS"
+)
+
+// ConvertByEncoding converts a GUID string, as reported by 'ipmitool mc guid' in the given
+// encoding, to the canonical RFC4122 UUID string.
+func ConvertByEncoding(s string, enc Encoding) (string, error) {
+	u, err := uuid.Parse(s)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := u.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+
+	switch enc {
+	case EncodingIPMI:
+		// IPMI stores all fields little-endian. Reversing all 16 bytes yields the RFC4122 form.
+		reverse(b)
+	case EncodingSMBIOS:
+		// SMBIOS stores only the time fields little-endian. Reversing the first 8 bytes yields the RFC4122 form.
+		reverse(b[:8])
+	case EncodingRFC4122:
+		// already in canonical RFC4122 form
+	default:
+		return "", fmt.Errorf("unknown GUID encoding: %s", enc)
+	}
+
+	return uuid.UUID(b).String(), nil
+}
+
+func reverse(b []byte) {
+	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+		b[i], b[j] = b[j], b[i]
+	}
+}
