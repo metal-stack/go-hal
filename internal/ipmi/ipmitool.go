@@ -439,7 +439,11 @@ func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
 
 	out, err = i.Run(req.enableSOLPayloadAccessArgs...)
 	if err != nil {
-		return "", fmt.Errorf("failed to set enable user SOL payload access for user %s with id %s: %s %w", req.username, req.uid, out, err)
+		// Enabling SOL payload access is not strictly required for machine
+		// registration, power control or user authentication and is not
+		// supported by every BMC. Log it and continue
+		// instead of failing the whole user creation.
+		i.log.Warnw("unable to enable SOL payload access for user, continuing", "user", req.username, "id", req.uid, "output", out, "error", err)
 	}
 
 	return pw, nil
