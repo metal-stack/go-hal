@@ -271,6 +271,84 @@ func Test_listUsers(t *testing.T) {
 	}
 }
 
+func Test_userExistsIn(t *testing.T) {
+	tests := []struct {
+		name string
+		user api.BMCUser
+		want bool
+	}{
+		{
+			name: "exact match",
+			user: api.BMCUser{Id: "4", Name: "root"},
+			want: true,
+		},
+		{
+			name: "case-insensitive name",
+			user: api.BMCUser{Id: "4", Name: "ROOT"},
+			want: true,
+		},
+		{
+			name: "case-insensitive name on admin",
+			user: api.BMCUser{Id: "2", Name: "admin"},
+			want: true,
+		},
+		{
+			name: "same name different slot",
+			user: api.BMCUser{Id: "3", Name: "root"},
+			want: false,
+		},
+		{
+			name: "same slot different name",
+			user: api.BMCUser{Id: "4", Name: "admin"},
+			want: false,
+		},
+		{
+			name: "untrimmed input",
+			user: api.BMCUser{Id: " 4 ", Name: " root "},
+			want: true,
+		},
+		{
+			name: "unknown user",
+			user: api.BMCUser{Id: "5", Name: "metal"},
+			want: false,
+		},
+		{
+			name: "empty user",
+			user: api.BMCUser{},
+			want: false,
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			i := Ipmitool{log: logger.New()}
+			got, err := i.userExistsIn(userList, tt.user)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_userChannel(t *testing.T) {
+	tests := []struct {
+		name          string
+		channelNumber int
+		want          int
+	}{
+		{name: "zero defaults to channel 1", channelNumber: 0, want: 1},
+		{name: "negative defaults to channel 1", channelNumber: -1, want: 1},
+		{name: "channel 1 preserved", channelNumber: 1, want: 1},
+		{name: "explicit channel preserved", channelNumber: 5, want: 5},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			got := userChannel(api.BMCUser{ChannelNumber: tt.channelNumber})
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestGetLanConfig(t *testing.T) {
 	tests := []struct {
 		name    string

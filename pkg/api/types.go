@@ -97,7 +97,7 @@ type BMCConnection interface {
 	PresentSuperUser() BMCUser
 	// NeedsPasswordChange checks if a password change is required
 	NeedsPasswordChange(user BMCUser, password string) (bool, error)
-	//Checks if a user exists in the BMC
+	// UserExist returns true if the given user exists on the given channel, matched by id and by name (case-insensitively). ChannelNumber defaults to 1 when unset.
 	UserExist(user BMCUser) (bool, error)
 	// SuperUser returns the details of the preset metal bmc superuser
 	SuperUser() BMCUser

@@ -566,24 +566,40 @@ func (i *Ipmitool) OpenConsole(s ssh.Session) error {
 	return console.Open(s, cmd)
 }
 
+const defaultChannel = 1
+
+// userChannel returns the channel to use for user queries, defaulting to
+// channel 1 when unset or invalid.
+func userChannel(user api.BMCUser) int {
+	if user.ChannelNumber <= 0 {
+		return defaultChannel
+	}
+	return user.ChannelNumber
+}
+
 func (i *Ipmitool) UserExist(user api.BMCUser) (bool, error) {
-	output, err := i.Run("-c", "user", "list", strconv.Itoa(user.ChannelNumber))
+	output, err := i.Run("-c", "user", "list", strconv.Itoa(userChannel(user)))
 	if err != nil {
 		return false, fmt.Errorf("ipmitool user list failed: %w", err)
 	}
+	return i.userExistsIn(output, user)
+}
 
-	users, err := i.listUsers(output)
+func (i *Ipmitool) userExistsIn(cmdOutput string, user api.BMCUser) (bool, error) {
+	users, err := i.listUsers(cmdOutput)
 	if err != nil {
 		return false, fmt.Errorf("error listing users: %w", err)
 	}
 
+	wantID := strings.TrimSpace(user.Id)
+	wantName := strings.TrimSpace(user.Name)
 	for _, u := range users {
-		if u.Name == user.Name {
-			i.log.Infow("user already present", "user", user.Name)
+		if u.Id == wantID && strings.EqualFold(u.Name, wantName) {
+			i.log.Infow("user already present", "user", user.Name, "id", user.Id)
 			return true, nil
 		}
 	}
-	i.log.Infow("user does not exist yet", "user", user.Name)
+	i.log.Infow("user does not exist yet", "user", user.Name, "id", user.Id)
 	return false, nil
 }
 
