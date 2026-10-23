@@ -219,7 +219,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 						BoardMfg:            manufacturer,
 						ProductManufacturer: g.Service.Vendor,
 						ProductPartNumber:   chass.PartNumber,
-						ProductSerial:       chass.SKU,
+						ProductSerial:       g.Service.ServiceIdentification,
 					}
 				}
 			}
