@@ -205,11 +205,16 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 						ChassisPartNumber:   chass.PartNumber,
 						ChassisPartSerial:   chass.SerialNumber,
 						BoardMfg:            chass.Manufacturer,
-						BoardMfgSerial:      oem.Supermicro.BoardSerialNumber,
 						BoardPartNumber:     chass.Model,
 						ProductManufacturer: manufacturer,
-						ProductPartNumber:   oem.Supermicro.MultiNode.SystemPartNo,
 						ProductSerial:       g.Service.ServiceIdentification,
+					}
+
+					if oem.Supermicro.BoardSerialNumber != "" {
+						bmc.BoardMfgSerial = oem.Supermicro.BoardSerialNumber
+					}
+					if oem.Supermicro.MultiNode.SystemPartNo != "" {
+						bmc.ProductPartNumber = oem.Supermicro.MultiNode.SystemPartNo
 					}
 				}
 				if oem.Dell != nil {
