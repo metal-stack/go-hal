@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
 	"github.com/stretchr/testify/require"
 )
@@ -125,6 +126,19 @@ FRU Device Description : PERC2 (ID 11)
  Device not present (Parameter out of range)                                                                            
 `
 
+const userList = `
+1,,true,false,false,Unknown (0x00)
+2,ADMIN,false,false,true,ADMINISTRATOR
+3,,true,false,false,Unknown (0x00)
+4,root,true,true,true,ADMINISTRATOR
+5,,true,false,false,Unknown (0x00)
+6,,true,false,false,Unknown (0x00)
+7,,true,false,false,Unknown (0x00)
+8,,true,false,false,Unknown (0x00)
+9,,true,false,false,Unknown (0x00)
+10,metal,true,true,true,ADMINISTRATOR
+`
+
 func Test_getLanConfig(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -215,6 +229,122 @@ func Test_getFru(t *testing.T) {
 			b := &Fru{}
 			from(b, got)
 			require.Equal(t, tt.want, b)
+		})
+	}
+}
+
+func Test_listUsers(t *testing.T) {
+	tests := []struct {
+		name      string
+		cmdOutput string
+		want      []api.BMCUser
+	}{
+		{
+			name:      "get users from table",
+			cmdOutput: userList,
+			want: []api.BMCUser{
+				{
+					Id:   "2",
+					Name: "ADMIN",
+				},
+				{
+					Id:   "4",
+					Name: "root",
+				},
+				{
+					Id:   "10",
+					Name: "metal",
+				},
+			},
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		i := Ipmitool{log: logger.New()}
+		t.Run(tt.name, func(t *testing.T) {
+			users, error := i.listUsers(tt.cmdOutput)
+			if error != nil {
+				t.Errorf("userList() error: %v", error)
+			}
+			require.Equal(t, tt.want, users)
+		})
+	}
+}
+
+func Test_userExistsIn(t *testing.T) {
+	tests := []struct {
+		name string
+		user api.BMCUser
+		want bool
+	}{
+		{
+			name: "exact match",
+			user: api.BMCUser{Id: "4", Name: "root"},
+			want: true,
+		},
+		{
+			name: "case-insensitive name",
+			user: api.BMCUser{Id: "4", Name: "ROOT"},
+			want: true,
+		},
+		{
+			name: "case-insensitive name on admin",
+			user: api.BMCUser{Id: "2", Name: "admin"},
+			want: true,
+		},
+		{
+			name: "same name different slot",
+			user: api.BMCUser{Id: "3", Name: "root"},
+			want: false,
+		},
+		{
+			name: "same slot different name",
+			user: api.BMCUser{Id: "4", Name: "admin"},
+			want: false,
+		},
+		{
+			name: "untrimmed input",
+			user: api.BMCUser{Id: " 4 ", Name: " root "},
+			want: true,
+		},
+		{
+			name: "unknown user",
+			user: api.BMCUser{Id: "5", Name: "metal"},
+			want: false,
+		},
+		{
+			name: "empty user",
+			user: api.BMCUser{},
+			want: false,
+		},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			i := Ipmitool{log: logger.New()}
+			got, err := i.userExistsIn(userList, tt.user)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_userChannel(t *testing.T) {
+	tests := []struct {
+		name          string
+		channelNumber int
+		want          int
+	}{
+		{name: "zero defaults to channel 1", channelNumber: 0, want: 1},
+		{name: "negative defaults to channel 1", channelNumber: -1, want: 1},
+		{name: "channel 1 preserved", channelNumber: 1, want: 1},
+		{name: "explicit channel preserved", channelNumber: 5, want: 5},
+	}
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			got := userChannel(api.BMCUser{ChannelNumber: tt.channelNumber})
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
