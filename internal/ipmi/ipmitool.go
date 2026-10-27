@@ -16,6 +16,7 @@ import (
 
 	"github.com/metal-stack/go-hal"
 	"github.com/metal-stack/go-hal/internal/console"
+	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/logger"
 
 	"github.com/sethvargo/go-password/password"
@@ -50,6 +51,7 @@ type IpmiTool interface {
 	GetFru() (Fru, error)
 	GetSession() (Session, error)
 	BMC() (*api.BMC, error)
+	MachineUUID() (string, error)
 	OpenConsole(s ssh.Session) error
 }
 
@@ -270,6 +272,38 @@ func (i *Ipmitool) GetSession() (Session, error) {
 	return *session, nil
 }
 
+// MachineUUID returns the system GUID of the machine, queried via the IPMI 'mc guid' command.
+func (i *Ipmitool) MachineUUID() (string, error) {
+	cmdOutput, err := i.Run("mc", "guid")
+	if err != nil {
+		return "", fmt.Errorf("unable to execute ipmitool 'mc guid':%v %w", cmdOutput, err)
+	}
+	return i.machineUUID(cmdOutput)
+}
+
+// machineUUID parses the output of 'ipmitool mc guid' and returns the canonical machine UUID.
+// Newer ipmitool (>= 1.8.19) reports the detected GUID encoding in a "GUID Encoding" line which is
+// used to convert the GUID. Older ipmitool omits this line, in which case the GUID is converted via
+// heuristic detection.
+func (i *Ipmitool) machineUUID(cmdOutput string) (string, error) {
+	var (
+		m = i.output2Map(cmdOutput)
+
+		guid = strings.TrimSpace(m["System GUID"])
+		enc  = uuidendian.Encoding(strings.TrimSpace(m["GUID Encoding"]))
+	)
+
+	if guid == "" {
+		return "", fmt.Errorf("unable to parse system guid from ipmitool 'mc guid'")
+	}
+
+	if enc == "" {
+		return uuidendian.Convert(guid)
+	}
+
+	return uuidendian.ConvertByEncoding(guid, enc)
+}
+
 type bmcRequest struct {
 	username                   string
 	uid                        string
@@ -405,7 +439,11 @@ func (i *Ipmitool) createUser(req bmcRequest) (string, error) {
 
 	out, err = i.Run(req.enableSOLPayloadAccessArgs...)
 	if err != nil {
-		return "", fmt.Errorf("failed to set enable user SOL payload access for user %s with id %s: %s %w", req.username, req.uid, out, err)
+		// Enabling SOL payload access is not strictly required for machine
+		// registration, power control or user authentication and is not
+		// supported by every BMC. Log it and continue
+		// instead of failing the whole user creation.
+		i.log.Warnw("unable to enable SOL payload access for user, continuing", "user", req.username, "id", req.uid, "output", out, "error", err)
 	}
 
 	return pw, nil

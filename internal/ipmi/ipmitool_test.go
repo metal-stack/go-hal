@@ -346,3 +346,51 @@ func TestIpmitool_Run(t *testing.T) {
 		})
 	}
 }
+
+func TestMachineUUID(t *testing.T) {
+	// ipmitool < 1.8.19 does not report the GUID encoding, the GUID is converted via heuristic detection.
+	oldIPMIToolOutput := `System GUID  : efcdab89-6745-23a1-efcd-ab89674523a1
+Timestamp    : 08/25/2026 09:49:19
+`
+	// ipmitool >= 1.8.19 reports the GUID encoding which drives the conversion.
+	newIPMIToolOutput := `System GUID   : efcdab89-6745-23a1-efcd-ab89674523a1
+GUID Encoding : IPMI
+GUID Version  : DCE Security with POSIX UIDs (not for IPMI)
+`
+
+	tests := []struct {
+		name      string
+		cmdOutput string
+		want      string
+	}{
+		{
+			name:      "ipmitool 1.8.18 without encoding indicator is heuristically converted",
+			cmdOutput: oldIPMIToolOutput,
+			want:      "89abcdef-4567-a123-efcd-ab89674523a1",
+		},
+		{
+			name:      "ipmitool 1.8.19 with IPMI encoding indicator",
+			cmdOutput: newIPMIToolOutput,
+			want:      "a1234567-89ab-cdef-a123-456789abcdef",
+		},
+		{
+			name:      "no system guid",
+			cmdOutput: "GUID Encoding : IPMI\n",
+			want:      "",
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		i := Ipmitool{log: logger.New()}
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := i.machineUUID(tt.cmdOutput)
+			if tt.want == "" {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

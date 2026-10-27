@@ -49,6 +49,27 @@ func (c *Client) SetSystemBoot(param uint8, data ...uint8) error {
 	return c.Send(r, &goipmi.SetSystemBootOptionsResponse{})
 }
 
+// PowerState returns the current power state of the system, queried via the IPMI Get Chassis Status command.
+func (c *Client) PowerState() (hal.PowerState, error) {
+	r := &goipmi.Request{
+		NetworkFunction: goipmi.NetworkFunctionChassis,
+		Command:         goipmi.CommandChassisStatus,
+		Data:            &goipmi.ChassisStatusRequest{},
+	}
+	resp := &goipmi.ChassisStatusResponse{}
+	err := c.Send(r, resp)
+	if err != nil {
+		return hal.PowerUnknownState, err
+	}
+	if goipmi.CompletionCode(resp.Code()) != goipmi.CommandCompleted {
+		return hal.PowerUnknownState, errors.New(resp.Error())
+	}
+	if resp.IsSystemPowerOn() {
+		return hal.PowerOnState, nil
+	}
+	return hal.PowerOffState, nil
+}
+
 // ChassisIdentifyRequest per section 28.5
 type ChassisIdentifyRequest struct {
 	IntervalSeconds uint8
