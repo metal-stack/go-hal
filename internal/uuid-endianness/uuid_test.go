@@ -66,3 +66,45 @@ func TestUUIDConvert(t *testing.T) {
 
 	assert.Equal(t, good, result)
 }
+
+func TestConvertByEncoding(t *testing.T) {
+	tests := []struct {
+		name     string
+		guid     string
+		enc      Encoding
+		expected string
+	}{
+		{
+			name:     "IPMI encoding is fully byte-reversed",
+			guid:     "efcdab89-6745-23a1-efcd-ab89674523a1",
+			enc:      EncodingIPMI,
+			expected: "a1234567-89ab-cdef-a123-456789abcdef",
+		},
+		{
+			name:     "RFC4122 encoding is already canonical",
+			guid:     "99340568-f775-11e7-8c3f-9a214cf093ae",
+			enc:      EncodingRFC4122,
+			expected: "99340568-f775-11e7-8c3f-9a214cf093ae",
+		},
+		{
+			name:     "SMBIOS encoding only reverses the time fields",
+			guid:     "99340568-f775-11e7-8c3f-9a214cf093ae",
+			enc:      EncodingSMBIOS,
+			expected: "e71175f7-6805-3499-8c3f-9a214cf093ae",
+		},
+	}
+
+	for i := range tests {
+		tt := tests[i]
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ConvertByEncoding(tt.guid, tt.enc)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestConvertByEncodingUnknown(t *testing.T) {
+	_, err := ConvertByEncoding("99340568-f775-11e7-8c3f-9a214cf093ae", Encoding("FOO"))
+	require.Error(t, err)
+}

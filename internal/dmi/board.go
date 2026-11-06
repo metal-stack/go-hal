@@ -13,36 +13,38 @@ const (
 	boardName     = "/sys/class/dmi/id/board_name"
 	boardSerial   = "/sys/class/dmi/id/board_serial"
 	productSerial = "/sys/class/dmi/id/product_serial"
+	productName   = "/sys/class/dmi/id/product_name"
+	sysVendor     = "/sys/class/dmi/id/sys_vendor"
 	biosVersion   = "/sys/class/dmi/id/bios_version"
 )
 
-// BoardInfo return raw dmi data of the board
+// BoardInfo return raw dmi data of the board.
+//
+// The board-level DMI files are not populated on every machine (for example
+// many virtual machines only expose the system and product level DMI data).
+// Therefore the board vendor falls back to the system vendor and the board
+// name falls back to the product name. All other fields are optional and are
+// left empty if they are not present.
 func BoardInfo() (*api.Board, error) {
+	var (
+		name, _       = dmi(productName)
+		serial, _     = dmi(boardSerial)
+		partNumber, _ = dmi(productSerial)
+		version, _    = dmi(biosVersion)
+	)
+
 	vendor, err := dmi(boardVendor)
 	if err != nil {
-		return nil, err
+		if vendor, err = dmi(sysVendor); err != nil {
+			return nil, err
+		}
 	}
-	name, err := dmi(boardName)
-	if err != nil {
-		return nil, err
-	}
-	bserial, err := dmi(boardSerial)
-	if err != nil {
-		return nil, err
-	}
-	pserial, err := dmi(productSerial)
-	if err != nil {
-		return nil, err
-	}
-	version, err := dmi(biosVersion)
-	if err != nil {
-		return nil, err
-	}
+
 	return &api.Board{
 		VendorString: vendor,
 		Model:        name,
-		SerialNumber: bserial,
-		PartNumber:   pserial,
+		SerialNumber: serial,
+		PartNumber:   partNumber,
 		BiosVersion:  version,
 	}, nil
 }
@@ -55,5 +57,6 @@ func dmi(path string) (string, error) {
 		}
 		return strings.TrimSpace(string(content)), nil
 	}
+
 	return "", fmt.Errorf("%s does not exist", path)
 }
