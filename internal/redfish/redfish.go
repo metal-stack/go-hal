@@ -19,30 +19,68 @@ import (
 	"github.com/stmcginnis/gofish/schemas"
 )
 
-type APIClient struct {
-	client *gofish.APIClient
-	*http.Client
-	urlPrefix         string
-	user              string
-	password          string
-	basicAuth         string
-	log               logger.Logger
-	connectionTimeout time.Duration
-}
+type (
+	APIClient struct {
+		client *gofish.APIClient
+		*http.Client
+		urlPrefix         string
+		user              string
+		password          string
+		basicAuth         string
+		log               logger.Logger
+		connectionTimeout time.Duration
+	}
 
-type bootOverrideRequest struct {
-	Boot schemas.Boot `json:"Boot"`
-}
+	bootOverrideRequest struct {
+		Boot schemas.Boot `json:"Boot"`
+	}
 
-type bootOrderSetRequest struct {
-	Boot struct {
-		BootOrder []string `json:"BootOrder"`
-	} `json:"Boot"`
-}
+	bootOrderSetRequest struct {
+		Boot struct {
+			BootOrder []string `json:"BootOrder"`
+		} `json:"Boot"`
+	}
 
-type indicatorLEDRequest struct {
-	IndicatorLED schemas.IndicatorLED `json:"IndicatorLED"`
-}
+	indicatorLEDRequest struct {
+		IndicatorLED schemas.IndicatorLED `json:"IndicatorLED"`
+	}
+
+	oem struct {
+		Dell       *dellServiceRoot       `json:"Dell,omitempty"`
+		Supermicro *supermicroServiceRoot `json:"Supermicro,omitempty"`
+	}
+
+	dellServiceRoot struct {
+		ODataContext      string `json:"@odata.context"`
+		ODataType         string `json:"@odata.type"`
+		IsBranded         int    `json:"IsBranded"`
+		ManagerMACAddress string `json:"ManagerMACAddress"`
+		ServiceTag        string `json:"ServiceTag"`
+	}
+
+	supermicroServiceRoot struct {
+		ODataContext      string `json:"@odata.context"`
+		ODataType         string `json:"@odata.type"`
+		BoardSerialNumber string `json:"BoardSerialNumber"`
+		GUID              string `json:"GUID"`
+		BoardID           string `json:"BoardID"`
+		MultiNode         struct {
+			ConfigurationID       string `json:"ConfigurationID"`
+			MCUFirmwareVersion    string `json:"MCUFirmwareVersion"`
+			UserDefinedSystemName string `json:"UserDefinedSystemName"`
+			SystemPartNo          string `json:"SystemPartNo"`
+			SystemSerialNo        string `json:"SystemSerialNo"`
+			ChassisPartNo         string `json:"ChassisPartNo"`
+			ChassisSerialNo       string `json:"ChassisSerialNo"`
+			BackplaneModelName    string `json:"BackplaneModelName"`
+			BackplaneSerialNo     string `json:"BackplaneSerialNo"`
+			BackplaneRevision     string `json:"BackplaneRevision"`
+			TwinType              string `json:"TwinType"`
+			BackplaneLocation     string `json:"BackplaneLocation"`
+			SelfID                string `json:"SelfID"`
+		} `json:"MultiNode"`
+	}
+)
 
 func New(url, user, password string, insecure bool, log logger.Logger, connectionTimeout *time.Duration) (*APIClient, error) {
 	// Create a new instance of gofish and redfish client, ignoring self-signed certs
@@ -150,10 +188,47 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 					c.log.Debugw("powersupplies", "powersupply", ps)
 				}
 			}
+
 			c.log.Debugw("got chassis",
 				"Manufacturer", manufacturer, "Model", model, "Name", chass.Name,
 				"PartNumber", chass.PartNumber, "SerialNumber", chass.SerialNumber,
 				"BiosVersion", biosVersion, "led", chass.IndicatorLED) //nolint:staticcheck
+
+			var (
+				bmc *api.BMC
+				oem oem
+			)
+
+			if err := json.Unmarshal(chass.OEM, &oem); err == nil {
+				if oem.Supermicro != nil {
+					bmc = &api.BMC{
+						ChassisPartNumber:   chass.PartNumber,
+						ChassisPartSerial:   chass.SerialNumber,
+						BoardMfg:            chass.Manufacturer,
+						BoardPartNumber:     chass.Model,
+						ProductManufacturer: manufacturer,
+						ProductSerial:       g.Service.ServiceIdentification,
+					}
+
+					if oem.Supermicro.BoardSerialNumber != "" {
+						bmc.BoardMfgSerial = oem.Supermicro.BoardSerialNumber
+					}
+					if oem.Supermicro.MultiNode.SystemPartNo != "" {
+						bmc.ProductPartNumber = oem.Supermicro.MultiNode.SystemPartNo
+					}
+				}
+				if oem.Dell != nil {
+					bmc = &api.BMC{
+						ChassisPartNumber:   chass.PartNumber,
+						ChassisPartSerial:   chass.SerialNumber,
+						BoardMfg:            manufacturer,
+						ProductManufacturer: g.Service.Vendor,
+						ProductPartNumber:   chass.PartNumber,
+						ProductSerial:       g.Service.ServiceIdentification,
+					}
+				}
+			}
+
 			return &api.Board{
 				VendorString:  manufacturer,
 				Model:         model,
@@ -163,6 +238,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 				IndicatorLED:  toMetalLEDState(chass.IndicatorLED), //nolint:staticcheck
 				PowerMetric:   powerMetric,
 				PowerSupplies: powerSupplies,
+				BMC:           bmc,
 			}, nil
 		default:
 			c.log.Infow("unsupported chassis type", "type", chass.ChassisType)
