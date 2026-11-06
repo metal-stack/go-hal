@@ -194,8 +194,6 @@ const (
 	VendorSupermicro
 	// VendorNovarion identifies all Novarion servers
 	VendorNovarion
-	// VendorLenovo identifies all Lenovo servers
-	VendorLenovo
 	// VendorDell identifies all Dell servers
 	VendorDell
 	// VendorVagrant is a virtual machine.
@@ -208,13 +206,12 @@ var (
 	vendors = [...]string{
 		VendorSupermicro: "Supermicro",
 		VendorNovarion:   "Novarion-Systems",
-		VendorLenovo:     "Lenovo",
 		VendorDell:       "Dell",
 		VendorVagrant:    "Vagrant",
 		VendorUnknown:    "UNKNOWN",
 		VendorGigabyte:   "Giga Computing",
 	}
-	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorLenovo, VendorDell, VendorVagrant, VendorUnknown, VendorGigabyte}
+	allVendors = [...]Vendor{VendorSupermicro, VendorNovarion, VendorDell, VendorVagrant, VendorUnknown, VendorGigabyte}
 )
 
 func (v Vendor) String() string { return vendors[v] }
