@@ -4,23 +4,7 @@ package ipmi
 
 // Appendix H - Sub-function Assignments
 
-type SetSystemBootOptionsFunction = uint8
-
-const (
-	ServicePartitionSelector SetSystemBootOptionsFunction = iota + 1
-	ServicePartitionScan
-	ValidBitClearing
-	BootInfoAcknowledge
-	BootFlags
-	InitiatorInfo
-	InitiatorMailbox
-	OEMHasHandledBootInfo
-	SMSHasHandledBootInfo
-	OSServicePartitionHasHandledBootInfo
-	OSLoaderHasHandledBootInfo
-	BIOSPOSTHasHandledBootInfo
-)
-
+// ChassisControlFunction is the action requested by the Chassis Control command (section 28.3).
 type ChassisControlFunction = uint8
 
 const (
@@ -30,10 +14,4 @@ const (
 	ChassisControlHardReset
 	ChassisControlPulseDiagnosticInterrupt
 	ChassisControlInitiateSoftShutdownViaOvertemp
-)
-
-type ChassisIdentifyFunction = uint8
-
-const (
-	ChassisIdentifyForceOnIndefinitely ChassisIdentifyFunction = iota
 )
