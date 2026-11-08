@@ -15,7 +15,6 @@ import (
 	uuidendian "github.com/metal-stack/go-hal/internal/uuid-endianness"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
-	goipmi "github.com/vmware/goipmi"
 )
 
 var (
@@ -153,11 +152,11 @@ func (c *bmcConnection) Present() bool {
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.HighLevel)
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints())
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.HighLevel)
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil)
 	return err
 }
 
@@ -166,11 +165,11 @@ func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
-	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
+	return c.IpmiTool.ChangePassword(user, newPassword)
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.HighLevel)
+	return c.IpmiTool.SetUserEnabled(user, enabled)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {
@@ -215,49 +214,49 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerDown)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerDown)
 	})
 }
 
 func (ob *outBand) PowerOn() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerUp)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerUp)
 	})
 }
 
 func (ob *outBand) PowerReset() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerHardReset)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlHardReset)
 	})
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerCycle)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerCycle)
 	})
 }
 
 func (ob *outBand) IdentifyLEDState(state hal.IdentifyLEDState) error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
+	return ob.IPMI(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDState(state)
 	})
 }
 
 func (ob *outBand) IdentifyLEDOn() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
+	return ob.IPMI(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOn()
 	})
 }
 
 func (ob *outBand) IdentifyLEDOff() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
+	return ob.IPMI(func(client *ipmi.Client) error {
 		return client.SetChassisIdentifyLEDOff()
 	})
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
+	return ob.IPMI(func(client *ipmi.Client) error {
 		return client.SetBootOrder(bootTarget, vendor)
 	})
 }
