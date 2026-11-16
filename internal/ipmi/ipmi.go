@@ -26,9 +26,7 @@ import (
 	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
-// defaultContext is used for all IPMI commands. The bougou client applies its
-// own timeouts and retries per interface.
-var defaultContext = context.Background()
+const defaultContextTimeout = 15 * time.Second
 
 // IpmiTool defines methods to interact with IPMI
 type IpmiTool interface {
@@ -142,14 +140,11 @@ func newLanplusClient(ip string, port int, user, password string) (*goclient.Cli
 // connect establishes the IPMI session on first use.
 func (c *Client) connect() error {
 	c.connectOnce.Do(func() {
-		c.connectErr = c.client.Connect(defaultContext)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+		defer cancel()
+		c.connectErr = c.client.Connect(ctx)
 	})
 	return c.connectErr
-}
-
-// Close closes the IPMI session.
-func (c *Client) Close() error {
-	return c.client.Close(defaultContext)
 }
 
 // DevicePresent returns true if the IPMI device is present, which is required to talk to the BMC
@@ -172,7 +167,9 @@ func (c *Client) SetChassisControl(fn ChassisControlFunction) error {
 	if err := c.connect(); err != nil {
 		return err
 	}
-	if _, err := c.client.ChassisControl(defaultContext, chassis.ChassisControl(fn)); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	if _, err := c.client.ChassisControl(ctx, chassis.ChassisControl(fn)); err != nil {
 		return fmt.Errorf("unable to set chassis control function:%X %w", fn, err)
 	}
 	return nil
@@ -206,7 +203,9 @@ func (c *Client) setChassisIdentifyLED(forceOn bool) error {
 	if err := c.connect(); err != nil {
 		return err
 	}
-	if _, err := c.client.ChassisIdentify(defaultContext, 0, forceOn); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	if _, err := c.client.ChassisIdentify(ctx, 0, forceOn); err != nil {
 		return fmt.Errorf("unable to set chassis identify LED: %w", err)
 	}
 	return nil
@@ -217,7 +216,9 @@ func (c *Client) SetBootOrder(target hal.BootTarget, vendor api.Vendor) error {
 	if err := c.connect(); err != nil {
 		return err
 	}
-	if err := c.client.SetBootParamBootFlags(defaultContext, BootFlags(target, vendor)); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	if err := c.client.SetBootParamBootFlags(ctx, BootFlags(target, vendor)); err != nil {
 		return fmt.Errorf("unable to persistently set boot order:%s %w", target, err)
 	}
 	return nil
@@ -257,7 +258,9 @@ func (c *Client) GetLanConfig() (LanConfig, error) {
 	if err := c.connect(); err != nil {
 		return LanConfig{}, err
 	}
-	lan, err := c.client.GetLanConfig(defaultContext, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	lan, err := c.client.GetLanConfig(ctx, 1)
 	if err != nil {
 		return LanConfig{}, fmt.Errorf("unable to get lan config: %w", err)
 	}
@@ -272,7 +275,9 @@ func (c *Client) GetFru() (Fru, error) {
 	if err := c.connect(); err != nil {
 		return Fru{}, err
 	}
-	fru, err := c.client.GetFRU(defaultContext, 0x00, "Builtin FRU")
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	fru, err := c.client.GetFRU(ctx, 0x00, "Builtin FRU")
 
 	// GetFRU returns the areas it could read together with a joined error when
 	// some area failed, so keep whatever data is available.
@@ -304,7 +309,9 @@ func (c *Client) GetSession() (Session, error) {
 	if err := c.connect(); err != nil {
 		return Session{}, err
 	}
-	res, err := c.client.GetCurrentSessionInfo(defaultContext)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	res, err := c.client.GetCurrentSessionInfo(ctx)
 	if err != nil {
 		return Session{}, fmt.Errorf("unable to get session info: %w", err)
 	}
@@ -351,7 +358,9 @@ func (c *Client) firmwareRevision() (string, error) {
 	if err := c.connect(); err != nil {
 		return "", err
 	}
-	res, err := c.client.GetDeviceID(defaultContext)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	res, err := c.client.GetDeviceID(ctx)
 	if err != nil {
 		return "", fmt.Errorf("unable to get device id: %w", err)
 	}
@@ -367,8 +376,9 @@ func (c *Client) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, passw
 	if err := c.connect(); err != nil {
 		return "", err
 	}
-
-	if _, err := c.client.SetUsername(defaultContext, uid, user.Name); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	if _, err := c.client.SetUsername(ctx, uid, user.Name); err != nil {
 		return "", fmt.Errorf("failed set username for user %s with id %s: %w", user.Name, user.Id, err)
 	}
 
@@ -385,7 +395,7 @@ func (c *Client) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, passw
 		UserID:              uid,
 		MaxPrivLevel:        uint8(privilege),
 	}
-	if _, err := c.client.SetUserAccess(defaultContext, req); err != nil {
+	if _, err := c.client.SetUserAccess(ctx, req); err != nil {
 		return "", fmt.Errorf("failed to set privilege %d for user %s with id %s: %w", privilege, user.Name, user.Id, err)
 	}
 
@@ -397,7 +407,7 @@ func (c *Client) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, passw
 		Operation:      app.SetUserPayloadAccessOperationEnable,
 		PayloadTypeSOL: true,
 	}
-	if err := c.client.Exchange(defaultContext, payloadAccess, &app.SetUserPayloadAccessResponse{}); err != nil {
+	if err := c.client.Exchange(ctx, payloadAccess, &app.SetUserPayloadAccessResponse{}); err != nil {
 		return "", fmt.Errorf("failed to set enable user SOL payload access for user %s with id %s: %w", user.Name, user.Id, err)
 	}
 
@@ -431,8 +441,9 @@ func (c *Client) NeedsPasswordChange(user api.BMCUser, password string) (bool, e
 	if err != nil {
 		return false, err
 	}
-
-	if _, err := c.client.TestUserPassword(defaultContext, uid, password, passwordSize == 20); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
+	if _, err := c.client.TestUserPassword(ctx, uid, password, passwordSize == 20); err != nil {
 		if respErr, ok := types.IsResponseError(err); ok {
 			switch respErr.CompletionCode() {
 			case types.CodeSetUserPasswordDataMismatch, types.CodeSetUserPasswordWrongSize:
@@ -466,6 +477,8 @@ func (c *Client) changePassword(user api.BMCUser, passwd string, pc *api.Passwor
 }
 
 func (c *Client) setPassword(user api.BMCUser, uid uint8, passwd string, pc *api.PasswordConstraints) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
 	err := retry.Do(
 		func() error {
 			pwd := passwd
@@ -476,7 +489,7 @@ func (c *Client) setPassword(user api.BMCUser, uid uint8, passwd string, pc *api
 				}
 				pwd = gen
 			}
-			if _, err := c.client.SetUserPassword(defaultContext, uid, pwd, len(pwd) > 16); err != nil {
+			if _, err := c.client.SetUserPassword(ctx, uid, pwd, len(pwd) > 16); err != nil {
 				return fmt.Errorf("ipmi password creation failed for user:%s id:%s %w", user.Name, user.Id, err)
 			}
 			passwd = pwd
@@ -496,11 +509,12 @@ func (c *Client) setUserEnabled(user api.BMCUser, enabled bool) error {
 	if err != nil {
 		return err
 	}
-
+	ctx, cancel := context.WithTimeout(context.Background(), defaultContextTimeout)
+	defer cancel()
 	if enabled {
 		return retry.Do(
 			func() error {
-				if err := c.client.EnableUser(defaultContext, uid); err != nil {
+				if err := c.client.EnableUser(ctx, uid); err != nil {
 					return fmt.Errorf("failed to enable user %s with id %s: %w", user.Name, user.Id, err)
 				}
 				return nil
@@ -513,7 +527,7 @@ func (c *Client) setUserEnabled(user api.BMCUser, enabled bool) error {
 		)
 	}
 
-	if err := c.client.DisableUser(defaultContext, uid); err != nil {
+	if err := c.client.DisableUser(ctx, uid); err != nil {
 		return fmt.Errorf("failed to disable user %s with id %s: %w", user.Name, user.Id, err)
 	}
 	return nil
@@ -521,15 +535,15 @@ func (c *Client) setUserEnabled(user api.BMCUser, enabled bool) error {
 
 // OpenConsole connects to the serial console and puts the in/out into a ssh stream
 func (c *Client) OpenConsole(s ssh.Session) error {
-	return c.activateSOL(s, s)
+	return c.activateSOL(s.Context(), s, s)
 }
 
 // activateSOL activates the SOL payload and wires in/out to the serial console.
-func (c *Client) activateSOL(in io.Reader, out io.Writer) error {
+func (c *Client) activateSOL(ctx context.Context, in io.Reader, out io.Writer) error {
 	if err := c.connect(); err != nil {
 		return err
 	}
-	return c.client.SOLActivate(defaultContext, in, out, nil)
+	return c.client.SOLActivate(ctx, in, out, nil)
 }
 
 func userIDs(user api.BMCUser) (uid uint8, cn uint8, err error) {

@@ -80,14 +80,13 @@ func TestActivateSOL(t *testing.T) {
 	tool, err := NewOutBand(addr.IP.String(), addr.Port, "ADMIN", "ADMIN", logger.New())
 	require.NoError(t, err)
 	client := tool.(*Client)
-	t.Cleanup(func() { _ = client.Close() })
 
 	inR, inW := io.Pipe()
 	out := &syncedBuffer{}
 
 	solErr := make(chan error, 1)
 	go func() {
-		solErr <- client.activateSOL(inR, out)
+		solErr <- client.activateSOL(t.Context(), inR, out)
 	}()
 
 	waitFor(t, "SOL activation", func() bool {
