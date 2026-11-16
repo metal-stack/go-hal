@@ -273,24 +273,28 @@ func (c *Client) GetFru() (Fru, error) {
 		return Fru{}, err
 	}
 	fru, err := c.client.GetFRU(defaultContext, 0x00, "Builtin FRU")
-	if err != nil {
-		return Fru{}, fmt.Errorf("unable to get fru: %w", err)
-	}
 
+	// GetFRU returns the areas it could read together with a joined error when
+	// some area failed, so keep whatever data is available.
 	f := Fru{}
-	if a := fru.ChassisInfoArea; a != nil {
-		f.ChassisPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
-		f.ChassisPartSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+	if fru != nil {
+		if a := fru.ChassisInfoArea; a != nil {
+			f.ChassisPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
+			f.ChassisPartSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+		}
+		if a := fru.BoardInfoArea; a != nil {
+			f.BoardMfg = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
+			f.BoardMfgSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+			f.BoardPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
+		}
+		if a := fru.ProductInfoArea; a != nil {
+			f.ProductManufacturer = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
+			f.ProductPartNumber = types.FRUFieldString(a.PartModelTypeLength, a.PartModel)
+			f.ProductSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+		}
 	}
-	if a := fru.BoardInfoArea; a != nil {
-		f.BoardMfg = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
-		f.BoardMfgSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
-		f.BoardPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
-	}
-	if a := fru.ProductInfoArea; a != nil {
-		f.ProductManufacturer = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
-		f.ProductPartNumber = types.FRUFieldString(a.PartModelTypeLength, a.PartModel)
-		f.ProductSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+	if err != nil {
+		return f, fmt.Errorf("unable to get fru: %w", err)
 	}
 	return f, nil
 }
@@ -517,13 +521,15 @@ func (c *Client) setUserEnabled(user api.BMCUser, enabled bool) error {
 
 // OpenConsole connects to the serial console and puts the in/out into a ssh stream
 func (c *Client) OpenConsole(s ssh.Session) error {
+	return c.activateSOL(s, s)
+}
+
+// activateSOL activates the SOL payload and wires in/out to the serial console.
+func (c *Client) activateSOL(in io.Reader, out io.Writer) error {
 	if err := c.connect(); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(s, "Exit with ~X.\n"); err != nil {
-		return fmt.Errorf("failed to write to console %w", err)
-	}
-	return c.client.SOLActivate(defaultContext, s, s, nil)
+	return c.client.SOLActivate(defaultContext, in, out, nil)
 }
 
 func userIDs(user api.BMCUser) (uid uint8, cn uint8, err error) {
