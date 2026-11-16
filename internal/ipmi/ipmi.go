@@ -240,48 +240,60 @@ func BootFlags(target hal.BootTarget, vendor api.Vendor) *types.BootOptionParam_
 func (c *Client) GetLanConfig() (LanConfig, error) {
 	var config LanConfig
 	err := c.runClientCmd(func(ctx context.Context, client *goclient.Client) error {
-		lan, err := client.GetLanConfig(ctx, 1)
-		if err != nil {
-			return fmt.Errorf("unable to get lan config: %w", err)
-		}
-		config = LanConfig{
-			IP:  lan.IP.String(),
-			Mac: lan.MAC.String(),
-		}
-		return nil
+		var err error
+		config, err = getLanConfig(ctx, client)
+		return err
 	})
 	return config, err
 }
 
+func getLanConfig(ctx context.Context, client *goclient.Client) (LanConfig, error) {
+	lan, err := client.GetLanConfig(ctx, 1)
+	if err != nil {
+		return LanConfig{}, fmt.Errorf("unable to get lan config: %w", err)
+	}
+	return LanConfig{
+		IP:  lan.IP.String(),
+		Mac: lan.MAC.String(),
+	}, nil
+}
+
 // GetFru returns the Field Replaceable Unit information
 func (c *Client) GetFru() (Fru, error) {
+	var f Fru
+	err := c.runClientCmd(func(ctx context.Context, client *goclient.Client) error {
+		var err error
+		f, err = getFru(ctx, client)
+		return err
+	})
+	return f, err
+}
+
+func getFru(ctx context.Context, client *goclient.Client) (Fru, error) {
 	// GetFRU returns the areas it could read together with a joined error when
 	// some area failed, so keep whatever data is available.
 	f := Fru{}
-	err := c.runClientCmd(func(ctx context.Context, client *goclient.Client) error {
-		fru, err := client.GetFRU(ctx, 0x00, "Builtin FRU")
-		if fru != nil {
-			if a := fru.ChassisInfoArea; a != nil {
-				f.ChassisPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
-				f.ChassisPartSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
-			}
-			if a := fru.BoardInfoArea; a != nil {
-				f.BoardMfg = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
-				f.BoardMfgSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
-				f.BoardPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
-			}
-			if a := fru.ProductInfoArea; a != nil {
-				f.ProductManufacturer = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
-				f.ProductPartNumber = types.FRUFieldString(a.PartModelTypeLength, a.PartModel)
-				f.ProductSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
-			}
+	fru, err := client.GetFRU(ctx, 0x00, "Builtin FRU")
+	if fru != nil {
+		if a := fru.ChassisInfoArea; a != nil {
+			f.ChassisPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
+			f.ChassisPartSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
 		}
-		if err != nil {
-			return fmt.Errorf("unable to get fru: %w", err)
+		if a := fru.BoardInfoArea; a != nil {
+			f.BoardMfg = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
+			f.BoardMfgSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+			f.BoardPartNumber = types.FRUFieldString(a.PartNumberTypeLength, a.PartNumber)
 		}
-		return nil
-	})
-	return f, err
+		if a := fru.ProductInfoArea; a != nil {
+			f.ProductManufacturer = types.FRUFieldString(a.ManufacturerTypeLength, a.Manufacturer)
+			f.ProductPartNumber = types.FRUFieldString(a.PartModelTypeLength, a.PartModel)
+			f.ProductSerial = types.FRUFieldString(a.SerialNumberTypeLength, a.SerialNumber)
+		}
+	}
+	if err != nil {
+		return f, fmt.Errorf("unable to get fru: %w", err)
+	}
+	return f, nil
 }
 
 // GetSession returns the session
@@ -303,48 +315,44 @@ func (c *Client) GetSession() (Session, error) {
 
 // BMC returns the BMC struct
 func (c *Client) BMC() (*api.BMC, error) {
-	lan, err := c.GetLanConfig()
-	if err != nil {
-		return nil, err
-	}
-	fru, err := c.GetFru()
-	if err != nil {
-		// FIXME
-		c.log.Errorw("unable to get fru:%s", err)
-		// return nil, err
-	}
-	firmwareRevision, err := c.firmwareRevision()
-	if err != nil {
-		// FIXME
-		c.log.Errorw("unable to get bmcinfo:%s", err)
-		// return nil, err
-	}
-	return &api.BMC{
-		IP:                  lan.IP,
-		MAC:                 lan.Mac,
-		BoardMfg:            fru.BoardMfg,
-		BoardMfgSerial:      fru.BoardMfgSerial,
-		BoardPartNumber:     fru.BoardPartNumber,
-		ChassisPartNumber:   fru.ChassisPartNumber,
-		ChassisPartSerial:   fru.ChassisPartSerial,
-		ProductManufacturer: fru.ProductManufacturer,
-		ProductPartNumber:   fru.ProductPartNumber,
-		ProductSerial:       fru.ProductSerial,
-		FirmwareRevision:    firmwareRevision,
-	}, nil
-}
-
-func (c *Client) firmwareRevision() (string, error) {
-	var revision string
+	var bmc *api.BMC
 	err := c.runClientCmd(func(ctx context.Context, client *goclient.Client) error {
-		res, err := client.GetDeviceID(ctx)
+		lan, err := getLanConfig(ctx, client)
 		if err != nil {
-			return fmt.Errorf("unable to get device id: %w", err)
+			return err
 		}
-		revision = fmt.Sprintf("%d.%02d", res.MajorFirmwareRevision, res.MinorFirmwareRevision)
+		fru, err := getFru(ctx, client)
+		if err != nil {
+			c.log.Errorw("unable to get fru:%s", err)
+		}
+		revision, err := firmwareRevision(ctx, client)
+		if err != nil {
+			c.log.Errorw("unable to get bmcinfo:%s", err)
+		}
+		bmc = &api.BMC{
+			IP:                  lan.IP,
+			MAC:                 lan.Mac,
+			BoardMfg:            fru.BoardMfg,
+			BoardMfgSerial:      fru.BoardMfgSerial,
+			BoardPartNumber:     fru.BoardPartNumber,
+			ChassisPartNumber:   fru.ChassisPartNumber,
+			ChassisPartSerial:   fru.ChassisPartSerial,
+			ProductManufacturer: fru.ProductManufacturer,
+			ProductPartNumber:   fru.ProductPartNumber,
+			ProductSerial:       fru.ProductSerial,
+			FirmwareRevision:    revision,
+		}
 		return nil
 	})
-	return revision, err
+	return bmc, err
+}
+
+func firmwareRevision(ctx context.Context, client *goclient.Client) (string, error) {
+	res, err := client.GetDeviceID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("unable to get device id: %w", err)
+	}
+	return fmt.Sprintf("%d.%02d", res.MajorFirmwareRevision, res.MinorFirmwareRevision), nil
 }
 
 // CreateUser creates an IPMI user with given privilege level and either the given password or - if empty - a generated one with respect to the given password constraints
