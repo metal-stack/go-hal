@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bougou/go-ipmi/pkg/bmc"
+	goclient "github.com/bougou/go-ipmi/pkg/client"
 	"github.com/bougou/go-ipmi/pkg/clock"
 	"github.com/bougou/go-ipmi/pkg/hal/mock"
 	"github.com/bougou/go-ipmi/pkg/server"
@@ -77,9 +78,7 @@ func TestActivateSOL(t *testing.T) {
 	go func() { _ = srv.Serve(ctx) }()
 
 	addr := pc.LocalAddr().(*net.UDPAddr)
-	tool, err := NewOutBand(addr.IP.String(), addr.Port, "ADMIN", "ADMIN", logger.New())
-	require.NoError(t, err)
-	client := tool.(*Client)
+	client := NewOutBand(addr.IP.String(), addr.Port, "ADMIN", "ADMIN", logger.New())
 
 	inR, inW := io.Pipe()
 	out := &syncedBuffer{}
@@ -115,5 +114,16 @@ func TestActivateSOL(t *testing.T) {
 
 	waitFor(t, "payload deactivation", func() bool {
 		return b.SOL.ActiveSessionID(1) == 0
+	})
+
+	waitFor(t, "session close after SOL", func() bool {
+		return b.Sessions.Count() == 0
+	})
+	require.NoError(t, client.runClientCmd(func(_ context.Context, _ *goclient.Client) error {
+		require.Equal(t, 1, b.Sessions.Count())
+		return nil
+	}))
+	waitFor(t, "session close after command", func() bool {
+		return b.Sessions.Count() == 0
 	})
 }

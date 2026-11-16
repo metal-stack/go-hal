@@ -4,6 +4,7 @@ import (
 	"github.com/metal-stack/go-hal/internal/ipmi"
 	"github.com/metal-stack/go-hal/internal/redfish"
 	"github.com/metal-stack/go-hal/pkg/api"
+	"github.com/metal-stack/go-hal/pkg/logger"
 )
 
 type OutBand struct {
@@ -70,12 +71,8 @@ func (ob *OutBand) IPMIConnection() (string, int, string, string) {
 }
 
 func (ob *OutBand) IPMI(f func(*ipmi.Client) error) error {
-	client, err := ipmi.OpenClientConnection(ob.IPMIConnection())
-	if err != nil {
-		return err
-	}
-
-	return f(client)
+	ip, port, user, password := ob.IPMIConnection()
+	return f(ipmi.NewOutBand(ip, port, user, password, logger.New()))
 }
 
 func (ob *OutBand) GetUsername() string {
