@@ -231,6 +231,20 @@ func TestAPIClient_ConnectionLostReturnsError(t *testing.T) {
 	require.Error(t, c.SetBootOrder(nil))
 }
 
+func TestAPIClient_PatchAcceptsNoContent(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	// the mock answers PATCH with 204 No Content, like some BMCs do
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+
+	c, err := redfish.New(endpoint, "", "", true, logger.NewSlog(log), connectionTimeout)
+	require.NoError(t, err)
+
+	require.NoError(t, c.SetBootTarget(hal.BootTargetPXE))
+	require.NoError(t, c.SetBootOrder(nil))
+}
+
 func startRedfishMock(t *testing.T) (string, error) {
 	ctx := t.Context()
 
