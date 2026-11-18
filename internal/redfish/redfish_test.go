@@ -2,6 +2,10 @@ package redfish_test
 
 import (
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -197,6 +201,34 @@ func TestAPIClient_setPower(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAPIClient_ConnectionLostReturnsError(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+	target, err := url.Parse(endpoint)
+	require.NoError(t, err)
+
+	mock := httputil.NewSingleHostReverseProxy(target)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			mock.ServeHTTP(w, r)
+			return
+		}
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}))
+	t.Cleanup(proxy.Close)
+
+	c, err := redfish.New(proxy.URL, "", "", true, logger.NewSlog(log), connectionTimeout)
+	require.NoError(t, err)
+
+	require.Error(t, c.SetBootTarget(hal.BootTargetPXE))
+	require.Error(t, c.SetBootOrder(nil))
 }
 
 func startRedfishMock(t *testing.T) (string, error) {
