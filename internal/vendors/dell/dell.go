@@ -152,6 +152,10 @@ func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (
 	return c.IpmiTool.NeedsPasswordChange(user, password)
 }
 
+func (c *bmcConnection) UserExist(user api.BMCUser) (bool, error) {
+	return c.IpmiTool.UserExist(user)
+}
+
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
 	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.HighLevel)
 }
