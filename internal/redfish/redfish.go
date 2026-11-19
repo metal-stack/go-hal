@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -393,63 +394,59 @@ func (c *APIClient) SetChassisIdentifyLEDOff() error {
 func (c *APIClient) SetBootTarget(target hal.BootTarget) error {
 	switch target {
 	case hal.BootTargetBIOS:
-		return c.setNextBootBIOS()
+		return c.setBootOverride(schemas.BiosSetupBootSource, schemas.OnceBootSourceOverrideEnabled)
 	case hal.BootTargetDisk:
-		return c.setPersistentHDD()
+		return c.setBootOverride(schemas.HddBootSource, schemas.ContinuousBootSourceOverrideEnabled)
 	case hal.BootTargetPXE:
 		fallthrough
 	default:
-		return c.setPersistentPXE()
+		return c.setBootOverride(schemas.PxeBootSource, schemas.ContinuousBootSourceOverrideEnabled)
 	}
 }
 
-func (c *APIClient) setPersistentPXE() error {
+func (c *APIClient) setBootOverride(source schemas.BootSource, enabled schemas.BootSourceOverrideEnabled) error {
+	system, err := c.getPrimarySystem()
+	if err != nil {
+		return err
+	}
 	payload := bootOverrideRequest{
 		Boot: schemas.Boot{
-			BootSourceOverrideEnabled: schemas.ContinuousBootSourceOverrideEnabled,
+			BootSourceOverrideEnabled: enabled,
 			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  schemas.PxeBootSource,
+			BootSourceOverrideTarget:  source,
 		},
 	}
-	return c.setBootTargetOverride(payload)
-}
-
-func (c *APIClient) setPersistentHDD() error {
-	payload := bootOverrideRequest{
-		Boot: schemas.Boot{
-			BootSourceOverrideEnabled: schemas.ContinuousBootSourceOverrideEnabled,
-			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  schemas.HddBootSource,
-		},
+	if err := c.patchSystem(system, payload); err != nil {
+		return fmt.Errorf("unable to override boot target: %w", err)
 	}
-	return c.setBootTargetOverride(payload)
+	return nil
 }
 
-func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
+func (c *APIClient) getPrimarySystem() (*schemas.ComputerSystem, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+	systems, err := c.client.WithContext(ctx).Service.Systems()
 	if err != nil {
-		return fmt.Errorf("unable to query systems: %w", err)
+		return nil, fmt.Errorf("unable to query systems: %w", err)
 	}
-
 	if len(systems) == 0 {
-		return fmt.Errorf("no system found to set boot target")
+		return nil, errors.New("no system found")
 	}
-
 	if len(systems) > 1 {
 		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
 	}
+	return systems[0], nil
+}
 
-	// Assuming there's typically one primary system.
-	system := systems[0]
-
+// patchSystem sends payload as PATCH to the system, only a synchronous result (200 or 204) counts as success
+func (c *APIClient) patchSystem(system *schemas.ComputerSystem, payload any) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -457,11 +454,11 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return fmt.Errorf("unable to override boot order %w", err)
+		return err
 	}
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
+		return fmt.Errorf("http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -471,17 +468,6 @@ func (c *APIClient) addHeadersAndAuth(req *http.Request) {
 	req.Header.Add("Authorization", "Basic "+c.basicAuth)
 	req.Header.Add("If-Match", "*")
 	req.SetBasicAuth(c.user, c.password)
-}
-
-func (c *APIClient) setNextBootBIOS() error {
-	payload := bootOverrideRequest{
-		Boot: schemas.Boot{
-			BootSourceOverrideEnabled: schemas.OnceBootSourceOverrideEnabled,
-			BootSourceOverrideMode:    schemas.UEFIBootSourceOverrideMode,
-			BootSourceOverrideTarget:  schemas.BiosSetupBootSource,
-		},
-	}
-	return c.setBootTargetOverride(payload)
 }
 
 func (c *APIClient) BMC() (*api.BMC, error) {
@@ -555,55 +541,21 @@ func (c *APIClient) GetBootOptions() ([]*schemas.BootOption, error) {
 
 // SetBootOrder sets the boot order to match the sequence of the boot option entries
 func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
-	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
-	defer cancel()
-	g := c.client.WithContext(ctx)
-	systems, err := g.Service.Systems()
+	system, err := c.getPrimarySystem()
 	if err != nil {
-		return fmt.Errorf("unable to query systems: %w", err)
+		return err
 	}
-
-	if len(systems) == 0 {
-		return fmt.Errorf("no system found to set boot order")
-	}
-
-	if len(systems) > 1 {
-		c.log.Warnw("multiple systems found, ignoring all but the first one", "count", len(systems))
-	}
-
-	// Assuming there's typically one primary system.
-	system := systems[0]
-
-	var bootOrder []string
-	for _, entry := range entries {
-		bootOrder = append(bootOrder, entry.ID)
-	}
-
 	if len(system.Boot.BootOrder) == 0 {
 		c.log.Errorw("no boot order found")
 	}
 
 	payload := bootOrderSetRequest{}
-	payload.Boot.BootOrder = bootOrder
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
+	for _, entry := range entries {
+		payload.Boot.BootOrder = append(payload.Boot.BootOrder, entry.ID)
 	}
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPatch, fmt.Sprintf("%s/Systems/%s", c.urlPrefix, system.ID), bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	c.addHeadersAndAuth(req)
-	resp, err := c.Do(req)
-	if err != nil {
+	if err := c.patchSystem(system, payload); err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
-	}
-
 	return nil
 }
 
