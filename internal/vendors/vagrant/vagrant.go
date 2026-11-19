@@ -14,7 +14,6 @@ import (
 	"github.com/metal-stack/go-hal/internal/outband"
 	"github.com/metal-stack/go-hal/pkg/api"
 	"github.com/metal-stack/go-hal/pkg/logger"
-	goipmi "github.com/vmware/goipmi"
 )
 
 const (
@@ -50,7 +49,7 @@ func InBand(board *api.Board, log logger.Logger) (hal.InBand, error) {
 // OutBand creates an outband connection to a vagrant VM.
 func OutBand(board *api.Board, ip string, ipmiPort int, user, password string) hal.OutBand {
 	return &outBand{
-		OutBand: outband.ViaGoipmi(board, ip, ipmiPort, user, password),
+		OutBand: outband.ViaIPMI(board, ip, ipmiPort, user, password),
 	}
 }
 
@@ -155,26 +154,26 @@ func (ob *outBand) PowerState() (hal.PowerState, error) {
 }
 
 func (ob *outBand) PowerOff() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerDown)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerDown)
 	})
 }
 
 func (ob *outBand) PowerOn() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerUp)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerUp)
 	})
 }
 
 func (ob *outBand) PowerReset() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerHardReset)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlHardReset)
 	})
 }
 
 func (ob *outBand) PowerCycle() error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
-		return client.Control(goipmi.ControlPowerCycle)
+	return ob.IPMI(func(client *ipmi.Client) error {
+		return client.Control(ipmi.ChassisControlPowerCycle)
 	})
 }
 
@@ -191,7 +190,7 @@ func (ob *outBand) IdentifyLEDOff() error {
 }
 
 func (ob *outBand) BootFrom(bootTarget hal.BootTarget) error {
-	return ob.Goipmi(func(client *ipmi.Client) error {
+	return ob.IPMI(func(client *ipmi.Client) error {
 		return client.SetBootOrder(bootTarget, vendor)
 	})
 }

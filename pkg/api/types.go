@@ -131,7 +131,7 @@ type BMC struct {
 	ProductManufacturer string
 	ProductPartNumber   string
 	ProductSerial       string
-	FirmwareRevision    string `ipmitool:"Firmware Revision"`
+	FirmwareRevision    string
 }
 
 // BIOS information of this machine

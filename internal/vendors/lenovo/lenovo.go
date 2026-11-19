@@ -132,11 +132,11 @@ func (c *bmcConnection) Present() bool {
 }
 
 func (c *bmcConnection) CreateUserAndPassword(user api.BMCUser, privilege api.IpmiPrivilege) (string, error) {
-	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints(), ipmi.LowLevel)
+	return c.IpmiTool.CreateUser(user, privilege, "", c.Board().Vendor.PasswordConstraints())
 }
 
 func (c *bmcConnection) CreateUser(user api.BMCUser, privilege api.IpmiPrivilege, password string) error {
-	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil, ipmi.LowLevel)
+	_, err := c.IpmiTool.CreateUser(user, privilege, password, nil)
 	return err
 }
 
@@ -145,11 +145,11 @@ func (c *bmcConnection) NeedsPasswordChange(user api.BMCUser, password string) (
 }
 
 func (c *bmcConnection) ChangePassword(user api.BMCUser, newPassword string) error {
-	return c.IpmiTool.ChangePassword(user, newPassword, ipmi.LowLevel)
+	return c.IpmiTool.ChangePassword(user, newPassword)
 }
 
 func (c *bmcConnection) SetUserEnabled(user api.BMCUser, enabled bool) error {
-	return c.IpmiTool.SetUserEnabled(user, enabled, ipmi.LowLevel)
+	return c.IpmiTool.SetUserEnabled(user, enabled)
 }
 
 func (ib *inBand) ConfigureBIOS() (bool, error) {

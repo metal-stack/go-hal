@@ -17,10 +17,7 @@ type InBand struct {
 }
 
 func New(board *api.Board, inspectBMC bool, log logger.Logger) (*InBand, error) {
-	i, err := ipmi.New(log)
-	if err != nil {
-		return nil, err
-	}
+	i := ipmi.New(log)
 
 	if inspectBMC {
 		bmc, err := i.BMC()

@@ -84,7 +84,6 @@ func outband(log logger.Logger) {
 		uu["PowerState"] = "unexpected power state: PowerUnknownState"
 	}
 
-	// ipmitool sel
 	err = ob.IdentifyLEDState(hal.IdentifyLEDStateOff)
 	if err != nil {
 		ee["IdentifyLEDState"] = err
