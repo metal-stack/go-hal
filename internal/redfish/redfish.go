@@ -456,11 +456,11 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	c.addHeadersAndAuth(req)
 
 	resp, err := c.Do(req)
-	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
 	return nil
@@ -596,11 +596,11 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	}
 	c.addHeadersAndAuth(req)
 	resp, err := c.Do(req)
-	_ = resp.Body.Close()
 	if err != nil {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 
