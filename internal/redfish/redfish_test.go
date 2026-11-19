@@ -1,6 +1,8 @@
 package redfish_test
 
 import (
+	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -243,6 +245,36 @@ func TestAPIClient_PatchAcceptsNoContent(t *testing.T) {
 
 	require.NoError(t, c.SetBootTarget(hal.BootTargetPXE))
 	require.NoError(t, c.SetBootOrder(nil))
+}
+
+func TestAPIClient_PatchTimesOut(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+	target, err := url.Parse(endpoint)
+	require.NoError(t, err)
+
+	mock := httputil.NewSingleHostReverseProxy(target)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			mock.ServeHTTP(w, r)
+			return
+		}
+		// the server notices the client giving up only after the body is read
+		_, _ = io.Copy(io.Discard, r.Body)
+		<-r.Context().Done()
+	}))
+	t.Cleanup(proxy.Close)
+
+	timeout := 2 * time.Second
+	c, err := redfish.New(proxy.URL, "", "", true, logger.NewSlog(log), &timeout)
+	require.NoError(t, err)
+
+	start := time.Now()
+	require.ErrorIs(t, c.SetBootTarget(hal.BootTargetPXE), context.DeadlineExceeded)
+	require.ErrorIs(t, c.SetBootOrder(nil), context.DeadlineExceeded)
+	require.Less(t, time.Since(start), 3*timeout)
 }
 
 func startRedfishMock(t *testing.T) (string, error) {
