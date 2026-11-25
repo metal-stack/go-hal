@@ -242,11 +242,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 
 			var ledState string
 			if chass.LocationIndicatorActive != nil {
-				if *chass.LocationIndicatorActive {
-					ledState = string(schemas.LitIndicatorLED) // On
-				} else {
-					ledState = string(schemas.OffIndicatorLED) // Off
-				}
+				ledState = toMetalLEDState(boolToIndicatorLED(*chass.LocationIndicatorActive))
 			} else {
 				ledState = toMetalLEDState(chass.IndicatorLED) //nolint:staticcheck
 			}

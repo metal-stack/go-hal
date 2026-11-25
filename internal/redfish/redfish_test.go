@@ -267,6 +267,46 @@ func TestAPIClient_SetLocationIndicatorActive(t *testing.T) {
 	}
 }
 
+func TestAPIClient_BoardInfoLocationIndicatorActive(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+	resourcePath := "/redfish/v1/Chassis/1U"
+
+	// The mock reports the legacy IndicatorLED as "Lit", so the "inactive" case
+	// also proves that LocationIndicatorActive takes precedence over it.
+	tests := []struct {
+		name                    string
+		locationIndicatorActive bool
+		wantLED                 string
+	}{
+		{
+			name:                    "active",
+			locationIndicatorActive: true,
+			wantLED:                 "LED-ON",
+		},
+		{
+			name:                    "inactive",
+			locationIndicatorActive: false,
+			wantLED:                 "LED-OFF",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := patchRedfishMockSchema(endpoint, resourcePath, locationIndicatorActiveStruct{LocationIndicatorActive: tt.locationIndicatorActive})
+			require.NoError(t, err)
+
+			c, err := redfish.New(endpoint, "", "", true, logger.NewSlog(log), connectionTimeout)
+			require.NoError(t, err)
+
+			board, err := c.BoardInfo()
+			require.NoError(t, err)
+			require.Equal(t, tt.wantLED, board.IndicatorLED)
+		})
+	}
+}
+
 func getChassisData(t *testing.T, endpoint string) map[string]any {
 	t.Helper()
 	return getRedfishData(t, endpoint+"/redfish/v1/Chassis/1U")
