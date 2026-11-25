@@ -204,7 +204,7 @@ func (c *APIClient) BoardInfo() (*api.Board, error) {
 
 	chassis, err := g.Service.Chassis()
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		c.log.Warnw("ignore chassis query", "error", err.Error())
 	}
 	for _, chass := range chassis {
 		switch chass.ChassisType {
@@ -395,7 +395,10 @@ func (c *APIClient) setPower(resetType schemas.ResetType) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("failed to set power to %s %w", resetType, err)
+	if err == nil {
+		return fmt.Errorf("failed to set power to %s: no system found", resetType)
+	}
+	return fmt.Errorf("failed to set power to %s: %w", resetType, err)
 }
 
 // SetChassisIdentifyLEDState sets the chassis identify LED to given state
@@ -539,11 +542,11 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 
 	resp, err := c.doWithETag(req)
 	if err != nil {
-		return fmt.Errorf("unable to override boot order %w", err)
+		return fmt.Errorf("unable to set boot target override: %w", err)
 	}
 	_ = resp.Body.Close()
 	if !isSuccess(resp.StatusCode) {
-		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
+		return fmt.Errorf("unable to set boot target override, http status: %s", resp.Status)
 	}
 	return nil
 }
@@ -579,7 +582,7 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 
 	chassis, err := g.Service.Chassis()
 	if err != nil {
-		c.log.Warnw("ignore system query", "error", err.Error())
+		c.log.Warnw("ignore chassis query", "error", err.Error())
 	}
 
 	bmc := &api.BMC{}
@@ -627,11 +630,11 @@ func (c *APIClient) GetBootOptions() ([]*schemas.BootOption, error) {
 			continue
 		}
 		if len(bootOptions) == 0 {
-			c.log.Warnw("no boot options found", "error")
+			c.log.Warnw("no boot options found", "system", system.ID)
 			continue
 		}
 		if len(system.Boot.BootOrder) == 0 {
-			c.log.Warnw("no boot order found", "error")
+			c.log.Warnw("no boot order found", "system", system.ID)
 			continue
 		}
 		return bootOptions, nil
@@ -734,7 +737,7 @@ func (c *APIClient) UpdateFirmware(url string) error {
 	body, _ = io.ReadAll(resp.Body)
 	// The response code is 202 for accepted, and we normally get no body
 	if isSuccess(resp.StatusCode) {
-		c.log.Infow("Update triggered successfully: %s\n", string(body))
+		c.log.Infow("update triggered successfully", "body", string(body))
 	} else {
 		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
 	}
