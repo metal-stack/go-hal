@@ -107,7 +107,7 @@ type InBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
-	// IdentifyLEDState get the identify LED state
+	// IdentifyLEDState set the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
 	IdentifyLEDOn() error
@@ -157,7 +157,7 @@ type OutBand interface {
 	// PowerCycle cycle the power state of the server
 	PowerCycle() error
 
-	// IdentifyLEDState get the identify LED state
+	// IdentifyLEDState set the identify LED state
 	IdentifyLEDState(IdentifyLEDState) error
 	// IdentifyLEDOn set the identify LED to on
 	IdentifyLEDOn() error
