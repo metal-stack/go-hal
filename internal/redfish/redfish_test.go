@@ -7,6 +7,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -278,10 +281,10 @@ func getBool(t *testing.T, data map[string]any, key string) bool {
 	return data[key].(bool)
 }
 
-func getRedfishData(t *testing.T, url string) map[string]any {
+func getRedfishData(t *testing.T, resourceURL string) map[string]any {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	req, err := http.NewRequest(http.MethodGet, resourceURL, nil)
 	require.NoError(t, err)
 
 	req.Header.Set("Content-Type", "application/json")
@@ -312,8 +315,8 @@ func patchRedfishMockSchema(endpoint, resourcePath string, patch any) error {
 		return err
 	}
 
-	url := endpoint + resourcePath
-	req, err := http.NewRequest(http.MethodPatch, url, bytes.NewBuffer(rawPatch))
+	resourceURL := endpoint + resourcePath
+	req, err := http.NewRequest(http.MethodPatch, resourceURL, bytes.NewBuffer(rawPatch))
 	if err != nil {
 		return err
 	}
@@ -328,6 +331,48 @@ func patchRedfishMockSchema(endpoint, resourcePath string, patch any) error {
 		return fmt.Errorf("patch returned status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func TestAPIClient_ConnectionLostReturnsError(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+	target, err := url.Parse(endpoint)
+	require.NoError(t, err)
+
+	mock := httputil.NewSingleHostReverseProxy(target)
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			mock.ServeHTTP(w, r)
+			return
+		}
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}))
+	t.Cleanup(proxy.Close)
+
+	c, err := redfish.New(proxy.URL, "", "", true, logger.NewSlog(log), connectionTimeout)
+	require.NoError(t, err)
+
+	require.Error(t, c.SetBootTarget(hal.BootTargetPXE))
+	require.Error(t, c.SetBootOrder(nil))
+}
+
+func TestAPIClient_PatchAcceptsNoContent(t *testing.T) {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	// the mock answers PATCH with 204 No Content, like some BMCs do
+	endpoint, err := startRedfishMock(t)
+	require.NoError(t, err)
+
+	c, err := redfish.New(endpoint, "", "", true, logger.NewSlog(log), connectionTimeout)
+	require.NoError(t, err)
+
+	require.NoError(t, c.SetBootTarget(hal.BootTargetPXE))
+	require.NoError(t, c.SetBootOrder(nil))
 }
 
 func startRedfishMock(t *testing.T) (string, error) {
