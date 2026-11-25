@@ -328,6 +328,9 @@ func (c *APIClient) MachineUUID() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return "", fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Errorw("error during system query, unable to detect uuid", "error", err.Error())
@@ -345,6 +348,9 @@ func (c *APIClient) PowerState() (hal.PowerState, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return hal.PowerUnknownState, fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -377,6 +383,9 @@ func (c *APIClient) setPower(resetType schemas.ResetType) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -499,6 +508,9 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)
@@ -557,6 +569,9 @@ func (c *APIClient) BMC() (*api.BMC, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -598,6 +613,9 @@ func (c *APIClient) GetBootOptions() ([]*schemas.BootOption, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return nil, fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		c.log.Warnw("ignore system query", "error", err.Error())
@@ -627,6 +645,9 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 	ctx, cancel := context.WithTimeout(context.Background(), c.connectionTimeout)
 	defer cancel()
 	g := c.client.WithContext(ctx)
+	if g.Service == nil {
+		return fmt.Errorf("gofish service root is not available")
+	}
 	systems, err := g.Service.Systems()
 	if err != nil {
 		return fmt.Errorf("unable to query systems: %w", err)
