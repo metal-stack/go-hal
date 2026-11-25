@@ -440,7 +440,7 @@ func (c *APIClient) SetChassisIdentifyLEDState(state hal.IdentifyLEDState) error
 		return err
 	}
 	_ = resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !isSuccess(resp.StatusCode) {
 		return fmt.Errorf("unable to switch the chassis identify LED, http status: %s", resp.Status)
 	}
 	return nil
@@ -534,7 +534,7 @@ func (c *APIClient) setBootTargetOverride(payload bootOverrideRequest) error {
 		return fmt.Errorf("unable to override boot order %w", err)
 	}
 	_ = resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !isSuccess(resp.StatusCode) {
 		return fmt.Errorf("unable to override boot order, http status: %s", resp.Status)
 	}
 	return nil
@@ -673,7 +673,7 @@ func (c *APIClient) SetBootOrder(entries []*schemas.BootOption) error {
 		return fmt.Errorf("unable to set boot order: %w", err)
 	}
 	_ = resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !isSuccess(resp.StatusCode) {
 		return fmt.Errorf("unable to set boot order, http status: %s", resp.Status)
 	}
 
@@ -716,7 +716,7 @@ func (c *APIClient) UpdateFirmware(url string) error {
 
 	body, _ = io.ReadAll(resp.Body)
 	// The response code is 202 for accepted, and we normally get no body
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if isSuccess(resp.StatusCode) {
 		c.log.Infow("Update triggered successfully: %s\n", string(body))
 	} else {
 		return fmt.Errorf("update failed with status %d: %s", resp.StatusCode, string(body))
@@ -739,7 +739,7 @@ func (c *APIClient) getETag(ctx context.Context, url string) (string, error) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !isSuccess(resp.StatusCode) {
 		c.log.Warnw("failed to get etag, defaulting to wildcard", "status", resp.StatusCode, "url", url)
 		return "*", nil
 	}
@@ -771,4 +771,9 @@ func (c *APIClient) doWithETag(req *http.Request) (*http.Response, error) {
 		req.Header.Set("If-Match", "*")
 	}
 	return c.Do(req)
+}
+
+// checks if HTTP status code is success
+func isSuccess(code int) bool {
+	return code >= 200 && code < 300
 }
